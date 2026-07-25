@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 
 from backend.models.validation import ValidationIssue, ValidationReport
 from backend.services.xmltv.parser import (
@@ -8,6 +9,7 @@ from backend.services.xmltv.parser import (
     build_programme,
     read_schedule_file,
 )
+from backend.services.xmltv.generator import generate_xmltv
 from backend.services.xmltv.timezone import (
     ScheduleConversionError,
     build_utc_schedule,
@@ -21,11 +23,10 @@ router = APIRouter(
 )
 
 
-@router.post("/import")
-async def import_schedule(
-    schedule_file: UploadFile = File(...),
-    channel_timezone: str = Form(...),
-):
+async def process_schedule(
+    schedule_file: UploadFile,
+    channel_timezone: str,
+) -> dict:
     filename = schedule_file.filename or ""
     content = await schedule_file.read()
 
@@ -150,5 +151,57 @@ async def import_schedule(
         "validation": report.to_dict(),
         "missing_columns": [],
         "unknown_columns": unknown_columns,
-        "programmes": utc_schedule[:10],
+        "programmes": utc_schedule,
     }
+
+
+@router.post("/import")
+async def import_schedule(
+    schedule_file: UploadFile = File(...),
+    channel_timezone: str = Form(...),
+):
+    return await process_schedule(schedule_file, channel_timezone)
+
+
+@router.post("/generate", response_class=Response)
+async def generate_schedule(
+    schedule_file: UploadFile = File(...),
+    channel_timezone: str = Form(...),
+    channel_id: str = Form(...),
+    channel_name: str = Form(...),
+    primary_language: str = Form("en"),
+    original_language: str = Form("en"),
+    rating_system: str = Form("VCHIP"),
+):
+    result = await process_schedule(schedule_file, channel_timezone)
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=422,
+            detail=result["validation"],
+        )
+
+    if not channel_id.strip() or not channel_name.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Channel ID and Channel Name are required.",
+        )
+
+    xml = generate_xmltv(
+        programmes=result["programmes"],
+        channel_id=channel_id.strip(),
+        channel_name=channel_name.strip(),
+        primary_language=primary_language.strip(),
+        original_language=original_language.strip(),
+        rating_system=rating_system.strip(),
+    )
+
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{channel_id.strip()}-xmltv.xml"'
+            ),
+        },
+    )
