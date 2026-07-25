@@ -8,12 +8,15 @@ from starlette.datastructures import UploadFile
 from backend.api.xmltv import import_schedule
 
 
-def import_file(path: Path) -> dict:
+def import_file(
+    path: Path,
+    channel_timezone: str = "America/New_York",
+) -> dict:
     upload = UploadFile(
         filename=path.name,
         file=BytesIO(path.read_bytes()),
     )
-    return asyncio.run(import_schedule(upload))
+    return asyncio.run(import_schedule(upload, channel_timezone))
 
 
 def test_sample_csv_import_is_valid():
@@ -24,6 +27,8 @@ def test_sample_csv_import_is_valid():
     assert result["programmes_imported"] == 2
     assert result["validation"]["score"] == 100
     assert result["validation"]["ready_to_generate"] is True
+    assert result["programmes"][0]["xmltv_start"] == "20260718120000 +0000"
+    assert result["programmes"][0]["xmltv_stop"] == "20260718123000 +0000"
 
 
 def test_empty_schedule_is_not_ready_to_generate():
@@ -52,3 +57,13 @@ def test_invalid_csv_reports_source_row():
     assert result["success"] is False
     assert issue["row"] == 2
     assert issue["rule_id"] == "VAL-002"
+
+
+def test_invalid_timezone_is_critical():
+    result = import_file(
+        Path("tests/sample_schedule.csv"),
+        channel_timezone="Not/A_Timezone",
+    )
+
+    assert result["success"] is False
+    assert result["validation"]["issues"][0]["rule_id"] == "VAL-010"

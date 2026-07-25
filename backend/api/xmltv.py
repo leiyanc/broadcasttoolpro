@@ -1,12 +1,16 @@
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.models.validation import ValidationIssue, ValidationReport
 from backend.services.xmltv.parser import (
     EXPECTED_COLUMNS,
     build_programme,
     read_schedule_file,
+)
+from backend.services.xmltv.timezone import (
+    ScheduleConversionError,
+    build_utc_schedule,
 )
 from backend.services.xmltv.validator import ValidationEngine
 
@@ -20,6 +24,7 @@ router = APIRouter(
 @router.post("/import")
 async def import_schedule(
     schedule_file: UploadFile = File(...),
+    channel_timezone: str = Form(...),
 ):
     filename = schedule_file.filename or ""
     content = await schedule_file.read()
@@ -112,6 +117,28 @@ async def import_schedule(
             )
 
     report = ValidationEngine().validate(programmes, parsing_issues)
+    utc_schedule = []
+
+    if report.critical == 0:
+        try:
+            utc_schedule = build_utc_schedule(
+                programmes,
+                channel_timezone,
+            )
+        except ScheduleConversionError as exc:
+            parsing_issues.append(
+                ValidationIssue(
+                    rule_id="VAL-010",
+                    row=None,
+                    field="Channel Time Zone",
+                    severity="critical",
+                    message=str(exc),
+                )
+            )
+            report = ValidationEngine().validate(
+                programmes,
+                parsing_issues,
+            )
 
     return {
         "success": report.critical == 0,
@@ -119,11 +146,9 @@ async def import_schedule(
         "file_type": extension,
         "rows_received": len(rows),
         "programmes_imported": len(programmes),
+        "channel_timezone": channel_timezone,
         "validation": report.to_dict(),
         "missing_columns": [],
         "unknown_columns": unknown_columns,
-        "programmes": [
-            programme.to_dict()
-            for programme in programmes[:10]
-        ],
+        "programmes": utc_schedule[:10],
     }
