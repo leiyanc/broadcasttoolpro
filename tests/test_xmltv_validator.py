@@ -46,7 +46,7 @@ def test_valid_schedule_is_ready_to_generate():
     assert report.errors == 0
 
 
-def test_duplicate_and_overlap_are_critical():
+def test_duplicate_start_is_critical_without_repeated_overlap():
     programmes = [
         make_programme(duration="01:00:00"),
         make_programme(source_row=6, program_title="Market Update"),
@@ -56,8 +56,24 @@ def test_duplicate_and_overlap_are_critical():
     rule_ids = {issue.rule_id for issue in report.issues}
 
     assert "VAL-005" in rule_ids
-    assert "VAL-008" in rule_ids
-    assert report.critical == 2
+    assert "VAL-008" not in rule_ids
+    assert report.critical == 1
+
+
+def test_overlap_is_critical():
+    programmes = [
+        make_programme(duration="01:00:00"),
+        make_programme(
+            source_row=6,
+            start_time="08:30:00",
+            program_title="Market Update",
+        ),
+    ]
+
+    report = ValidationEngine().validate(programmes)
+
+    assert any(issue.rule_id == "VAL-008" for issue in report.issues)
+    assert report.critical == 1
 
 
 def test_invalid_duration_and_year_are_reported():

@@ -10,6 +10,7 @@ from backend.services.xmltv.parser import (
     read_schedule_file,
 )
 from backend.services.xmltv.generator import generate_xmltv
+from backend.services.xmltv.normalizer import collapse_continuation_rows
 from backend.services.xmltv.timezone import (
     ScheduleConversionError,
     build_utc_schedule,
@@ -150,6 +151,11 @@ async def process_schedule(
                     message=str(exc),
                 )
             )
+
+    programmes = collapse_continuation_rows(
+        programmes,
+        auto_fixes,
+    )
 
     report = ValidationEngine().validate(
         programmes,

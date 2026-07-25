@@ -175,6 +175,9 @@ class OverlapRule(ValidationRule):
             ordered = sorted(channel_programmes, key=programme_start)
 
             for current, following in zip(ordered, ordered[1:]):
+                if programme_start(current) == programme_start(following):
+                    continue
+
                 if current.duration is None:
                     continue
 
