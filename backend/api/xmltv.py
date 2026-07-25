@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 
 from backend.models.validation import ValidationIssue, ValidationReport
 from backend.services.xmltv.parser import (
@@ -21,6 +21,35 @@ router = APIRouter(
     prefix="/api/xmltv",
     tags=["XMLTV"],
 )
+
+ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
+EXCEL_TEMPLATE = ASSETS_DIR / "Broadcast_Tool_Pro_XMLTV_Template.xlsx"
+
+
+@router.get("/template/excel", response_class=FileResponse)
+def download_excel_template():
+    return FileResponse(
+        EXCEL_TEMPLATE,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        filename="Broadcast_Tool_Pro_XMLTV_Template.xlsx",
+    )
+
+
+@router.get("/template/csv", response_class=Response)
+def download_csv_template():
+    content = ",".join(EXPECTED_COLUMNS) + "\n"
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="Broadcast_Tool_Pro_XMLTV_Template.csv"'
+            ),
+        },
+    )
 
 
 async def process_schedule(
