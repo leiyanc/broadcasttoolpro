@@ -1,5 +1,5 @@
 import csv
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any
@@ -118,13 +118,121 @@ def parse_boolean(value: Any) -> bool:
 
     normalized = text.lower()
 
-    if normalized in {"yes", "true", "1", "y"}:
+    if normalized in {"yes", "true", "1", "y", "sí", "si", "s"}:
         return True
 
     if normalized in {"no", "false", "0", "n"}:
         return False
 
     raise ValueError("Use Yes or No.")
+
+
+def normalize_boolean(
+    value: Any,
+    field: str,
+    source_row: int,
+    auto_fixes: list[dict[str, Any]] | None,
+) -> bool:
+    result = parse_boolean(value)
+    text = clean_text(value)
+
+    if text and text not in {"Yes", "No"} and auto_fixes is not None:
+        auto_fixes.append({
+            "row": source_row,
+            "field": field,
+            "original_value": text,
+            "normalized_value": "Yes" if result else "No",
+            "message": f"{field} was normalized to Yes or No.",
+        })
+
+    return result
+
+
+def normalize_duration(
+    value: Any,
+    source_row: int,
+    auto_fixes: list[dict[str, Any]] | None,
+) -> str | None:
+    if value is None:
+        return None
+
+    normalized: str
+
+    if isinstance(value, timedelta):
+        total_seconds = int(value.total_seconds())
+        normalized = (
+            f"{total_seconds // 3600:02d}:"
+            f"{(total_seconds % 3600) // 60:02d}:"
+            f"{total_seconds % 60:02d}"
+        )
+    elif isinstance(value, time):
+        normalized = value.replace(microsecond=0).isoformat()
+    elif (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+    ) or (
+        isinstance(value, str)
+        and value.strip().replace(".", "", 1).isdigit()
+    ):
+        numeric_value = float(value)
+
+        if numeric_value <= 0:
+            return clean_text(value)
+
+        total_seconds = round(numeric_value * 60)
+        normalized = (
+            f"{total_seconds // 3600:02d}:"
+            f"{(total_seconds % 3600) // 60:02d}:"
+            f"{total_seconds % 60:02d}"
+        )
+    else:
+        return clean_text(value)
+
+    if auto_fixes is not None:
+        auto_fixes.append({
+            "row": source_row,
+            "field": "Duration (Optional)",
+            "original_value": str(value),
+            "normalized_value": normalized,
+            "message": "Numeric duration was interpreted as minutes.",
+        })
+
+    return normalized
+
+
+RATING_ALIASES = {
+    "TVY": "TV-Y",
+    "TVY7": "TV-Y7",
+    "TVG": "TV-G",
+    "TVPG": "TV-PG",
+    "TV14": "TV-14",
+    "TVMA": "TV-MA",
+}
+
+
+def normalize_rating(
+    value: Any,
+    source_row: int,
+    auto_fixes: list[dict[str, Any]] | None,
+) -> str | None:
+    text = clean_text(value)
+
+    if not text:
+        return None
+
+    compact = text.upper().replace("-", "").replace(" ", "")
+    normalized = RATING_ALIASES.get(compact, text)
+
+    if normalized != text and auto_fixes is not None:
+        auto_fixes.append({
+            "row": source_row,
+            "field": "Parental Rating",
+            "original_value": text,
+            "normalized_value": normalized,
+            "message": "Parental Rating was normalized.",
+        })
+
+    return normalized
 
 
 def parse_cast(value: Any) -> list[str]:
@@ -225,6 +333,7 @@ def read_schedule_file(
 def build_programme(
     row: dict[str, Any],
     source_row: int,
+    auto_fixes: list[dict[str, Any]] | None = None,
 ) -> Programme:
     title = clean_text(row.get("Program Title"))
 
@@ -237,8 +346,16 @@ def build_programme(
         air_date=parse_date(row.get("Air Date")),
         start_time=parse_time(row.get("Start Time")),
         program_title=title,
-        duration=clean_text(row.get("Duration (Optional)")),
-        parental_rating=clean_text(row.get("Parental Rating")),
+        duration=normalize_duration(
+            row.get("Duration (Optional)"),
+            source_row,
+            auto_fixes,
+        ),
+        parental_rating=normalize_rating(
+            row.get("Parental Rating"),
+            source_row,
+            auto_fixes,
+        ),
         program_description=clean_text(row.get("Program Description")),
         original_title=clean_text(row.get("Original Title")),
         cast=parse_cast(row.get("Cast")),
@@ -255,7 +372,22 @@ def build_programme(
             row.get("Country of Production")
         ),
         production_year=parse_integer(row.get("Production Year")),
-        premiere=parse_boolean(row.get("Premiere")),
-        live=parse_boolean(row.get("Live")),
-        new=parse_boolean(row.get("New")),
+        premiere=normalize_boolean(
+            row.get("Premiere"),
+            "Premiere",
+            source_row,
+            auto_fixes,
+        ),
+        live=normalize_boolean(
+            row.get("Live"),
+            "Live",
+            source_row,
+            auto_fixes,
+        ),
+        new=normalize_boolean(
+            row.get("New"),
+            "New",
+            source_row,
+            auto_fixes,
+        ),
     )

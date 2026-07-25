@@ -103,6 +103,7 @@ async def process_schedule(
 
     programmes = []
     parsing_issues = []
+    auto_fixes = []
 
     extension = Path(filename).suffix.lower()
     first_data_row = 5 if extension == ".xlsx" else 2
@@ -133,7 +134,11 @@ async def process_schedule(
         source_row = first_data_row + position
 
         try:
-            programme = build_programme(row, source_row)
+            programme = build_programme(
+                row,
+                source_row,
+                auto_fixes=auto_fixes,
+            )
             programmes.append(programme)
         except (ValueError, TypeError) as exc:
             parsing_issues.append(
@@ -146,7 +151,11 @@ async def process_schedule(
                 )
             )
 
-    report = ValidationEngine().validate(programmes, parsing_issues)
+    report = ValidationEngine().validate(
+        programmes,
+        parsing_issues,
+        auto_fixed=len(auto_fixes),
+    )
     utc_schedule = []
 
     if report.critical == 0:
@@ -168,6 +177,7 @@ async def process_schedule(
             report = ValidationEngine().validate(
                 programmes,
                 parsing_issues,
+                auto_fixed=len(auto_fixes),
             )
 
     return {
@@ -180,6 +190,7 @@ async def process_schedule(
         "validation": report.to_dict(),
         "missing_columns": [],
         "unknown_columns": unknown_columns,
+        "auto_fixes": auto_fixes,
         "programmes": utc_schedule,
     }
 

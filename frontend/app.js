@@ -68,6 +68,7 @@ function showResult(result) {
     `<span>${validation.critical} Critical</span>`,
     `<span>${validation.errors} Errors</span>`,
     `<span>${validation.warnings} Warnings</span>`,
+    `<span>${validation.auto_fixed} Auto-fixed</span>`,
   ].join("");
   issueList.innerHTML = issues
     .slice(0, 8)

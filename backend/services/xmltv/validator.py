@@ -257,10 +257,14 @@ class ValidationEngine:
         self,
         programmes: list[Programme],
         initial_issues: list[ValidationIssue] | None = None,
+        auto_fixed: int = 0,
     ) -> ValidationReport:
         issues = list(initial_issues or [])
 
         for rule in self.rules:
             issues.extend(rule.validate(programmes))
 
-        return ValidationReport.from_issues(issues)
+        return ValidationReport.from_issues(
+            issues,
+            auto_fixed=auto_fixed,
+        )

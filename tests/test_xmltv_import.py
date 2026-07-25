@@ -67,3 +67,18 @@ def test_invalid_timezone_is_critical():
 
     assert result["success"] is False
     assert result["validation"]["issues"][0]["rule_id"] == "VAL-010"
+
+
+def test_spanish_booleans_and_minute_durations_are_normalized():
+    lines = Path("tests/sample_schedule.csv").read_text().splitlines()
+    row = lines[1].replace("00:30:00", "60").replace(",Yes,Yes,Yes", ",Sí,Sí,Sí")
+
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "localized_schedule.csv"
+        path.write_text("\n".join([lines[0], row]))
+        result = import_file(path)
+
+    assert result["success"] is True
+    assert result["validation"]["auto_fixed"] == 4
+    assert result["programmes"][0]["duration"] == "01:00:00"
+    assert result["programmes"][0]["premiere"] is True
