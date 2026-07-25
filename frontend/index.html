@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Create validated XMLTV feeds from Excel or CSV schedules."
+    />
+    <title>Broadcast Tool Pro — XMLTV Generator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Broadcast Tool Pro home">
+        <span class="brand-mark">B</span>
+        <span>Broadcast Tool Pro</span>
+      </a>
+      <span class="status-pill">
+        <span class="status-dot"></span>
+        XMLTV Generator
+      </span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">FAST CHANNEL OPERATIONS</p>
+        <h1>Turn your programming schedule into XMLTV.</h1>
+        <p class="hero-copy">
+          Upload an Excel or CSV schedule, validate it automatically, and
+          generate a UTC-normalized XMLTV feed in minutes.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#generator">Create XMLTV</a>
+          <a
+            class="button button-secondary"
+            href="/api/xmltv/template/excel"
+          >
+            Download Excel Template
+          </a>
+        </div>
+      </section>
+
+      <section class="workflow" aria-label="XMLTV workflow">
+        <div><span>1</span><strong>Download</strong><small>Use our template</small></div>
+        <div><span>2</span><strong>Complete</strong><small>Work locally</small></div>
+        <div><span>3</span><strong>Validate</strong><small>Find schedule issues</small></div>
+        <div><span>4</span><strong>Generate</strong><small>Download XMLTV</small></div>
+      </section>
+
+      <section class="generator-shell" id="generator">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">XMLTV GENERATOR</p>
+            <h2>Create a new feed</h2>
+          </div>
+          <a class="text-link" href="/api/xmltv/template/csv">
+            Download CSV Template
+          </a>
+        </div>
+
+        <form id="xmltv-form">
+          <div class="form-grid">
+            <label>
+              <span>Channel name</span>
+              <input
+                name="channel_name"
+                type="text"
+                value="Comercio TV"
+                required
+              />
+            </label>
+            <label>
+              <span>Channel ID</span>
+              <input
+                name="channel_id"
+                type="text"
+                value="comercio-tv"
+                required
+              />
+            </label>
+            <label>
+              <span>Channel time zone</span>
+              <select name="channel_timezone" required>
+                <option value="America/New_York">Eastern Time — New York</option>
+                <option value="America/Chicago">Central Time — Chicago</option>
+                <option value="America/Denver">Mountain Time — Denver</option>
+                <option value="America/Los_Angeles">Pacific Time — Los Angeles</option>
+                <option value="America/Santo_Domingo">Atlantic Time — Santo Domingo</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </label>
+            <label>
+              <span>Primary language</span>
+              <select name="primary_language" required>
+                <option value="es" selected>Spanish</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              <span>Original language</span>
+              <select name="original_language" required>
+                <option value="es" selected>Spanish</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              <span>Rating system</span>
+              <select name="rating_system" required>
+                <option value="VCHIP" selected>VCHIP — US Television</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="drop-zone" id="drop-zone">
+            <input
+              id="schedule-file"
+              name="schedule_file"
+              type="file"
+              accept=".xlsx,.csv"
+              required
+            />
+            <span class="upload-icon">↑</span>
+            <strong id="file-title">Drop your schedule here</strong>
+            <small id="file-subtitle">or click to choose an .xlsx or .csv file</small>
+          </label>
+
+          <div class="form-actions">
+            <button class="button button-secondary" id="validate-button" type="button">
+              Validate Schedule
+            </button>
+            <button class="button button-primary" id="generate-button" type="submit">
+              Generate XMLTV
+            </button>
+          </div>
+        </form>
+
+        <section class="result-panel is-hidden" id="result-panel" aria-live="polite">
+          <div class="result-icon" id="result-icon">✓</div>
+          <div>
+            <h3 id="result-title">Schedule ready</h3>
+            <p id="result-message"></p>
+            <div class="result-metrics" id="result-metrics"></div>
+            <ul class="issue-list" id="issue-list"></ul>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>Broadcast Tool Pro</span>
+      <span>Professional tools for FAST channels and broadcasters.</span>
+    </footer>
+  </body>
+</html>
