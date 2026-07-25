@@ -27,6 +27,23 @@ def collapse_continuation_rows(
         previous = normalized[-1]
         previous_start = programme_start(previous)
         current_start = programme_start(programme)
+        metadata_matches = (
+            programme_metadata(programme)
+            == programme_metadata(previous)
+        )
+
+        if current_start == previous_start and metadata_matches:
+            auto_fixes.append({
+                "row": programme.source_row,
+                "field": "Programme",
+                "original_value": programme.program_title,
+                "normalized_value": previous.program_title,
+                "message": (
+                    "Exact duplicate row was removed; it matches "
+                    f"row {previous.source_row}."
+                ),
+            })
+            continue
 
         try:
             previous_stop = previous_start + parse_duration(
@@ -39,8 +56,7 @@ def collapse_continuation_rows(
         is_continuation = (
             current_start > previous_start
             and current_start < previous_stop
-            and programme_metadata(programme)
-            == programme_metadata(previous)
+            and metadata_matches
         )
 
         if not is_continuation:

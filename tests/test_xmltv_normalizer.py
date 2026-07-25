@@ -33,10 +33,27 @@ def test_continuation_row_is_merged():
     assert fixes[0]["row"] == 6
 
 
-def test_exact_duplicate_start_is_not_merged():
+def test_exact_duplicate_start_is_removed():
     programmes = [
         make_programme(),
         make_programme(source_row=6),
+    ]
+    fixes = []
+
+    normalized = collapse_continuation_rows(programmes, fixes)
+
+    assert len(normalized) == 1
+    assert fixes[0]["row"] == 6
+    assert fixes[0]["message"].startswith("Exact duplicate")
+
+
+def test_same_start_with_different_metadata_is_not_removed():
+    programmes = [
+        make_programme(),
+        make_programme(
+            source_row=6,
+            program_description="A different event.",
+        ),
     ]
     fixes = []
 
