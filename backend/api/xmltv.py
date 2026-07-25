@@ -2,11 +2,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from backend.models.validation import ValidationIssue, ValidationReport
 from backend.services.xmltv.parser import (
     EXPECTED_COLUMNS,
     build_programme,
     read_schedule_file,
 )
+from backend.services.xmltv.validator import ValidationEngine
 
 
 router = APIRouter(
@@ -43,6 +45,17 @@ async def import_schedule(
     ]
 
     if missing_columns:
+        report = ValidationReport.from_issues([
+            ValidationIssue(
+                rule_id="VAL-001",
+                row=4,
+                field=column,
+                severity="critical",
+                message=f"Missing template column: {column}",
+            )
+            for column in missing_columns
+        ])
+
         return {
             "success": False,
             "filename": filename,
@@ -50,54 +63,67 @@ async def import_schedule(
             "missing_columns": missing_columns,
             "unknown_columns": unknown_columns,
             "programmes": [],
-            "issues": [
-                {
-                    "row": 4,
-                    "field": column,
-                    "severity": "critical",
-                    "message": f"Missing template column: {column}",
-                }
-                for column in missing_columns
-            ],
+            "validation": report.to_dict(),
         }
 
     programmes = []
-    issues = []
+    parsing_issues = []
 
-    first_data_row = 5
+    extension = Path(filename).suffix.lower()
+    first_data_row = 5 if extension == ".xlsx" else 2
+
+    if not rows:
+        parsing_issues.append(
+            ValidationIssue(
+                rule_id="VAL-002",
+                row=None,
+                field="Programme",
+                severity="critical",
+                message="The schedule does not contain any programme rows.",
+            )
+        )
+
+    parsing_issues.extend(
+        ValidationIssue(
+            rule_id="VAL-003",
+            row=4 if extension == ".xlsx" else 1,
+            field=column,
+            severity="warning",
+            message=f"Unknown template column: {column}",
+        )
+        for column in unknown_columns
+    )
 
     for position, row in enumerate(rows):
         source_row = first_data_row + position
 
         try:
             programme = build_programme(row, source_row)
-            programmes.append(programme.to_dict())
+            programmes.append(programme)
         except (ValueError, TypeError) as exc:
-            issues.append({
-                "row": source_row,
-                "field": "Programme",
-                "severity": "critical",
-                "message": str(exc),
-            })
+            parsing_issues.append(
+                ValidationIssue(
+                    rule_id="VAL-002",
+                    row=source_row,
+                    field="Programme",
+                    severity="critical",
+                    message=str(exc),
+                )
+            )
 
-    critical_count = sum(
-        issue["severity"] == "critical"
-        for issue in issues
-    )
+    report = ValidationEngine().validate(programmes, parsing_issues)
 
     return {
-        "success": critical_count == 0,
+        "success": report.critical == 0,
         "filename": filename,
-        "file_type": Path(filename).suffix.lower(),
+        "file_type": extension,
         "rows_received": len(rows),
         "programmes_imported": len(programmes),
-        "validation": {
-            "critical": critical_count,
-            "errors": 0,
-            "warnings": 0,
-        },
+        "validation": report.to_dict(),
         "missing_columns": [],
         "unknown_columns": unknown_columns,
-        "issues": issues,
-        "programmes": programmes[:10],
+        "programmes": [
+            programme.to_dict()
+            for programme in programmes[:10]
+        ],
     }
