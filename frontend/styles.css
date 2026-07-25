@@ -315,6 +315,42 @@ select:focus {
   justify-content: flex-end;
 }
 
+.authorization {
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: #fff9e8;
+  border: 1px solid #f2d58b;
+  border-radius: 12px;
+}
+
+.authorization.is-hidden {
+  display: none;
+}
+
+.authorization input {
+  width: 19px;
+  min-height: 19px;
+  margin: 2px 0 0;
+}
+
+.authorization span {
+  display: grid;
+  gap: 4px;
+}
+
+.authorization strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.authorization small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .result-panel {
   display: grid;
   grid-template-columns: 48px 1fr;

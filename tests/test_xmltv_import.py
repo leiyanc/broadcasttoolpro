@@ -27,6 +27,7 @@ def test_sample_csv_import_is_valid():
     assert result["programmes_imported"] == 2
     assert result["validation"]["score"] == 100
     assert result["validation"]["ready_to_generate"] is True
+    assert result["suggested_fixes"] == 0
     assert result["programmes"][0]["xmltv_start"] == "20260718120000 +0000"
     assert result["programmes"][0]["xmltv_stop"] == "20260718123000 +0000"
 
@@ -79,6 +80,7 @@ def test_spanish_booleans_and_minute_durations_are_normalized():
         result = import_file(path)
 
     assert result["success"] is True
-    assert result["validation"]["auto_fixed"] == 4
+    assert result["validation"]["auto_fixed"] == 0
+    assert result["suggested_fixes"] == 4
     assert result["programmes"][0]["duration"] == "01:00:00"
     assert result["programmes"][0]["premiere"] is True

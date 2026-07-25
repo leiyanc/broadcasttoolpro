@@ -11,6 +11,9 @@ const resultTitle = document.querySelector("#result-title");
 const resultMessage = document.querySelector("#result-message");
 const resultMetrics = document.querySelector("#result-metrics");
 const issueList = document.querySelector("#issue-list");
+const authorizationPanel = document.querySelector("#authorization-panel");
+const authorizationMessage = document.querySelector("#authorization-message");
+const acceptAutoFixes = document.querySelector("#accept-auto-fixes");
 
 function updateFileLabel() {
   const file = fileInput.files[0];
@@ -44,6 +47,10 @@ function buildFormData(includeProfile = false) {
     ]) {
       data.append(field, form.elements[field].value);
     }
+    data.append(
+      "accept_auto_fixes",
+      acceptAutoFixes.checked ? "true" : "false",
+    );
   }
 
   return data;
@@ -52,31 +59,51 @@ function buildFormData(includeProfile = false) {
 function showResult(result) {
   const validation = result.validation;
   const issues = validation.issues || [];
+  const suggestedFixes = result.suggested_fixes || 0;
+  const fixSummary = result.fix_summary || [];
   const success = result.success;
 
   resultPanel.classList.remove("is-hidden");
   resultPanel.classList.toggle("is-error", !success);
   resultIcon.textContent = success ? "✓" : "!";
   resultTitle.textContent = success
-    ? "Schedule ready to generate"
+    ? suggestedFixes
+      ? "Schedule ready for review"
+      : "Schedule ready to generate"
     : "Schedule needs attention";
   resultMessage.textContent = success
-    ? `${result.programmes_imported} programmes were imported successfully.`
+    ? suggestedFixes
+      ? (
+          `${result.programmes_imported} programmes are valid. Review and ` +
+          `authorize ${suggestedFixes} suggested corrections.`
+        )
+      : `${result.programmes_imported} programmes were imported successfully.`
     : "Correct the blocking issues before generating XMLTV.";
   resultMetrics.innerHTML = [
     `<span>Score ${validation.score}/100</span>`,
     `<span>${validation.critical} Critical</span>`,
     `<span>${validation.errors} Errors</span>`,
     `<span>${validation.warnings} Warnings</span>`,
-    `<span>${validation.auto_fixed} Auto-fixed</span>`,
+    `<span>${suggestedFixes} Suggested fixes</span>`,
   ].join("");
-  issueList.innerHTML = issues
+  const issueItems = issues
     .slice(0, 8)
     .map(
       (issue) =>
         `<li>${issue.rule_id}: ${issue.message}${issue.row ? ` (row ${issue.row})` : ""}</li>`,
-    )
-    .join("");
+    );
+  const fixItems = fixSummary.map(
+    (fix) => `<li>Suggested: ${fix.count} × ${fix.message}</li>`,
+  );
+  issueList.innerHTML = [...issueItems, ...fixItems].join("");
+
+  authorizationPanel.classList.toggle("is-hidden", suggestedFixes === 0);
+  authorizationMessage.textContent = suggestedFixes
+    ? `Apply ${suggestedFixes} safe corrections only to the generated XMLTV.`
+    : "";
+  if (suggestedFixes === 0) {
+    acceptAutoFixes.checked = false;
+  }
   resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -174,6 +201,7 @@ form.addEventListener("submit", async (event) => {
         success: false,
         programmes_imported: 0,
         validation,
+        suggested_fixes: validation.suggested_fixes || 0,
       });
       return;
     }

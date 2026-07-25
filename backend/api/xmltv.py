@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import Counter
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
@@ -25,6 +26,24 @@ router = APIRouter(
 
 ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
 EXCEL_TEMPLATE = ASSETS_DIR / "Broadcast_Tool_Pro_XMLTV_Template.xlsx"
+
+
+def fix_category(fix: dict) -> str:
+    message = fix["message"]
+
+    if fix["field"] == "Duration (Optional)":
+        return "Convert numeric durations to HH:MM:SS."
+
+    if fix["field"] in {"Premiere", "Live", "New"}:
+        return "Normalize localized Yes/No values."
+
+    if message.startswith("Continuation row"):
+        return "Merge continuation rows into one programme."
+
+    if message.startswith("Exact duplicate"):
+        return "Remove exact duplicate rows."
+
+    return message
 
 
 @router.get("/template/excel", response_class=FileResponse)
@@ -56,6 +75,7 @@ def download_csv_template():
 async def process_schedule(
     schedule_file: UploadFile,
     channel_timezone: str,
+    apply_fixes: bool = False,
 ) -> dict:
     filename = schedule_file.filename or ""
     content = await schedule_file.read()
@@ -160,7 +180,7 @@ async def process_schedule(
     report = ValidationEngine().validate(
         programmes,
         parsing_issues,
-        auto_fixed=len(auto_fixes),
+        auto_fixed=len(auto_fixes) if apply_fixes else 0,
     )
     utc_schedule = []
 
@@ -183,8 +203,14 @@ async def process_schedule(
             report = ValidationEngine().validate(
                 programmes,
                 parsing_issues,
-                auto_fixed=len(auto_fixes),
+                auto_fixed=len(auto_fixes) if apply_fixes else 0,
             )
+
+    fix_counts = Counter(fix_category(fix) for fix in auto_fixes)
+    fix_summary = [
+        {"message": message, "count": count}
+        for message, count in fix_counts.items()
+    ]
 
     return {
         "success": report.critical == 0,
@@ -196,6 +222,10 @@ async def process_schedule(
         "validation": report.to_dict(),
         "missing_columns": [],
         "unknown_columns": unknown_columns,
+        "suggested_fixes": len(auto_fixes),
+        "requires_authorization": bool(auto_fixes) and not apply_fixes,
+        "fixes_applied": apply_fixes,
+        "fix_summary": fix_summary,
         "auto_fixes": auto_fixes,
         "programmes": utc_schedule,
     }
@@ -206,7 +236,11 @@ async def import_schedule(
     schedule_file: UploadFile = File(...),
     channel_timezone: str = Form(...),
 ):
-    return await process_schedule(schedule_file, channel_timezone)
+    return await process_schedule(
+        schedule_file,
+        channel_timezone,
+        apply_fixes=False,
+    )
 
 
 @router.post("/generate", response_class=Response)
@@ -218,13 +252,38 @@ async def generate_schedule(
     primary_language: str = Form("en"),
     original_language: str = Form("en"),
     rating_system: str = Form("VCHIP"),
+    accept_auto_fixes: bool = Form(False),
 ):
-    result = await process_schedule(schedule_file, channel_timezone)
+    result = await process_schedule(
+        schedule_file,
+        channel_timezone,
+        apply_fixes=accept_auto_fixes,
+    )
 
     if not result["success"]:
         raise HTTPException(
             status_code=422,
             detail=result["validation"],
+        )
+
+    if result["suggested_fixes"] and not accept_auto_fixes:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                **result["validation"],
+                "ready_to_generate": False,
+                "suggested_fixes": result["suggested_fixes"],
+                "issues": [{
+                    "rule_id": "AUTH-001",
+                    "severity": "critical",
+                    "message": (
+                        f"{result['suggested_fixes']} safe corrections "
+                        "require authorization before XMLTV generation."
+                    ),
+                    "row": None,
+                    "field": "Authorization",
+                }],
+            },
         )
 
     if not channel_id.strip() or not channel_name.strip():

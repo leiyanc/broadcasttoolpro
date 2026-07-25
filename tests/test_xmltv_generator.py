@@ -3,6 +3,7 @@ from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
 
+from fastapi import HTTPException
 from starlette.datastructures import UploadFile
 
 from backend.api.xmltv import generate_schedule
@@ -48,6 +49,7 @@ def test_generate_endpoint_returns_downloadable_xml():
             "en",
             "en",
             "VCHIP",
+            False,
         )
     )
     root = ElementTree.fromstring(response.body)
@@ -57,3 +59,56 @@ def test_generate_endpoint_returns_downloadable_xml():
         "content-disposition"
     ]
     assert len(root.findall("./programme")) == 2
+
+
+def localized_upload() -> UploadFile:
+    lines = Path("tests/sample_schedule.csv").read_text().splitlines()
+    row = (
+        lines[1]
+        .replace("00:30:00", "60")
+        .replace(",Yes,Yes,Yes", ",Sí,Sí,Sí")
+    )
+    content = "\n".join([lines[0], row]).encode()
+    return UploadFile(
+        filename="localized_schedule.csv",
+        file=BytesIO(content),
+    )
+
+
+def test_generate_requires_authorization_for_safe_corrections():
+    try:
+        asyncio.run(
+            generate_schedule(
+                localized_upload(),
+                "America/New_York",
+                "comercio-tv",
+                "Comercio TV",
+                "es",
+                "es",
+                "VCHIP",
+                False,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert exc.detail["issues"][0]["rule_id"] == "AUTH-001"
+    else:
+        raise AssertionError("Expected correction authorization to be required.")
+
+
+def test_generate_applies_authorized_safe_corrections():
+    response = asyncio.run(
+        generate_schedule(
+            localized_upload(),
+            "America/New_York",
+            "comercio-tv",
+            "Comercio TV",
+            "es",
+            "es",
+            "VCHIP",
+            True,
+        )
+    )
+    root = ElementTree.fromstring(response.body)
+
+    assert root.find("./programme").attrib["stop"] == "20260718130000 +0000"
