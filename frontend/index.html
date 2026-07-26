@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="/static/app.js" defer></script>
     <script src="/static/xmltv-validator.js" defer></script>
+    <script src="/static/xmltv-repair.js" defer></script>
   </head>
 
   <body>
@@ -68,6 +69,13 @@
             href="#validator"
           >
             Launch Validator
+          </a>
+
+          <a
+            class="button button-secondary"
+            href="#repair"
+          >
+            Launch Repair
           </a>
 
         </div>
@@ -490,6 +498,110 @@
                 </div>
               </details>
             </div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="generator-shell validator-shell"
+        id="repair"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">XMLTV REPAIR</p>
+            <h2>Repair XMLTV Feed</h2>
+          </div>
+          <span class="module-badge">New</span>
+        </div>
+
+        <p class="section-copy">
+          Review safe corrections before applying them. Broadcast Tool Pro
+          never modifies or downloads your XMLTV without authorization.
+        </p>
+
+        <form id="repair-form">
+          <label
+            class="drop-zone"
+            id="repair-drop-zone"
+          >
+            <input
+              id="repair-xmltv-file"
+              name="xmltv_file"
+              type="file"
+              accept=".xml,application/xml,text/xml"
+              required
+            />
+
+            <span class="upload-icon">↻</span>
+            <strong id="repair-file-title">
+              Drop your XMLTV file here
+            </strong>
+            <small id="repair-file-subtitle">
+              or click to choose an .xml file
+            </small>
+          </label>
+
+          <label
+            class="authorization is-hidden"
+            id="repair-authorization-panel"
+          >
+            <input
+              id="accept-repairs"
+              type="checkbox"
+            />
+            <span>
+              <strong>Authorize Suggested Repairs</strong>
+              <small id="repair-authorization-message">
+                Apply the reviewed corrections to the downloaded XMLTV.
+              </small>
+            </span>
+          </label>
+
+          <div class="form-actions">
+            <button
+              class="button button-secondary"
+              id="preview-repairs-button"
+              type="button"
+            >
+              Analyze Repairs
+            </button>
+            <button
+              class="button button-primary"
+              id="download-repaired-button"
+              type="submit"
+              disabled
+            >
+              Download Repaired XMLTV
+            </button>
+          </div>
+        </form>
+
+        <section
+          class="result-panel is-hidden"
+          id="repair-result-panel"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div
+            class="result-icon"
+            id="repair-result-icon"
+          >
+            ✓
+          </div>
+          <div>
+            <h3 id="repair-result-title">
+              Repairs ready for review
+            </h3>
+            <p id="repair-result-message"></p>
+            <div
+              class="result-metrics"
+              id="repair-result-metrics"
+            ></div>
+            <ul
+              class="issue-list repair-list"
+              id="repair-change-list"
+            ></ul>
           </div>
         </section>
       </section>

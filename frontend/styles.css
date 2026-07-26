@@ -532,6 +532,10 @@ select:focus {
   color: var(--danger);
 }
 
+.repair-list {
+  color: #40526a;
+}
+
 footer {
   width: min(1080px, calc(100% - 40px));
   margin: 0 auto;

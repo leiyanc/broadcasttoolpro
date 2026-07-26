@@ -20,10 +20,15 @@ def test_frontend_uses_xmltv_endpoints():
     validator_javascript = (
         FRONTEND_DIR / "xmltv-validator.js"
     ).read_text()
+    repair_javascript = (
+        FRONTEND_DIR / "xmltv-repair.js"
+    ).read_text()
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
     assert "/api/xmltv/validate" in validator_javascript
+    assert "/api/xmltv/repair/preview" in repair_javascript
+    assert "/api/xmltv/repair" in repair_javascript
 
 
 def test_validator_frontend_is_available():
@@ -43,6 +48,15 @@ def test_validator_frontend_is_available():
     assert "validation-report.json" in javascript
     assert "validation-report.html" in javascript
     assert "escapeHtml" in javascript
+
+
+def test_repair_frontend_is_available():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert (FRONTEND_DIR / "xmltv-repair.js").is_file()
+    assert 'id="repair-form"' in html
+    assert 'id="accept-repairs"' in html
+    assert 'href="#repair"' in html
 
 
 def test_frontend_preserves_backend_field_names():
