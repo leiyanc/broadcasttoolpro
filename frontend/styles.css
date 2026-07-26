@@ -143,6 +143,20 @@ h1 {
   transform: translateY(-1px);
 }
 
+.button:focus-visible,
+.text-link:focus-visible,
+.brand:focus-visible,
+.drop-zone:focus-within {
+  outline: 3px solid rgba(37, 99, 235, 0.3);
+  outline-offset: 3px;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+
 .button-primary {
   color: white;
   background: var(--blue);

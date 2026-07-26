@@ -15,6 +15,50 @@ const authorizationPanel = document.querySelector("#authorization-panel");
 const authorizationMessage = document.querySelector("#authorization-message");
 const acceptAutoFixes = document.querySelector("#accept-auto-fixes");
 
+const fallbackValidation = (message, ruleId = "REQUEST") => ({
+  score: 0,
+  critical: 1,
+  errors: 0,
+  warnings: 0,
+  issues: [{ rule_id: ruleId, message }],
+});
+
+function normalizeResult(payload, responseOk = true) {
+  const body = payload && typeof payload === "object" ? payload : {};
+  const detail = body.detail;
+
+  if (body.validation && typeof body.validation === "object") {
+    return body;
+  }
+
+  if (detail && typeof detail === "object") {
+    return {
+      success: false,
+      programmes_imported: 0,
+      suggested_fixes: detail.suggested_fixes || 0,
+      validation: detail,
+    };
+  }
+
+  const message = typeof detail === "string"
+    ? detail
+    : responseOk
+      ? "The server returned an incomplete validation response."
+      : "The server could not process the schedule.";
+
+  return {
+    success: false,
+    programmes_imported: 0,
+    validation: fallbackValidation(message),
+  };
+}
+
+function appendListItem(text) {
+  const item = document.createElement("li");
+  item.textContent = text;
+  issueList.appendChild(item);
+}
+
 function updateFileLabel() {
   const file = fileInput.files[0];
   if (!file) return;
@@ -57,11 +101,14 @@ function buildFormData(includeProfile = false) {
 }
 
 function showResult(result) {
-  const validation = result.validation;
-  const issues = validation.issues || [];
-  const suggestedFixes = result.suggested_fixes || 0;
-  const fixSummary = result.fix_summary || [];
-  const success = result.success;
+  const normalized = normalizeResult(result);
+  const validation = normalized.validation;
+  const issues = Array.isArray(validation.issues) ? validation.issues : [];
+  const suggestedFixes = normalized.suggested_fixes || 0;
+  const fixSummary = Array.isArray(normalized.fix_summary)
+    ? normalized.fix_summary
+    : [];
+  const success = Boolean(normalized.success);
 
   resultPanel.classList.remove("is-hidden");
   resultPanel.classList.toggle("is-error", !success);
@@ -74,28 +121,32 @@ function showResult(result) {
   resultMessage.textContent = success
     ? suggestedFixes
       ? (
-          `${result.programmes_imported} programmes are valid. Review and ` +
+          `${normalized.programmes_imported || 0} programmes are valid. Review and ` +
           `authorize ${suggestedFixes} suggested corrections.`
         )
-      : `${result.programmes_imported} programmes were imported successfully.`
+      : `${normalized.programmes_imported || 0} programmes were imported successfully.`
     : "Correct the blocking issues before generating XMLTV.";
-  resultMetrics.innerHTML = [
-    `<span>Score ${validation.score}/100</span>`,
-    `<span>${validation.critical} Critical</span>`,
-    `<span>${validation.errors} Errors</span>`,
-    `<span>${validation.warnings} Warnings</span>`,
-    `<span>${suggestedFixes} Suggested fixes</span>`,
-  ].join("");
-  const issueItems = issues
-    .slice(0, 8)
-    .map(
-      (issue) =>
-        `<li>${issue.rule_id}: ${issue.message}${issue.row ? ` (row ${issue.row})` : ""}</li>`,
-    );
-  const fixItems = fixSummary.map(
-    (fix) => `<li>Suggested: ${fix.count} × ${fix.message}</li>`,
-  );
-  issueList.innerHTML = [...issueItems, ...fixItems].join("");
+  resultMetrics.replaceChildren();
+  for (const text of [
+    `Score ${validation.score ?? 0}/100`,
+    `${validation.critical ?? 0} Critical`,
+    `${validation.errors ?? 0} Errors`,
+    `${validation.warnings ?? 0} Warnings`,
+    `${suggestedFixes} Suggested fixes`,
+  ]) {
+    const metric = document.createElement("span");
+    metric.textContent = text;
+    resultMetrics.appendChild(metric);
+  }
+
+  issueList.replaceChildren();
+  for (const issue of issues.slice(0, 8)) {
+    const row = issue.row ? ` (row ${issue.row})` : "";
+    appendListItem(`${issue.rule_id || "VALIDATION"}: ${issue.message || "Unknown issue"}${row}`);
+  }
+  for (const fix of fixSummary) {
+    appendListItem(`Suggested: ${fix.count || 0} × ${fix.message || "Correction"}`);
+  }
 
   authorizationPanel.classList.toggle("is-hidden", suggestedFixes === 0);
   authorizationMessage.textContent = suggestedFixes
@@ -119,9 +170,10 @@ async function validateSchedule() {
       method: "POST",
       body: data,
     });
-    const result = await response.json();
+    const payload = await response.json();
+    const result = normalizeResult(payload, response.ok);
     showResult(result);
-    return result.success;
+    return response.ok && result.success;
   } catch {
     showResult({
       success: false,
@@ -190,19 +242,7 @@ form.addEventListener("submit", async (event) => {
 
     if (!response.ok) {
       const error = await response.json();
-      const validation = error.detail || {
-        score: 0,
-        critical: 1,
-        errors: 0,
-        warnings: 0,
-        issues: [{ rule_id: "GENERATION", message: "XMLTV generation failed." }],
-      };
-      showResult({
-        success: false,
-        programmes_imported: 0,
-        validation,
-        suggested_fixes: validation.suggested_fixes || 0,
-      });
+      showResult(normalizeResult(error, false));
       return;
     }
 
@@ -222,8 +262,8 @@ form.addEventListener("submit", async (event) => {
     resultIcon.textContent = "✓";
     resultTitle.textContent = "XMLTV generated";
     resultMessage.textContent = `${link.download} was downloaded successfully.`;
-    resultMetrics.innerHTML = "";
-    issueList.innerHTML = "";
+    resultMetrics.replaceChildren();
+    issueList.replaceChildren();
   } catch {
     showResult({
       success: false,

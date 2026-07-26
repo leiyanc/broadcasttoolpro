@@ -20,3 +20,26 @@ def test_frontend_uses_xmltv_endpoints():
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
+
+
+def test_frontend_preserves_backend_field_names():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    for field_name in (
+        "schedule_file",
+        "channel_timezone",
+        "channel_id",
+        "channel_name",
+        "primary_language",
+        "original_language",
+        "rating_system",
+    ):
+        assert f'name="{field_name}"' in html
+
+
+def test_frontend_does_not_render_server_messages_as_html():
+    javascript = (FRONTEND_DIR / "app.js").read_text()
+
+    assert "issueList.innerHTML" not in javascript
+    assert "resultMetrics.innerHTML" not in javascript
+    assert "textContent = text" in javascript
