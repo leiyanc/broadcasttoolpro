@@ -401,3 +401,47 @@ def test_amagi_excel_as_run_is_normalized():
         "2026-07-19T13:55:55-04:00"
     )
     assert events[0].duration == "00:00:45"
+
+
+def test_json_txt_and_xml_as_runs_share_the_internal_model():
+    records = [
+        {
+            "asset_id": "ca_indotel",
+            "start_time": "2026-07-20 13:28:12",
+            "duration": "00:00:45:01",
+        }
+    ]
+    json_content = (
+        b'{"events":[{"asset_id":"ca_indotel",'
+        b'"start_time":"2026-07-20 13:28:12",'
+        b'"duration":"00:00:45:01"}]}'
+    )
+    txt_content = (
+        b"asset_id|start_time|duration\n"
+        b"ca_indotel|2026-07-20 13:28:12|00:00:45:01\n"
+    )
+    xml_content = b"""<events><event>
+<asset_id>ca_indotel</asset_id>
+<start_time>2026-07-20 13:28:12</start_time>
+<duration>00:00:45:01</duration>
+</event></events>"""
+
+    results = [
+        parse_playlist_file(
+            filename,
+            content,
+            "America/New_York",
+        )[1][0]
+        for filename, content in (
+            ("asrun.json", json_content),
+            ("asrun.txt", txt_content),
+            ("asrun.xml", xml_content),
+        )
+    ]
+
+    assert all(event.asset_id == records[0]["asset_id"] for event in results)
+    assert all(event.duration == "00:00:45" for event in results)
+    assert all(
+        event.air_datetime.isoformat() == "2026-07-20T13:28:12-04:00"
+        for event in results
+    )

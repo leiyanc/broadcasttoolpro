@@ -1,4 +1,5 @@
 import csv
+import json
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, time, timedelta
@@ -6,6 +7,7 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from re import match
 from typing import Any
+from xml.etree import ElementTree
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from openpyxl import load_workbook
@@ -406,6 +408,185 @@ def _excel_datetime(value: Any) -> datetime | None:
     return None
 
 
+def _timezone(source_timezone: str | None) -> ZoneInfo | None:
+    if source_timezone == "auto":
+        raise ValueError(
+            "The As-Run does not declare a time zone. "
+            "Select the source time zone manually."
+        )
+    if not source_timezone:
+        return None
+    try:
+        return ZoneInfo(source_timezone)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(
+            f'Unknown source time zone "{source_timezone}".'
+        ) from exc
+
+
+def _structured_events(
+    headers: list[str],
+    records: list[dict[str, Any]],
+    source_timezone: str | None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    detected = _detect_columns(headers)
+    if not detected["asset_id"] or not detected["time"]:
+        raise ValueError(
+            "Asset ID and Start Time fields must be mapped."
+        )
+
+    timezone_info = _timezone(source_timezone)
+    channel_header = next(
+        (
+            header
+            for header in headers
+            if _normalized(header) in {"channel", "channel name"}
+        ),
+        None,
+    )
+    events = []
+    for row_number, record in enumerate(records, start=2):
+        asset_id = str(record.get(detected["asset_id"]) or "").strip()
+        air_datetime = _excel_datetime(record.get(detected["time"]))
+        if not asset_id or air_datetime is None:
+            continue
+        events.append(PlaylistEvent(
+            channel_name=(
+                str(record.get(channel_header) or "").strip() or None
+                if channel_header
+                else None
+            ),
+            air_datetime=air_datetime.replace(tzinfo=timezone_info),
+            duration=_amagi_duration(
+                record.get(detected["duration"])
+                if detected["duration"]
+                else None
+            ),
+            asset_id=asset_id,
+            source_row=row_number,
+        ))
+
+    structure = {
+        "header_row": 1,
+        "headers": headers,
+        "detected_columns": detected,
+        "metadata": {
+            "date": (
+                min(event.air_datetime for event in events).date().isoformat()
+                if events
+                else None
+            ),
+            "start_time": None,
+            "channel_name": next(
+                (
+                    event.channel_name
+                    for event in events
+                    if event.channel_name
+                ),
+                None,
+            ),
+            "source_timezone": source_timezone,
+        },
+        "rows": len(records),
+        "asset_occurrences": len(events),
+        "unique_assets": len({event.asset_id for event in events}),
+    }
+    return structure, events
+
+
+def parse_json_playlist_events(
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    try:
+        payload = json.loads(_decode_csv(content))
+    except json.JSONDecodeError as exc:
+        raise ValueError("The JSON As-Run file is invalid.") from exc
+
+    if isinstance(payload, dict):
+        records = next(
+            (
+                value
+                for value in payload.values()
+                if isinstance(value, list)
+            ),
+            None,
+        )
+    else:
+        records = payload
+    if not isinstance(records, list) or not all(
+        isinstance(record, dict)
+        for record in records
+    ):
+        raise ValueError(
+            "The JSON As-Run must contain a list of event objects."
+        )
+    headers = list(dict.fromkeys(
+        key
+        for record in records
+        for key in record
+    ))
+    return _structured_events(headers, records, source_timezone)
+
+
+def parse_text_playlist_events(
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    text = _decode_csv(content)
+    try:
+        dialect = csv.Sniffer().sniff(text[:8192], delimiters=",\t|;")
+    except csv.Error as exc:
+        raise ValueError(
+            "The TXT delimiter could not be detected."
+        ) from exc
+    reader = csv.DictReader(StringIO(text), dialect=dialect)
+    if not reader.fieldnames:
+        raise ValueError("The TXT As-Run does not contain headers.")
+    headers = [str(header).strip() for header in reader.fieldnames]
+    records = [
+        {
+            str(key).strip(): value
+            for key, value in record.items()
+            if key is not None
+        }
+        for record in reader
+        if any(str(value or "").strip() for value in record.values())
+    ]
+    return _structured_events(headers, records, source_timezone)
+
+
+def parse_xml_playlist_events(
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    if not content:
+        raise ValueError("The XML As-Run file is empty.")
+    if len(content) > MAX_PLAYLIST_SIZE:
+        raise ValueError("The XML As-Run file exceeds the 20 MB import limit.")
+    try:
+        root = ElementTree.fromstring(content)
+    except ElementTree.ParseError as exc:
+        raise ValueError("The XML As-Run file is invalid.") from exc
+
+    event_nodes = list(root.findall(".//event"))
+    if not event_nodes:
+        raise ValueError("The XML As-Run does not contain event records.")
+    records = [
+        {
+            child.tag: (child.text or "").strip()
+            for child in event
+        }
+        for event in event_nodes
+    ]
+    headers = list(dict.fromkeys(
+        key
+        for record in records
+        for key in record
+    ))
+    return _structured_events(headers, records, source_timezone)
+
+
 def parse_excel_playlist_events(
     content: bytes,
     source_timezone: str | None = None,
@@ -514,7 +695,15 @@ def parse_playlist_file(
         return parse_playlist_events(content, source_timezone)
     if extension == ".xlsx":
         return parse_excel_playlist_events(content, source_timezone)
-    raise ValueError("Only .csv and .xlsx As-Run files are supported.")
+    if extension == ".json":
+        return parse_json_playlist_events(content, source_timezone)
+    if extension == ".txt":
+        return parse_text_playlist_events(content, source_timezone)
+    if extension == ".xml":
+        return parse_xml_playlist_events(content, source_timezone)
+    raise ValueError(
+        "Only .csv, .xlsx, .json, .txt, and .xml As-Run files are supported."
+    )
 
 
 def _filter_values(value: str | None) -> list[str]:

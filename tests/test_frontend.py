@@ -105,6 +105,8 @@ def test_postlog_certification_is_available():
     assert 'name="as_run_files"' in html
     assert 'id="postlog-export-panel"' in html
     assert "Certify Actual Airings" in html
+    for extension in (".csv", ".xlsx", ".json", ".txt", ".xml"):
+        assert extension in html
 
 
 def test_frontend_preserves_backend_field_names():
