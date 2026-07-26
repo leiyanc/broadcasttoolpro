@@ -11,7 +11,7 @@ from backend.services.traffic.prelog_export import (
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
-    parse_playlist_events,
+    parse_playlist_file,
 )
 
 
@@ -36,7 +36,8 @@ async def _filtered_events(
     files = []
 
     for playlist_file in playlist_files:
-        structure, parsed_events = parse_playlist_events(
+        structure, parsed_events = parse_playlist_file(
+            playlist_file.filename or "",
             await playlist_file.read(),
             source_timezone=source_timezone,
         )
@@ -216,7 +217,8 @@ async def playlist_filter_options(
 
     try:
         for playlist_file in playlist_files:
-            structure, parsed_events = parse_playlist_events(
+            structure, parsed_events = parse_playlist_file(
+                playlist_file.filename or "",
                 await playlist_file.read(),
                 source_timezone=source_timezone,
             )

@@ -2,11 +2,13 @@ import csv
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, time, timedelta
-from io import StringIO
+from io import BytesIO, StringIO
+from pathlib import Path
 from re import match
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from openpyxl import load_workbook
 
 MAX_PLAYLIST_SIZE = 20 * 1024 * 1024
 HEADER_ALIASES = {
@@ -18,17 +20,20 @@ HEADER_ALIASES = {
         "event id",
         "clip id",
         "media id",
+        "asset name",
     },
     "time": {
         "hour",
         "time",
         "start time",
         "air time",
+        "headend start time",
     },
     "duration": {
         "duration",
         "chrono",
         "length",
+        "duration played",
     },
 }
 
@@ -369,6 +374,147 @@ def parse_playlist_events(
         if key not in {"_raw_rows", "_raw_headers"}
     }
     return public_structure, events
+
+
+def _amagi_duration(value: Any) -> str | None:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    parts = text.split(":")
+    if len(parts) >= 3:
+        return ":".join(parts[:3])
+    return text or None
+
+
+def _excel_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value.replace(microsecond=0)
+
+    text = str(value or "").strip()
+    for value_format in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S:%f",
+        "%m/%d/%Y %H:%M:%S",
+    ):
+        try:
+            return datetime.strptime(text, value_format).replace(
+                microsecond=0
+            )
+        except ValueError:
+            continue
+    return None
+
+
+def parse_excel_playlist_events(
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    if not content:
+        raise ValueError("The As-Run file is empty.")
+    if len(content) > MAX_PLAYLIST_SIZE:
+        raise ValueError("The As-Run file exceeds the 20 MB import limit.")
+
+    try:
+        workbook = load_workbook(
+            BytesIO(content),
+            read_only=True,
+            data_only=True,
+        )
+    except Exception as exc:
+        raise ValueError("The Excel As-Run file could not be opened.") from exc
+
+    worksheet = workbook.active
+    rows = list(worksheet.iter_rows(values_only=True))
+    if not rows:
+        raise ValueError("The Excel As-Run file does not contain any data.")
+
+    header_index = _detect_header([
+        [str(value or "").strip() for value in row]
+        for row in rows[:25]
+    ])
+    headers = [str(value or "").strip() for value in rows[header_index]]
+    detected = _detect_columns(headers)
+    if not detected["asset_id"] or not detected["time"]:
+        raise ValueError(
+            "Asset Name and Headend Start Time columns must be mapped."
+        )
+
+    timezone_name = None if source_timezone == "auto" else source_timezone
+    if source_timezone == "auto":
+        raise ValueError(
+            "The Excel As-Run does not declare a time zone. "
+            "Select the source time zone manually."
+        )
+    timezone_info = None
+    if timezone_name:
+        try:
+            timezone_info = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Unknown source time zone "{timezone_name}".'
+            ) from exc
+
+    asset_index = headers.index(detected["asset_id"])
+    time_index = headers.index(detected["time"])
+    duration_index = (
+        headers.index(detected["duration"])
+        if detected["duration"]
+        else None
+    )
+    events = []
+    for row_number, row in enumerate(
+        rows[header_index + 1:],
+        start=header_index + 2,
+    ):
+        asset_id = str(row[asset_index] or "").strip()
+        air_datetime = _excel_datetime(row[time_index])
+        if not asset_id or air_datetime is None:
+            continue
+        events.append(PlaylistEvent(
+            channel_name=None,
+            air_datetime=air_datetime.replace(tzinfo=timezone_info),
+            duration=(
+                _amagi_duration(row[duration_index])
+                if duration_index is not None
+                else None
+            ),
+            asset_id=asset_id,
+            source_row=row_number,
+        ))
+
+    structure = {
+        "header_row": header_index + 1,
+        "headers": [header for header in headers if header],
+        "detected_columns": detected,
+        "metadata": {
+            "date": (
+                min(event.air_datetime for event in events).date().isoformat()
+                if events
+                else None
+            ),
+            "start_time": None,
+            "channel_name": None,
+            "source_timezone": timezone_name,
+        },
+        "rows": len(rows) - header_index - 1,
+        "asset_occurrences": len(events),
+        "unique_assets": len({event.asset_id for event in events}),
+    }
+    return structure, events
+
+
+def parse_playlist_file(
+    filename: str,
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    extension = Path(filename).suffix.lower()
+    if extension == ".csv":
+        return parse_playlist_events(content, source_timezone)
+    if extension == ".xlsx":
+        return parse_excel_playlist_events(content, source_timezone)
+    raise ValueError("Only .csv and .xlsx As-Run files are supported.")
 
 
 def _filter_values(value: str | None) -> list[str]:

@@ -5,7 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend.api.prelogs import _filtered_events
-from backend.services.traffic.playlist import parse_playlist_events
+from backend.services.traffic.playlist import parse_playlist_file
 from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
     safe_prelog_filename,
@@ -28,7 +28,8 @@ async def postlog_filter_options(
 
     try:
         for as_run_file in as_run_files:
-            structure, parsed_events = parse_playlist_events(
+            structure, parsed_events = parse_playlist_file(
+                as_run_file.filename or "",
                 await as_run_file.read(),
                 source_timezone=source_timezone,
             )

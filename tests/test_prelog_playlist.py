@@ -14,10 +14,11 @@ from backend.api.prelogs import (
 )
 from backend.api.postlogs import export_postlog, filter_postlog_events
 from backend.services.traffic.prelog_export import generate_prelog_workbook
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
+    parse_playlist_file,
     parse_playlist_events,
 )
 
@@ -364,3 +365,39 @@ def test_postlog_export_is_a_broadcast_certification():
     assert worksheet["B5"].value == "Product"
     assert "Total Airings: 2" in worksheet["A9"].value
     assert "postlog-comercio-tv" in response.headers["content-disposition"]
+
+
+def test_amagi_excel_as_run_is_normalized():
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Asrun Report"
+    worksheet.append([
+        "Playlist",
+        "Item ID",
+        "Asset Name",
+        "Headend Start Time",
+        "Duration Played",
+    ])
+    worksheet.append([
+        4057,
+        2,
+        "ca_indotel",
+        "2026-07-19 13:55:55",
+        "00:00:45:01",
+    ])
+    content = BytesIO()
+    workbook.save(content)
+
+    structure, events = parse_playlist_file(
+        "amagi-asrun.xlsx",
+        content.getvalue(),
+        "America/New_York",
+    )
+
+    assert structure["detected_columns"]["asset_id"] == "Asset Name"
+    assert structure["detected_columns"]["time"] == "Headend Start Time"
+    assert events[0].asset_id == "ca_indotel"
+    assert events[0].air_datetime.isoformat() == (
+        "2026-07-19T13:55:55-04:00"
+    )
+    assert events[0].duration == "00:00:45"
