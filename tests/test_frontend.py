@@ -117,6 +117,18 @@ def test_postlog_certification_is_available():
         assert extension in html
 
 
+def test_report_history_is_available():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "report-history.js").read_text()
+
+    assert 'id="report-history"' in html
+    assert 'id="prelog-client-name"' in html
+    assert 'id="postlog-client-name"' in html
+    assert "/api/history" in javascript
+    assert "textContent" in javascript
+    assert "innerHTML" not in javascript
+
+
 def test_frontend_preserves_backend_field_names():
     html = (FRONTEND_DIR / "index.html").read_text()
 

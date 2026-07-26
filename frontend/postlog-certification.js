@@ -26,6 +26,7 @@ const postlogResultMetrics = document.querySelector(
 );
 const postlogPreview = document.querySelector("#postlog-preview-body");
 const postlogExportPanel = document.querySelector("#postlog-export-panel");
+const postlogClientName = document.querySelector("#postlog-client-name");
 const postlogChannelName = document.querySelector("#postlog-channel-name");
 const exportPostlogButton = document.querySelector("#export-postlog-button");
 const postlogExportStatus = document.querySelector("#postlog-export-status");
@@ -98,6 +99,7 @@ async function refreshProfileList(selectedName = "") {
 
 async function applyProfile(profile) {
   postlogProfileName.value = profile.name;
+  postlogClientName.value = profile.clientName || "";
   postlogChannelName.value = profile.channelName || "";
   document.querySelector("#postlog-report-language").value = (
     profile.reportLanguage || "en"
@@ -137,6 +139,7 @@ async function saveCurrentProfile() {
   const logoFile = document.querySelector("#postlog-logo").files[0];
   const profile = {
     name,
+    clientName: postlogClientName.value.trim(),
     channelName: postlogChannelName.value.trim(),
     reportLanguage: document.querySelector(
       "#postlog-report-language",
@@ -340,6 +343,9 @@ exportPostlogButton.addEventListener("click", async () => {
   const data = new FormData();
   appendPostlogFiles(data);
   appendPostlogFilters(data);
+  if (postlogClientName.value.trim()) {
+    data.append("client_name", postlogClientName.value.trim());
+  }
   data.append("channel_name", postlogChannelName.value);
   data.append(
     "report_language",
@@ -381,6 +387,7 @@ exportPostlogButton.addEventListener("click", async () => {
     link.click();
     URL.revokeObjectURL(url);
     postlogExportStatus.textContent = `${filename} downloaded successfully.`;
+    window.dispatchEvent(new CustomEvent("report-generated"));
   } catch (error) {
     postlogExportStatus.classList.add("is-error");
     postlogExportStatus.textContent = (

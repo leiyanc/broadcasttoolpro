@@ -14,15 +14,16 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260726-3" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260726-4" />
     <script src="/static/app.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
-    <script src="/static/prelog-filter.js?v=20260726-2" defer></script>
+    <script src="/static/prelog-filter.js?v=20260726-4" defer></script>
     <script
-      src="/static/postlog-certification.js?v=20260726-3"
+      src="/static/postlog-certification.js?v=20260726-4"
       defer
     ></script>
+    <script src="/static/report-history.js?v=20260726-4" defer></script>
   </head>
 
   <body>
@@ -794,6 +795,10 @@
 
           <div class="filter-grid">
             <label>
+              <span>Client Name (Optional)</span>
+              <input id="prelog-client-name" type="text" />
+            </label>
+            <label>
               <span>Channel Name</span>
               <input id="prelog-channel-name" type="text" required />
             </label>
@@ -1020,6 +1025,10 @@
 
           <div class="filter-grid">
             <label>
+              <span>Client Name (Optional)</span>
+              <input id="postlog-client-name" type="text" />
+            </label>
+            <label>
               <span>Channel Name</span>
               <input id="postlog-channel-name" type="text" required />
             </label>
@@ -1065,6 +1074,45 @@
           </div>
           <p class="export-status" id="postlog-export-status"></p>
         </section>
+      </section>
+
+      <section class="generator-shell history-shell" id="report-history">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">REPORT HISTORY</p>
+            <h2>Previous Downloads</h2>
+            <p class="section-copy">
+              Re-download previously generated Pre Logs and Post Logs.
+            </p>
+          </div>
+          <button
+            class="button button-secondary"
+            id="refresh-report-history"
+            type="button"
+          >
+            Refresh History
+          </button>
+        </div>
+        <p class="history-status" id="report-history-status">
+          Loading report history…
+        </p>
+        <div class="table-scroll is-hidden" id="report-history-table">
+          <table class="preview-table history-table">
+            <thead>
+              <tr>
+                <th>Generated</th>
+                <th>Type</th>
+                <th>Client</th>
+                <th>Channel</th>
+                <th>Clips</th>
+                <th>Date Range</th>
+                <th>Format</th>
+                <th>File</th>
+              </tr>
+            </thead>
+            <tbody id="report-history-body"></tbody>
+          </table>
+        </div>
       </section>
 
     </main>

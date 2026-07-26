@@ -642,6 +642,35 @@ select:focus {
   color: var(--danger);
 }
 
+.history-shell {
+  margin-top: 30px;
+}
+
+.history-status {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.history-table td {
+  vertical-align: middle;
+}
+
+.history-download {
+  display: inline-flex;
+  padding: 7px 10px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  background: var(--blue-light);
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.history-download:hover {
+  text-decoration: underline;
+}
+
 .repair-list {
   color: #40526a;
 }

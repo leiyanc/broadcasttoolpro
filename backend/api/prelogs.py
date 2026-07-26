@@ -9,6 +9,7 @@ from backend.services.traffic.prelog_export import (
     safe_prelog_filename,
 )
 from backend.services.traffic.report_pdf import generate_report_pdf
+from backend.services.report_history import record_report
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
@@ -154,6 +155,7 @@ async def export_prelog(
     agency: str | None = Form(None),
     logo_file: UploadFile | None = File(None),
     output_format: str = Form("xlsx"),
+    client_name: str | None = Form(None),
 ):
     try:
         _, _, matches = await _filtered_events(
@@ -217,11 +219,26 @@ async def export_prelog(
     filename = safe_prelog_filename(channel_name, start_date, end_date)
     if output_format == "pdf":
         filename = filename.replace(".xlsx", ".pdf")
+    report_id = record_report(
+        report_type="prelog",
+        client_name=client_name if isinstance(client_name, str) else None,
+        channel_name=channel_name,
+        product=product,
+        agency=agency,
+        asset_ids=[event.asset_id for event in matches],
+        start_date=start_date,
+        end_date=end_date,
+        output_format=output_format,
+        filename=filename,
+        media_type=media_type,
+        content=content,
+    )
     return Response(
         content=content,
         media_type=media_type,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Report-ID": report_id,
         },
     )
 

@@ -29,6 +29,7 @@ const prelogResultMessage = document.querySelector("#prelog-result-message");
 const prelogResultMetrics = document.querySelector("#prelog-result-metrics");
 const prelogPreviewBody = document.querySelector("#prelog-preview-body");
 const prelogExportPanel = document.querySelector("#prelog-export-panel");
+const prelogClientName = document.querySelector("#prelog-client-name");
 const prelogChannelName = document.querySelector("#prelog-channel-name");
 const prelogReportLanguage = document.querySelector("#prelog-report-language");
 const prelogOutputFormat = document.querySelector("#prelog-output-format");
@@ -326,6 +327,9 @@ exportPrelogButton.addEventListener("click", async () => {
     const value = prelogForm.elements[field].value;
     if (value) data.append(field, value);
   }
+  if (prelogClientName.value.trim()) {
+    data.append("client_name", prelogClientName.value.trim());
+  }
   data.append("channel_name", prelogChannelName.value);
   data.append("report_language", prelogReportLanguage.value);
   data.append("output_format", prelogOutputFormat.value);
@@ -372,6 +376,7 @@ exportPrelogButton.addEventListener("click", async () => {
     link.remove();
     URL.revokeObjectURL(url);
     prelogExportStatus.textContent = `${filename} downloaded successfully.`;
+    window.dispatchEvent(new CustomEvent("report-generated"));
   } catch {
     prelogExportStatus.classList.add("is-error");
     prelogExportStatus.textContent = (
