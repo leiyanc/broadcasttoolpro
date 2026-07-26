@@ -12,6 +12,7 @@ from backend.services.xmltv.parser import (
 )
 from backend.services.xmltv.generator import generate_xmltv
 from backend.services.xmltv.feed_validator import validate_xmltv
+from backend.services.xmltv.feed_repair import repair_xmltv
 from backend.services.xmltv.normalizer import collapse_continuation_rows
 from backend.services.xmltv.timezone import (
     ScheduleConversionError,
@@ -262,6 +263,74 @@ async def validate_xmltv_file(
         **result,
         "filename": filename,
     }
+
+
+async def process_xmltv_repair(xmltv_file: UploadFile) -> tuple[str, dict]:
+    filename = xmltv_file.filename or ""
+
+    if Path(filename).suffix.lower() != ".xml":
+        raise HTTPException(
+            status_code=400,
+            detail="Only .xml files are supported.",
+        )
+
+    try:
+        result = repair_xmltv(await xmltv_file.read())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    return filename, result
+
+
+@router.post("/repair/preview")
+async def preview_xmltv_repair(
+    xmltv_file: UploadFile = File(...),
+):
+    filename, result = await process_xmltv_repair(xmltv_file)
+
+    return {
+        "filename": filename,
+        "repairable": result["repairable"],
+        "changes_count": result["changes_count"],
+        "changes": result["changes"],
+        "validation": result["validation"],
+    }
+
+
+@router.post("/repair", response_class=Response)
+async def download_repaired_xmltv(
+    xmltv_file: UploadFile = File(...),
+    accept_repairs: bool = Form(False),
+):
+    filename, result = await process_xmltv_repair(xmltv_file)
+
+    if result["changes_count"] and not accept_repairs:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    f"{result['changes_count']} safe repairs require "
+                    "authorization before download."
+                ),
+                "changes_count": result["changes_count"],
+                "changes": result["changes"],
+            },
+        )
+
+    output_name = f"{Path(filename).stem}-repaired.xml"
+
+    return Response(
+        content=result["xml"],
+        media_type="application/xml",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{output_name}"'
+            ),
+        },
+    )
 
 
 @router.post("/generate", response_class=Response)
