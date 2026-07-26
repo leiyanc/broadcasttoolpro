@@ -27,6 +27,9 @@ const programmingGridButton = document.querySelector(
 const programmingGridStatus = document.querySelector(
   "#programming-grid-status",
 );
+const programmingGridLogo = document.querySelector(
+  "#programming-grid-logo",
+);
 
 let latestSchedule = [];
 
@@ -399,6 +402,9 @@ programmingGridButton.addEventListener("click", async () => {
     "accept_auto_fixes",
     acceptAutoFixes.checked ? "true" : "false",
   );
+  if (programmingGridLogo.files[0]) {
+    data.append("channel_logo", programmingGridLogo.files[0]);
+  }
 
   programmingGridButton.disabled = true;
   programmingGridButton.textContent = "Creating PDF…";

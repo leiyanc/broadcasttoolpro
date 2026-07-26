@@ -410,6 +410,16 @@ h1 {
   flex: 0 0 auto;
 }
 
+.programming-grid-controls {
+  display: grid;
+  min-width: 320px;
+  gap: 12px;
+}
+
+.programming-grid-controls input[type="file"] {
+  padding: 9px;
+}
+
 .section-heading {
   display: flex;
   align-items: end;
@@ -797,6 +807,11 @@ footer {
   footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .programming-grid-controls {
+    width: 100%;
+    min-width: 0;
   }
 
   .hero {

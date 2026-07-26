@@ -409,6 +409,7 @@ async def download_programming_grid(
     channel_timezone: str = Form(...),
     channel_name: str = Form(...),
     accept_auto_fixes: bool = Form(False),
+    channel_logo: UploadFile | None = File(None),
 ):
     result = await process_schedule(
         schedule_file,
@@ -449,11 +450,28 @@ async def download_programming_grid(
             detail="Channel Name is required.",
         )
 
-    pdf = generate_programming_grid(
-        programmes=result["programmes"],
-        channel_name=clean_channel_name,
-        timezone_name=channel_timezone,
-    )
+    logo_content = None
+    if channel_logo and getattr(channel_logo, "filename", None):
+        logo_extension = Path(channel_logo.filename).suffix.lower()
+        if logo_extension not in {".png", ".jpg", ".jpeg"}:
+            raise HTTPException(
+                status_code=422,
+                detail="The channel logo must be a PNG, JPG, or JPEG image.",
+            )
+        logo_content = await channel_logo.read()
+
+    try:
+        pdf = generate_programming_grid(
+            programmes=result["programmes"],
+            channel_name=clean_channel_name,
+            timezone_name=channel_timezone,
+            logo_content=logo_content,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
     output_name = (
         clean_channel_name.lower().replace(" ", "-")
         + "-programming-grid.pdf"

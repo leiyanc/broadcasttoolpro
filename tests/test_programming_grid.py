@@ -6,7 +6,11 @@ from pathlib import Path
 from starlette.datastructures import UploadFile
 
 from backend.api.xmltv import download_programming_grid
-from backend.services.xmltv.programming_grid import generate_programming_grid
+from backend.services.xmltv.programming_grid import (
+    LIVE_BACKGROUND,
+    _show_color,
+    generate_programming_grid,
+)
 
 
 def make_programme(start: datetime, title: str, genre: str) -> dict:
@@ -14,6 +18,7 @@ def make_programme(start: datetime, title: str, genre: str) -> dict:
     return {
         "program_title": title,
         "genre": genre,
+        "live": False,
         "start_utc": start.astimezone(timezone.utc).isoformat(),
         "stop_utc": stop.astimezone(timezone.utc).isoformat(),
     }
@@ -41,6 +46,14 @@ def test_programming_grid_creates_a_pdf():
 
     assert content.startswith(b"%PDF")
     assert len(content) > 1_000
+
+
+def test_equal_show_titles_use_the_same_light_background():
+    first = _show_color("Morning News")
+    repeated = _show_color("  MORNING   NEWS ")
+
+    assert first.hexval() == repeated.hexval()
+    assert first.hexval() != LIVE_BACKGROUND.hexval()
 
 
 def test_programming_grid_endpoint_uses_the_original_epg_upload():

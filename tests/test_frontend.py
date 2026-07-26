@@ -85,6 +85,8 @@ def test_epg_preview_is_available_after_schedule_validation():
     assert "textContent" in javascript
     assert 'id="programming-grid-button"' in html
     assert 'id="programming-grid-status"' in html
+    assert 'id="programming-grid-logo"' in html
+    assert ".png,.jpg,.jpeg" in html
     assert "Download Programming Grid" in html
 
 

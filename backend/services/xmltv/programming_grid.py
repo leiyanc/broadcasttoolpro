@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from hashlib import sha256
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -7,19 +8,24 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 
 
 NAVY = colors.HexColor("#102A43")
-LIGHT_BLUE = colors.HexColor("#EAF2FF")
 GRID = colors.HexColor("#B7C8DE")
 MUTED = colors.HexColor("#52677F")
-GENRE_COLORS = (
+LIVE_BACKGROUND = colors.HexColor("#7F1D1D")
+SHOW_COLORS = (
     colors.HexColor("#DDEAFE"),
     colors.HexColor("#DCF5E8"),
     colors.HexColor("#F8E1EC"),
     colors.HexColor("#EEE5FF"),
     colors.HexColor("#FFF0CE"),
     colors.HexColor("#DDF3F5"),
+    colors.HexColor("#FDE7D8"),
+    colors.HexColor("#E9EED0"),
+    colors.HexColor("#E5E7FA"),
+    colors.HexColor("#F6E6C8"),
 )
 
 
@@ -66,11 +72,43 @@ def _fit_text(
     return text.rstrip() + ellipsis
 
 
-def _genre_color(genre: str | None) -> colors.Color:
-    if not genre:
-        return LIGHT_BLUE
-    index = sum(ord(character) for character in genre.lower())
-    return GENRE_COLORS[index % len(GENRE_COLORS)]
+def _show_color(title: str) -> colors.Color:
+    normalized = " ".join(title.casefold().split())
+    digest = sha256(normalized.encode("utf-8")).digest()
+    return SHOW_COLORS[int.from_bytes(digest[:2], "big") % len(SHOW_COLORS)]
+
+
+def _draw_logo(
+    pdf: canvas.Canvas,
+    logo_content: bytes | None,
+    left: float,
+    page_height: float,
+) -> float:
+    if not logo_content:
+        return left
+
+    try:
+        image = ImageReader(BytesIO(logo_content))
+        width, height = image.getSize()
+    except Exception as exc:
+        raise ValueError(
+            "The channel logo must be a valid PNG, JPG, or JPEG image."
+        ) from exc
+
+    max_width, max_height = 70, 30
+    scale = min(max_width / width, max_height / height)
+    draw_width = width * scale
+    draw_height = height * scale
+    pdf.drawImage(
+        image,
+        left,
+        page_height - 38,
+        width=draw_width,
+        height=draw_height,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
+    return left + draw_width + 10
 
 
 def _draw_page(
@@ -79,6 +117,7 @@ def _draw_page(
     by_day: dict[date, list[dict]],
     channel_name: str,
     timezone_name: str,
+    logo_content: bytes | None,
 ) -> None:
     page_width, page_height = landscape(letter)
     left, right, top, bottom = 30, 24, 52, 24
@@ -90,9 +129,10 @@ def _draw_page(
     grid_height = grid_top - grid_bottom
     half_hour_height = grid_height / 48
 
+    title_left = _draw_logo(pdf, logo_content, left, page_height)
     pdf.setFillColor(NAVY)
     pdf.setFont("Helvetica-Bold", 15)
-    pdf.drawString(left, page_height - 27, channel_name)
+    pdf.drawString(title_left, page_height - 27, channel_name)
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawRightString(
         page_width - right,
@@ -165,7 +205,12 @@ def _draw_page(
             )
             block_bottom = max(grid_bottom, block_top - block_height)
 
-            pdf.setFillColor(_genre_color(programme.get("genre")))
+            is_live = bool(programme.get("live"))
+            pdf.setFillColor(
+                LIVE_BACKGROUND
+                if is_live
+                else _show_color(programme["program_title"])
+            )
             pdf.setStrokeColor(colors.white)
             pdf.rect(
                 x + 0.5,
@@ -176,7 +221,7 @@ def _draw_page(
                 stroke=1,
             )
             if block_top - block_bottom >= 5:
-                pdf.setFillColor(NAVY)
+                pdf.setFillColor(colors.white if is_live else NAVY)
                 pdf.setFont("Helvetica-Bold", 5.5)
                 title = _fit_text(
                     programme["program_title"],
@@ -202,6 +247,7 @@ def generate_programming_grid(
     programmes: list[dict],
     channel_name: str,
     timezone_name: str,
+    logo_content: bytes | None = None,
 ) -> bytes:
     if not programmes:
         raise ValueError("The schedule does not contain any programmes.")
@@ -216,7 +262,14 @@ def generate_programming_grid(
     for index, week in enumerate(weeks):
         if index:
             pdf.showPage()
-        _draw_page(pdf, week, by_day, channel_name, timezone_name)
+        _draw_page(
+            pdf,
+            week,
+            by_day,
+            channel_name,
+            timezone_name,
+            logo_content,
+        )
 
     pdf.save()
     return output.getvalue()
