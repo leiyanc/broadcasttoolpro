@@ -511,6 +511,18 @@ select:focus {
   color: var(--danger);
 }
 
+.profile-manager {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr auto auto;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0 4px;
+  padding: 18px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
 .result-icon {
   width: 48px;
   height: 48px;
@@ -647,7 +659,8 @@ footer {
 @media (max-width: 800px) {
   .workflow,
   .form-grid,
-  .filter-grid {
+  .filter-grid,
+  .profile-manager {
     grid-template-columns: 1fr;
   }
 

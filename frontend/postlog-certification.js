@@ -29,9 +29,136 @@ const postlogExportPanel = document.querySelector("#postlog-export-panel");
 const postlogChannelName = document.querySelector("#postlog-channel-name");
 const exportPostlogButton = document.querySelector("#export-postlog-button");
 const postlogExportStatus = document.querySelector("#postlog-export-status");
+const postlogProfileSelect = document.querySelector(
+  "#postlog-profile-select",
+);
+const postlogProfileName = document.querySelector("#postlog-profile-name");
+const savePostlogProfile = document.querySelector("#save-postlog-profile");
+const deletePostlogProfile = document.querySelector(
+  "#delete-postlog-profile",
+);
+const postlogProfileStatus = document.querySelector(
+  "#postlog-profile-status",
+);
 
 let postlogsInspected = false;
 const POSTLOG_FILTERS_KEY = "broadcastToolPro.postlogFilters";
+const PROFILE_DATABASE = "BroadcastToolPro";
+const PROFILE_STORE = "postlogProfiles";
+
+function openProfileDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PROFILE_DATABASE, 1);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(PROFILE_STORE)) {
+        database.createObjectStore(PROFILE_STORE, { keyPath: "name" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function profileTransaction(mode, operation) {
+  const database = await openProfileDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(PROFILE_STORE, mode);
+    const request = operation(transaction.objectStore(PROFILE_STORE));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    transaction.oncomplete = () => database.close();
+  });
+}
+
+async function profileByName(name) {
+  return profileTransaction("readonly", (store) => store.get(name));
+}
+
+async function refreshProfileList(selectedName = "") {
+  const profiles = await profileTransaction(
+    "readonly",
+    (store) => store.getAll(),
+  );
+  profiles.sort((left, right) => left.name.localeCompare(right.name));
+  postlogProfileSelect.replaceChildren();
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "Choose a saved profile";
+  postlogProfileSelect.appendChild(empty);
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.name;
+    option.textContent = profile.name;
+    postlogProfileSelect.appendChild(option);
+  }
+  postlogProfileSelect.value = selectedName;
+  deletePostlogProfile.disabled = !selectedName;
+}
+
+async function applyProfile(profile) {
+  postlogProfileName.value = profile.name;
+  postlogChannelName.value = profile.channelName || "";
+  document.querySelector("#postlog-report-language").value = (
+    profile.reportLanguage || "en"
+  );
+  document.querySelector("#postlog-output-format").value = (
+    profile.outputFormat || "xlsx"
+  );
+  document.querySelector("#postlog-product").value = profile.product || "";
+  document.querySelector("#postlog-agency").value = profile.agency || "";
+  postlogForm.elements.source_timezone.value = (
+    profile.sourceTimezone || "America/New_York"
+  );
+  postlogMode.value = profile.filterMode || "all";
+  updatePostlogMode();
+  postlogValue.value = profile.filterValue || "";
+
+  const logoInput = document.querySelector("#postlog-logo");
+  if (profile.logo?.blob) {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(
+      [profile.logo.blob],
+      profile.logo.name,
+      { type: profile.logo.type },
+    ));
+    logoInput.files = transfer.files;
+  } else {
+    logoInput.value = "";
+  }
+}
+
+async function saveCurrentProfile() {
+  const name = postlogProfileName.value.trim();
+  if (!name) {
+    throw new Error("Enter a Profile Name first.");
+  }
+  const existing = await profileByName(name);
+  const logoFile = document.querySelector("#postlog-logo").files[0];
+  const profile = {
+    name,
+    channelName: postlogChannelName.value.trim(),
+    reportLanguage: document.querySelector(
+      "#postlog-report-language",
+    ).value,
+    outputFormat: document.querySelector("#postlog-output-format").value,
+    product: document.querySelector("#postlog-product").value.trim(),
+    agency: document.querySelector("#postlog-agency").value.trim(),
+    sourceTimezone: postlogForm.elements.source_timezone.value,
+    filterMode: postlogMode.value,
+    filterValue: postlogValue.value.trim(),
+    logo: logoFile
+      ? {
+          name: logoFile.name,
+          type: logoFile.type,
+          blob: logoFile,
+        }
+      : existing?.logo || null,
+    updatedAt: new Date().toISOString(),
+  };
+  await profileTransaction("readwrite", (store) => store.put(profile));
+  await refreshProfileList(name);
+}
 
 function postlogStoredFilters() {
   try {
@@ -265,4 +392,61 @@ exportPostlogButton.addEventListener("click", async () => {
   }
 });
 
+postlogProfileSelect.addEventListener("change", async () => {
+  const name = postlogProfileSelect.value;
+  deletePostlogProfile.disabled = !name;
+  if (!name) return;
+  try {
+    const profile = await profileByName(name);
+    if (profile) {
+      await applyProfile(profile);
+      postlogProfileStatus.classList.remove("is-error");
+      postlogProfileStatus.textContent = `${name} loaded.`;
+    }
+  } catch {
+    postlogProfileStatus.classList.add("is-error");
+    postlogProfileStatus.textContent = "The profile could not be loaded.";
+  }
+});
+
+savePostlogProfile.addEventListener("click", async () => {
+  savePostlogProfile.disabled = true;
+  try {
+    await saveCurrentProfile();
+    postlogProfileStatus.classList.remove("is-error");
+    postlogProfileStatus.textContent = (
+      `${postlogProfileName.value.trim()} saved successfully.`
+    );
+  } catch (error) {
+    postlogProfileStatus.classList.add("is-error");
+    postlogProfileStatus.textContent = (
+      error.message || "The profile could not be saved."
+    );
+  } finally {
+    savePostlogProfile.disabled = false;
+  }
+});
+
+deletePostlogProfile.addEventListener("click", async () => {
+  const name = postlogProfileSelect.value;
+  if (!name) return;
+  try {
+    await profileTransaction(
+      "readwrite",
+      (store) => store.delete(name),
+    );
+    postlogProfileName.value = "";
+    await refreshProfileList();
+    postlogProfileStatus.classList.remove("is-error");
+    postlogProfileStatus.textContent = `${name} deleted.`;
+  } catch {
+    postlogProfileStatus.classList.add("is-error");
+    postlogProfileStatus.textContent = "The profile could not be deleted.";
+  }
+});
+
 updatePostlogMode();
+refreshProfileList().catch(() => {
+  postlogProfileStatus.classList.add("is-error");
+  postlogProfileStatus.textContent = "Saved profiles are unavailable.";
+});

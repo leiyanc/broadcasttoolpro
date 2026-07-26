@@ -106,7 +106,13 @@ def test_postlog_certification_is_available():
     assert 'name="as_run_files"' in html
     assert 'id="postlog-export-panel"' in html
     assert 'id="postlog-output-format"' in html
+    assert 'id="postlog-profile-select"' in html
+    assert 'id="save-postlog-profile"' in html
+    assert 'id="delete-postlog-profile"' in html
     assert "Certify Actual Airings" in html
+    assert "indexedDB.open" in (
+        FRONTEND_DIR / "postlog-certification.js"
+    ).read_text()
     for extension in (".csv", ".xlsx", ".json", ".txt", ".xml"):
         assert extension in html
 

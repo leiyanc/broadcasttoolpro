@@ -14,13 +14,13 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260726-2" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260726-3" />
     <script src="/static/app.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
     <script src="/static/prelog-filter.js?v=20260726-2" defer></script>
     <script
-      src="/static/postlog-certification.js?v=20260726-2"
+      src="/static/postlog-certification.js?v=20260726-3"
       defer
     ></script>
   </head>
@@ -984,6 +984,40 @@
         <section class="export-panel is-hidden" id="postlog-export-panel">
           <p class="eyebrow">CERTIFICATION SETTINGS</p>
           <h3>Generate Post Log</h3>
+
+          <div class="profile-manager">
+            <label>
+              <span>Saved Profile</span>
+              <select id="postlog-profile-select">
+                <option value="">Choose a saved profile</option>
+              </select>
+            </label>
+            <label>
+              <span>Profile Name</span>
+              <input
+                id="postlog-profile-name"
+                type="text"
+                placeholder="Example: Comercio TV - INDOTEL"
+              />
+            </label>
+            <button
+              class="button button-secondary"
+              id="save-postlog-profile"
+              type="button"
+            >
+              Save Profile
+            </button>
+            <button
+              class="button button-secondary"
+              id="delete-postlog-profile"
+              type="button"
+              disabled
+            >
+              Delete Profile
+            </button>
+          </div>
+          <p class="export-status" id="postlog-profile-status"></p>
+
           <div class="filter-grid">
             <label>
               <span>Channel Name</span>
