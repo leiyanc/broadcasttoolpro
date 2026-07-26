@@ -31,6 +31,37 @@ const prelogPreviewBody = document.querySelector("#prelog-preview-body");
 
 let playlistsInspected = false;
 let availableFilterOptions = null;
+const PRELOG_FILTER_STORAGE_KEY = "broadcastToolPro.prelogFilters";
+const PRELOG_FILTER_MODE_STORAGE_KEY = "broadcastToolPro.prelogFilterMode";
+
+function storedFilterValues() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(PRELOG_FILTER_STORAGE_KEY) || "{}",
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveCurrentFilterValue() {
+  const mode = prelogFilterMode.value;
+  if (mode === "all") return;
+
+  const values = storedFilterValues();
+  values[mode] = prelogFilterValue.value;
+  localStorage.setItem(
+    PRELOG_FILTER_STORAGE_KEY,
+    JSON.stringify(values),
+  );
+}
+
+function restoreFilterValue() {
+  const mode = prelogFilterMode.value;
+  prelogFilterValue.value = (
+    mode === "all" ? "" : storedFilterValues()[mode] || ""
+  );
+}
 
 function appendFiles(data) {
   for (const file of prelogFiles.files) {
@@ -103,8 +134,14 @@ function showPrelogError(message) {
 
 prelogFiles.addEventListener("change", updatePrelogFiles);
 prelogFilterMode.addEventListener("change", () => {
+  localStorage.setItem(
+    PRELOG_FILTER_MODE_STORAGE_KEY,
+    prelogFilterMode.value,
+  );
+  restoreFilterValue();
   updateFilterControls(availableFilterOptions);
 });
+prelogFilterValue.addEventListener("input", saveCurrentFilterValue);
 
 for (const eventName of ["dragenter", "dragover"]) {
   prelogDropZone.addEventListener(eventName, (event) => {
@@ -255,4 +292,11 @@ prelogForm.addEventListener("submit", async (event) => {
   }
 });
 
+const savedFilterMode = localStorage.getItem(
+  PRELOG_FILTER_MODE_STORAGE_KEY,
+);
+if (["all", "prefix", "exact", "contains"].includes(savedFilterMode)) {
+  prelogFilterMode.value = savedFilterMode;
+}
+restoreFilterValue();
 updateFilterControls();

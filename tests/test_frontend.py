@@ -66,6 +66,7 @@ def test_repair_frontend_is_available():
 
 def test_prelog_filter_builder_is_available():
     html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "prelog-filter.js").read_text()
 
     assert (FRONTEND_DIR / "prelog-filter.js").is_file()
     assert 'id="prelog-filter-form"' in html
@@ -77,6 +78,8 @@ def test_prelog_filter_builder_is_available():
     assert 'name="broadcast_day_start"' in html
     assert 'name="source_timezone"' in html
     assert "Auto Detect from Playlist" in html
+    assert "broadcastToolPro.prelogFilters" in javascript
+    assert "broadcastToolPro.prelogFilterMode" in javascript
 
 
 def test_frontend_preserves_backend_field_names():
