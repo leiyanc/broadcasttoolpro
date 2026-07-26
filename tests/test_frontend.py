@@ -28,11 +28,16 @@ def test_frontend_uses_xmltv_endpoints():
 
 def test_validator_frontend_is_available():
     html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (
+        FRONTEND_DIR / "xmltv-validator.js"
+    ).read_text()
 
     assert (FRONTEND_DIR / "xmltv-validator.js").is_file()
     assert 'id="validator-form"' in html
     assert 'name="xmltv_file"' in html
     assert 'href="#validator"' in html
+    assert 'id="download-validator-report"' in html
+    assert "validation-report.json" in javascript
 
 
 def test_frontend_preserves_backend_field_names():

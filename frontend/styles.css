@@ -446,6 +446,14 @@ select:focus {
   margin-top: 14px;
 }
 
+.result-actions {
+  margin-top: 18px;
+}
+
+.result-actions.is-hidden {
+  display: none;
+}
+
 .result-metrics span {
   padding: 6px 9px;
   color: #40526a;

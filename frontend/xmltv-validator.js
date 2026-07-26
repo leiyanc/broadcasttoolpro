@@ -10,6 +10,9 @@ const validatorResultTitle = document.querySelector("#validator-result-title");
 const validatorResultMessage = document.querySelector("#validator-result-message");
 const validatorResultMetrics = document.querySelector("#validator-result-metrics");
 const validatorIssueList = document.querySelector("#validator-issue-list");
+const validatorResultActions = document.querySelector("#validator-result-actions");
+const downloadValidatorReport = document.querySelector("#download-validator-report");
+let latestValidatorReport = null;
 
 function updateValidatorFileLabel() {
   const file = xmltvFileInput.files[0];
@@ -103,13 +106,43 @@ function showValidatorResult(result) {
     addValidatorIssue(issue);
   }
 
+  latestValidatorReport = {
+    generated_at: new Date().toISOString(),
+    filename: xmltvFileInput.files[0]?.name || null,
+    ...result,
+  };
+  validatorResultActions.classList.remove("is-hidden");
+
   validatorResultPanel.scrollIntoView({
     behavior: "smooth",
     block: "nearest",
   });
 }
 
+xmltvFileInput.addEventListener("change", () => {
+  latestValidatorReport = null;
+  validatorResultActions.classList.add("is-hidden");
+});
 xmltvFileInput.addEventListener("change", updateValidatorFileLabel);
+
+downloadValidatorReport.addEventListener("click", () => {
+  if (!latestValidatorReport) return;
+
+  const sourceName = latestValidatorReport.filename || "xmltv";
+  const reportName = sourceName.replace(/\.xml$/i, "");
+  const blob = new Blob(
+    [JSON.stringify(latestValidatorReport, null, 2)],
+    { type: "application/json" },
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${reportName}-validation-report.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
 
 for (const eventName of ["dragenter", "dragover"]) {
   validatorDropZone.addEventListener(eventName, (event) => {
