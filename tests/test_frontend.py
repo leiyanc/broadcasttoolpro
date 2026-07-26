@@ -37,7 +37,10 @@ def test_validator_frontend_is_available():
     assert 'name="xmltv_file"' in html
     assert 'href="#validator"' in html
     assert 'id="download-validator-report"' in html
+    assert 'id="download-validator-html-report"' in html
     assert "validation-report.json" in javascript
+    assert "validation-report.html" in javascript
+    assert "escapeHtml" in javascript
 
 
 def test_frontend_preserves_backend_field_names():

@@ -12,6 +12,9 @@ const validatorResultMetrics = document.querySelector("#validator-result-metrics
 const validatorIssueList = document.querySelector("#validator-issue-list");
 const validatorResultActions = document.querySelector("#validator-result-actions");
 const downloadValidatorReport = document.querySelector("#download-validator-report");
+const downloadValidatorHtmlReport = document.querySelector(
+  "#download-validator-html-report",
+);
 let latestValidatorReport = null;
 
 function updateValidatorFileLabel() {
@@ -46,6 +49,98 @@ function addValidatorIssue(issue) {
 
 function countLabel(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function downloadReportBlob(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildHtmlReport(report) {
+  const validation = report.validation;
+  const issues = Array.isArray(validation.issues) ? validation.issues : [];
+  const status = report.valid ? "Valid XMLTV" : "XMLTV Needs Attention";
+  const issueRows = issues.length
+    ? issues.map((issue) => `
+        <tr>
+          <td>${escapeHtml(issue.severity)}</td>
+          <td>${escapeHtml(issue.rule_id)}</td>
+          <td>${escapeHtml(issue.row || "—")}</td>
+          <td>${escapeHtml(issue.field || "—")}</td>
+          <td>${escapeHtml(issue.message)}</td>
+        </tr>
+      `).join("")
+    : '<tr><td colspan="5">No issues found.</td></tr>';
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XMLTV Validation Report</title>
+    <style>
+      body { margin: 0; color: #172033; background: #f6f8fb; font: 15px Arial, sans-serif; }
+      main { width: min(920px, calc(100% - 40px)); margin: 40px auto; }
+      header, section { padding: 28px; background: white; border: 1px solid #dbe3ee; border-radius: 16px; }
+      section { margin-top: 20px; }
+      h1, h2 { margin-top: 0; color: #102a43; }
+      .status { color: ${report.valid ? "#087f5b" : "#b42318"}; font-weight: 700; }
+      .metrics { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+      .metric { padding: 9px 12px; background: #f6f8fb; border-radius: 8px; font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 11px; border-bottom: 1px solid #dbe3ee; text-align: left; vertical-align: top; }
+      th { color: #40526a; font-size: 12px; text-transform: uppercase; }
+      .meta { color: #64748b; }
+      @media print { body { background: white; } main { width: 100%; margin: 0; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="meta">Broadcast Tool Pro</p>
+        <h1>XMLTV Validation Report</h1>
+        <p class="status">${escapeHtml(status)}</p>
+        <p class="meta">
+          File: ${escapeHtml(report.filename || "Unknown")}<br>
+          Generated: ${escapeHtml(report.generated_at)}
+        </p>
+        <div class="metrics">
+          <span class="metric">Score ${escapeHtml(validation.score ?? 0)}/100</span>
+          <span class="metric">${escapeHtml(validation.critical ?? 0)} Critical</span>
+          <span class="metric">${escapeHtml(validation.errors ?? 0)} Errors</span>
+          <span class="metric">${escapeHtml(validation.warnings ?? 0)} Warnings</span>
+          <span class="metric">${escapeHtml(report.channels ?? 0)} Channels</span>
+          <span class="metric">${escapeHtml(report.programmes ?? 0)} Programmes</span>
+        </div>
+      </header>
+      <section>
+        <h2>Validation Issues</h2>
+        <table>
+          <thead>
+            <tr><th>Severity</th><th>Rule</th><th>Line</th><th>Field</th><th>Message</th></tr>
+          </thead>
+          <tbody>${issueRows}</tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>`;
 }
 
 function normalizeValidatorResponse(payload, responseOk) {
@@ -130,18 +225,23 @@ downloadValidatorReport.addEventListener("click", () => {
 
   const sourceName = latestValidatorReport.filename || "xmltv";
   const reportName = sourceName.replace(/\.xml$/i, "");
-  const blob = new Blob(
-    [JSON.stringify(latestValidatorReport, null, 2)],
-    { type: "application/json" },
+  downloadReportBlob(
+    JSON.stringify(latestValidatorReport, null, 2),
+    "application/json",
+    `${reportName}-validation-report.json`,
   );
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${reportName}-validation-report.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+});
+
+downloadValidatorHtmlReport.addEventListener("click", () => {
+  if (!latestValidatorReport) return;
+
+  const sourceName = latestValidatorReport.filename || "xmltv";
+  const reportName = sourceName.replace(/\.xml$/i, "");
+  downloadReportBlob(
+    buildHtmlReport(latestValidatorReport),
+    "text/html;charset=utf-8",
+    `${reportName}-validation-report.html`,
+  );
 });
 
 for (const eventName of ["dragenter", "dragover"]) {
