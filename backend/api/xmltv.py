@@ -11,6 +11,7 @@ from backend.services.xmltv.parser import (
     read_schedule_file,
 )
 from backend.services.xmltv.generator import generate_xmltv
+from backend.services.xmltv.feed_validator import validate_xmltv
 from backend.services.xmltv.normalizer import collapse_continuation_rows
 from backend.services.xmltv.timezone import (
     ScheduleConversionError,
@@ -241,6 +242,26 @@ async def import_schedule(
         channel_timezone,
         apply_fixes=False,
     )
+
+
+@router.post("/validate")
+async def validate_xmltv_file(
+    xmltv_file: UploadFile = File(...),
+):
+    filename = xmltv_file.filename or ""
+
+    if Path(filename).suffix.lower() != ".xml":
+        raise HTTPException(
+            status_code=400,
+            detail="Only .xml files are supported.",
+        )
+
+    result = validate_xmltv(await xmltv_file.read())
+
+    return {
+        **result,
+        "filename": filename,
+    }
 
 
 @router.post("/generate", response_class=Response)
