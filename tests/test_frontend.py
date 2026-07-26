@@ -17,9 +17,22 @@ def test_home_returns_frontend():
 
 def test_frontend_uses_xmltv_endpoints():
     javascript = (FRONTEND_DIR / "app.js").read_text()
+    validator_javascript = (
+        FRONTEND_DIR / "xmltv-validator.js"
+    ).read_text()
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
+    assert "/api/xmltv/validate" in validator_javascript
+
+
+def test_validator_frontend_is_available():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert (FRONTEND_DIR / "xmltv-validator.js").is_file()
+    assert 'id="validator-form"' in html
+    assert 'name="xmltv_file"' in html
+    assert 'href="#validator"' in html
 
 
 def test_frontend_preserves_backend_field_names():

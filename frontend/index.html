@@ -16,6 +16,7 @@
     />
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="/static/app.js" defer></script>
+    <script src="/static/xmltv-validator.js" defer></script>
   </head>
 
   <body>
@@ -64,9 +65,9 @@
 
           <a
             class="button button-secondary"
-            href="/api/xmltv/template/excel"
+            href="#validator"
           >
-            Download Excel Template
+            Launch Validator
           </a>
 
         </div>
@@ -384,6 +385,87 @@
 
         </section>
 
+      </section>
+
+      <section
+        class="generator-shell validator-shell"
+        id="validator"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">XMLTV VALIDATOR</p>
+            <h2>Validate XMLTV Feed</h2>
+          </div>
+          <span class="module-badge">New</span>
+        </div>
+
+        <p class="section-copy">
+          Upload an existing XMLTV file to check its syntax, channels,
+          timestamps, required attributes, titles, and programme durations.
+        </p>
+
+        <form id="validator-form">
+          <label
+            class="drop-zone"
+            id="validator-drop-zone"
+          >
+            <input
+              id="xmltv-file"
+              name="xmltv_file"
+              type="file"
+              accept=".xml,application/xml,text/xml"
+              required
+            />
+
+            <span class="upload-icon">✓</span>
+            <strong id="validator-file-title">
+              Drop your XMLTV file here
+            </strong>
+            <small id="validator-file-subtitle">
+              or click to choose an .xml file
+            </small>
+          </label>
+
+          <div class="form-actions">
+            <button
+              class="button button-primary"
+              id="validate-xmltv-button"
+              type="submit"
+            >
+              Validate XMLTV
+            </button>
+          </div>
+        </form>
+
+        <section
+          class="result-panel is-hidden"
+          id="validator-result-panel"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div
+            class="result-icon"
+            id="validator-result-icon"
+          >
+            ✓
+          </div>
+
+          <div>
+            <h3 id="validator-result-title">
+              XMLTV is valid
+            </h3>
+            <p id="validator-result-message"></p>
+            <div
+              class="result-metrics"
+              id="validator-result-metrics"
+            ></div>
+            <ul
+              class="issue-list"
+              id="validator-issue-list"
+            ></ul>
+          </div>
+        </section>
       </section>
 
     </main>
