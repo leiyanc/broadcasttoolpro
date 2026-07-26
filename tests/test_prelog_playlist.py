@@ -1,7 +1,9 @@
 import asyncio
 from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
+from PIL import Image
 from starlette.datastructures import UploadFile
 
 from backend.api.prelogs import (
@@ -287,3 +289,23 @@ def test_prelog_export_endpoint_downloads_xlsx():
     assert response.media_type.endswith("spreadsheetml.sheet")
     workbook = load_workbook(BytesIO(response.body))
     assert workbook["Pre Log"]["A6"].value == "Comercio TV"
+
+
+def test_prelog_workbook_embeds_jpg_logo():
+    _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
+    logo = BytesIO()
+    Image.new("RGB", (160, 60), "#808080").save(logo, format="JPEG")
+    content = generate_prelog_workbook(
+        events[:2],
+        channel_name="Tarima TV",
+        logo_content=logo.getvalue(),
+    )
+
+    with ZipFile(BytesIO(content)) as archive:
+        media_files = [
+            name
+            for name in archive.namelist()
+            if name.startswith("xl/media/")
+        ]
+
+    assert len(media_files) == 1
