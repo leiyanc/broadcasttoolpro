@@ -1,5 +1,7 @@
 from collections import Counter
 from datetime import timedelta
+from io import BytesIO
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -163,8 +165,16 @@ async def export_postlog(
             if len(logo_content) > 2 * 1024 * 1024:
                 raise ValueError("The channel logo must be 2 MB or smaller.")
 
+        grouped_matches = {}
+        for event in matches:
+            grouped_matches.setdefault(event.asset_id, []).append(event)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if len(grouped_matches) == 1:
+        asset_id, asset_events = next(iter(grouped_matches.items()))
         content = generate_prelog_workbook(
-            matches,
+            asset_events,
             channel_name=channel_name,
             language=report_language,
             product=product,
@@ -172,20 +182,48 @@ async def export_postlog(
             logo_content=logo_content,
             report_type="postlog",
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    filename = safe_prelog_filename(
-        f"postlog-{channel_name}",
-        start_date,
-        end_date,
-    ).replace("prelog-postlog-", "postlog-", 1)
-    return Response(
-        content=content,
-        media_type=(
+        filename = safe_prelog_filename(
+            f"postlog-{channel_name}-{asset_id}",
+            start_date,
+            end_date,
+        ).replace("prelog-postlog-", "postlog-", 1)
+        media_type = (
             "application/vnd.openxmlformats-officedocument."
             "spreadsheetml.sheet"
-        ),
+        )
+    else:
+        archive = BytesIO()
+        with ZipFile(archive, "w", ZIP_DEFLATED) as bundle:
+            for asset_id, asset_events in sorted(grouped_matches.items()):
+                workbook = generate_prelog_workbook(
+                    asset_events,
+                    channel_name=channel_name,
+                    language=report_language,
+                    product=product,
+                    agency=agency,
+                    logo_content=logo_content,
+                    report_type="postlog",
+                )
+                workbook_name = safe_prelog_filename(
+                    f"postlog-{channel_name}-{asset_id}",
+                    start_date,
+                    end_date,
+                ).replace("prelog-postlog-", "postlog-", 1)
+                bundle.writestr(workbook_name, workbook)
+        content = archive.getvalue()
+        filename = safe_prelog_filename(
+            f"postlogs-{channel_name}",
+            start_date,
+            end_date,
+        ).replace("prelog-postlogs-", "postlogs-", 1).replace(
+            ".xlsx",
+            ".zip",
+        )
+        media_type = "application/zip"
+
+    return Response(
+        content=content,
+        media_type=media_type,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },

@@ -257,7 +257,7 @@ exportPostlogButton.addEventListener("click", async () => {
     );
   } finally {
     exportPostlogButton.disabled = false;
-    exportPostlogButton.textContent = "Download Excel Certification";
+    exportPostlogButton.textContent = "Download Certifications";
   }
 });
 

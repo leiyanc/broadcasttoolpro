@@ -367,6 +367,48 @@ def test_postlog_export_is_a_broadcast_certification():
     assert "postlog-comercio-tv" in response.headers["content-disposition"]
 
 
+def test_postlog_export_separates_each_asset_into_its_own_workbook():
+    upload = UploadFile(
+        filename="as-run.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    response = asyncio.run(export_postlog(
+        [upload],
+        "prefix",
+        "promo_",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+        "Comercio TV",
+        "en",
+        None,
+        None,
+        None,
+    ))
+
+    assert response.media_type == "application/zip"
+    with ZipFile(BytesIO(response.body)) as archive:
+        names = archive.namelist()
+        workbooks = [
+            load_workbook(BytesIO(archive.read(name)))
+            for name in names
+        ]
+
+    assert len(names) == 2
+    assert any("promo-open" in name for name in names)
+    assert any("promo-close" in name for name in names)
+    assert all(
+        len({
+            worksheet.cell(row, 2).value
+            for row in range(6, worksheet.max_row)
+            if worksheet.cell(row, 2).value
+        }) == 1
+        for workbook in workbooks
+        for worksheet in [workbook["Pre Log"]]
+    )
+
+
 def test_amagi_excel_as_run_is_normalized():
     workbook = Workbook()
     worksheet = workbook.active
