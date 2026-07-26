@@ -508,6 +508,56 @@
             </div>
           </div>
         </section>
+
+        <section class="export-panel is-hidden" id="prelog-export-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">EXPORT SETTINGS</p>
+              <h3>Generate Pre Log</h3>
+            </div>
+          </div>
+
+          <div class="filter-grid">
+            <label>
+              <span>Channel Name</span>
+              <input id="prelog-channel-name" type="text" required />
+            </label>
+            <label>
+              <span>Report Language</span>
+              <select id="prelog-report-language">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <label>
+              <span>Agency (Optional)</span>
+              <input
+                id="prelog-agency"
+                type="text"
+                placeholder="Leave blank to omit this column"
+              />
+            </label>
+            <label>
+              <span>Channel Logo (Optional PNG)</span>
+              <input
+                id="prelog-logo"
+                type="file"
+                accept=".png,image/png"
+              />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button
+              class="button button-primary"
+              id="export-prelog-button"
+              type="button"
+            >
+              Download Excel Pre Log
+            </button>
+          </div>
+          <p class="export-status" id="prelog-export-status"></p>
+        </section>
       </section>
 
       <section

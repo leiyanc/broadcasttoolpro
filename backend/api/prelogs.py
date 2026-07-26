@@ -2,7 +2,12 @@ from collections import Counter
 from datetime import timedelta
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 
+from backend.services.traffic.prelog_export import (
+    generate_prelog_workbook,
+    safe_prelog_filename,
+)
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
@@ -14,6 +19,45 @@ router = APIRouter(
     prefix="/api/prelogs",
     tags=["Pre Logs"],
 )
+
+
+async def _filtered_events(
+    playlist_files: list[UploadFile],
+    filter_mode: str,
+    filter_value: str | None,
+    start_date: str | None,
+    end_date: str | None,
+    start_time: str | None,
+    end_time: str | None,
+    broadcast_day_start: str,
+    source_timezone: str | None,
+):
+    events = []
+    files = []
+
+    for playlist_file in playlist_files:
+        structure, parsed_events = parse_playlist_events(
+            await playlist_file.read(),
+            source_timezone=source_timezone,
+        )
+        events.extend(parsed_events)
+        files.append({
+            "filename": playlist_file.filename or "",
+            "metadata": structure["metadata"],
+            "events": len(parsed_events),
+        })
+
+    matches = filter_playlist_events(
+        events,
+        filter_mode=filter_mode,
+        filter_value=filter_value,
+        start_date=start_date,
+        end_date=end_date,
+        start_time=start_time,
+        end_time=end_time,
+        broadcast_day_start=broadcast_day_start,
+    )
+    return files, events, matches
 
 
 @router.post("/inspect")
@@ -48,31 +92,17 @@ async def filter_playlist_files(
     broadcast_day_start: str = Form("06:00:00"),
     source_timezone: str | None = Form(None),
 ):
-    events = []
-    files = []
-
     try:
-        for playlist_file in playlist_files:
-            structure, parsed_events = parse_playlist_events(
-                await playlist_file.read(),
-                source_timezone=source_timezone,
-            )
-            events.extend(parsed_events)
-            files.append({
-                "filename": playlist_file.filename or "",
-                "metadata": structure["metadata"],
-                "events": len(parsed_events),
-            })
-
-        matches = filter_playlist_events(
-            events,
-            filter_mode=filter_mode,
-            filter_value=filter_value,
-            start_date=start_date,
-            end_date=end_date,
-            start_time=start_time,
-            end_time=end_time,
-            broadcast_day_start=broadcast_day_start,
+        files, events, matches = await _filtered_events(
+            playlist_files,
+            filter_mode,
+            filter_value,
+            start_date,
+            end_date,
+            start_time,
+            end_time,
+            broadcast_day_start,
+            source_timezone,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -105,6 +135,68 @@ async def filter_playlist_files(
         ],
         "matches_truncated": len(matches) > 200,
     }
+
+
+@router.post("/export")
+async def export_prelog(
+    playlist_files: list[UploadFile] = File(...),
+    filter_mode: str = Form("all"),
+    filter_value: str | None = Form(None),
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+    broadcast_day_start: str = Form("06:00:00"),
+    source_timezone: str | None = Form(None),
+    channel_name: str = Form(...),
+    report_language: str = Form("en"),
+    agency: str | None = Form(None),
+    logo_file: UploadFile | None = File(None),
+):
+    try:
+        _, _, matches = await _filtered_events(
+            playlist_files,
+            filter_mode,
+            filter_value,
+            start_date,
+            end_date,
+            None,
+            None,
+            broadcast_day_start,
+            source_timezone,
+        )
+        if not matches:
+            raise ValueError(
+                "No scheduled events match the selected filters."
+            )
+
+        logo_content = None
+        if logo_file and logo_file.filename:
+            if not logo_file.filename.lower().endswith(".png"):
+                raise ValueError("The channel logo must be a PNG file.")
+            logo_content = await logo_file.read()
+            if len(logo_content) > 2 * 1024 * 1024:
+                raise ValueError("The channel logo must be 2 MB or smaller.")
+
+        content = generate_prelog_workbook(
+            matches,
+            channel_name=channel_name,
+            language=report_language,
+            agency=agency,
+            logo_content=logo_content,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    filename = safe_prelog_filename(channel_name, start_date, end_date)
+    return Response(
+        content=content,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @router.post("/options")

@@ -28,6 +28,13 @@ const prelogResultTitle = document.querySelector("#prelog-result-title");
 const prelogResultMessage = document.querySelector("#prelog-result-message");
 const prelogResultMetrics = document.querySelector("#prelog-result-metrics");
 const prelogPreviewBody = document.querySelector("#prelog-preview-body");
+const prelogExportPanel = document.querySelector("#prelog-export-panel");
+const prelogChannelName = document.querySelector("#prelog-channel-name");
+const prelogReportLanguage = document.querySelector("#prelog-report-language");
+const prelogAgency = document.querySelector("#prelog-agency");
+const prelogLogo = document.querySelector("#prelog-logo");
+const exportPrelogButton = document.querySelector("#export-prelog-button");
+const prelogExportStatus = document.querySelector("#prelog-export-status");
 
 let playlistsInspected = false;
 let availableFilterOptions = null;
@@ -98,6 +105,7 @@ function updatePrelogFiles() {
   applyPrelogFiltersButton.disabled = true;
   playlistSummary.classList.add("is-hidden");
   prelogResultPanel.classList.add("is-hidden");
+  prelogExportPanel.classList.add("is-hidden");
 }
 
 function updateFilterControls(options = null) {
@@ -193,6 +201,7 @@ inspectPlaylistsButton.addEventListener("click", async () => {
 
     playlistsInspected = true;
     availableFilterOptions = result;
+    prelogChannelName.value = result.channels[0] || "";
     applyPrelogFiltersButton.disabled = false;
     playlistSummary.classList.remove("is-hidden");
     playlistSummaryMetrics.replaceChildren();
@@ -280,6 +289,12 @@ prelogForm.addEventListener("submit", async (event) => {
       prelogPreviewBody.appendChild(row);
     }
 
+    prelogExportPanel.classList.toggle(
+      "is-hidden",
+      result.matching_events === 0,
+    );
+    prelogExportStatus.textContent = "";
+
     prelogResultPanel.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
@@ -289,6 +304,75 @@ prelogForm.addEventListener("submit", async (event) => {
   } finally {
     applyPrelogFiltersButton.disabled = false;
     applyPrelogFiltersButton.textContent = "Apply Filters";
+  }
+});
+
+exportPrelogButton.addEventListener("click", async () => {
+  if (!prelogChannelName.reportValidity()) return;
+
+  const data = new FormData();
+  appendFiles(data);
+  for (const field of [
+    "filter_mode",
+    "filter_value",
+    "start_date",
+    "end_date",
+    "broadcast_day_start",
+    "source_timezone",
+  ]) {
+    const value = prelogForm.elements[field].value;
+    if (value) data.append(field, value);
+  }
+  data.append("channel_name", prelogChannelName.value);
+  data.append("report_language", prelogReportLanguage.value);
+  if (prelogAgency.value.trim()) {
+    data.append("agency", prelogAgency.value.trim());
+  }
+  if (prelogLogo.files[0]) {
+    data.append("logo_file", prelogLogo.files[0]);
+  }
+
+  exportPrelogButton.disabled = true;
+  exportPrelogButton.textContent = "Generating…";
+  prelogExportStatus.classList.remove("is-error");
+  prelogExportStatus.textContent = "Preparing your Excel Pre Log…";
+
+  try {
+    const response = await fetch("/api/prelogs/export", {
+      method: "POST",
+      body: data,
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      prelogExportStatus.classList.add("is-error");
+      prelogExportStatus.textContent = (
+        result.detail || "The Pre Log could not be generated."
+      );
+      return;
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const filenameMatch = disposition.match(/filename="([^"]+)"/);
+    const filename = filenameMatch?.[1] || "prelog.xlsx";
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    prelogExportStatus.textContent = `${filename} downloaded successfully.`;
+  } catch {
+    prelogExportStatus.classList.add("is-error");
+    prelogExportStatus.textContent = (
+      "The server could not generate the Pre Log."
+    );
+  } finally {
+    exportPrelogButton.disabled = false;
+    exportPrelogButton.textContent = "Download Excel Pre Log";
   }
 });
 

@@ -34,6 +34,7 @@ def test_frontend_uses_xmltv_endpoints():
     assert "/api/xmltv/repair" in repair_javascript
     assert "/api/prelogs/options" in prelog_javascript
     assert "/api/prelogs/filter" in prelog_javascript
+    assert "/api/prelogs/export" in prelog_javascript
 
 
 def test_validator_frontend_is_available():
@@ -80,6 +81,9 @@ def test_prelog_filter_builder_is_available():
     assert "Auto Detect from Playlist" in html
     assert "broadcastToolPro.prelogFilters" in javascript
     assert "broadcastToolPro.prelogFilterMode" in javascript
+    assert 'id="prelog-export-panel"' in html
+    assert 'id="prelog-logo"' in html
+    assert 'id="export-prelog-button"' in html
 
 
 def test_frontend_preserves_backend_field_names():

@@ -5,10 +5,13 @@ from pathlib import Path
 from starlette.datastructures import UploadFile
 
 from backend.api.prelogs import (
+    export_prelog,
     filter_playlist_files,
     inspect_playlist_file,
     playlist_filter_options,
 )
+from backend.services.traffic.prelog_export import generate_prelog_workbook
+from openpyxl import load_workbook
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
@@ -239,3 +242,48 @@ def test_selected_timezone_is_attached_to_events():
 
     assert events[0].air_datetime.utcoffset() is not None
     assert events[0].air_datetime.isoformat().endswith("-04:00")
+
+
+def test_prelog_workbook_uses_requested_language_and_columns():
+    _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
+    content = generate_prelog_workbook(
+        events[:2],
+        channel_name="Comercio TV",
+        language="es",
+    )
+    workbook = load_workbook(BytesIO(content))
+    worksheet = workbook["Pre Log"]
+
+    assert worksheet["A5"].value == "Nombre del canal"
+    assert worksheet["B5"].value == "Identificador del elemento"
+    assert worksheet["C5"].value == "Fecha / Hora"
+    assert worksheet["D5"].value == "Duración"
+    assert worksheet["A6"].value == "Comercio TV"
+    assert "Pago" not in {
+        cell.value
+        for cell in worksheet[5]
+    }
+
+
+def test_prelog_export_endpoint_downloads_xlsx():
+    upload = UploadFile(
+        filename="ignored.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    response = asyncio.run(export_prelog(
+        [upload],
+        "prefix",
+        "promo_",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+        "Comercio TV",
+        "en",
+        None,
+        None,
+    ))
+
+    assert response.media_type.endswith("spreadsheetml.sheet")
+    workbook = load_workbook(BytesIO(response.body))
+    assert workbook["Pre Log"]["A6"].value == "Comercio TV"

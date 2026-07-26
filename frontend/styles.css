@@ -482,6 +482,35 @@ select:focus {
   display: none;
 }
 
+.export-panel {
+  margin-top: 22px;
+  padding: 24px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.export-panel.is-hidden {
+  display: none;
+}
+
+.export-panel h3 {
+  margin: 4px 0 0;
+  color: var(--navy);
+  font-size: 22px;
+}
+
+.export-status {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.export-status.is-error {
+  color: var(--danger);
+}
+
 .result-icon {
   width: 48px;
   height: 48px;
