@@ -385,6 +385,31 @@ h1 {
   min-width: 96px;
 }
 
+.programming-grid-export {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 22px;
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.programming-grid-export h3 {
+  margin: 4px 0 6px;
+  color: var(--navy);
+}
+
+.programming-grid-export .section-copy {
+  margin: 0;
+}
+
+.programming-grid-export .button {
+  flex: 0 0 auto;
+}
+
 .section-heading {
   display: flex;
   align-items: end;
@@ -768,6 +793,7 @@ footer {
   }
 
   .section-heading,
+  .programming-grid-export,
   footer {
     align-items: flex-start;
     flex-direction: column;

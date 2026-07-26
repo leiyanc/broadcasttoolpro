@@ -21,6 +21,12 @@ const epgPreviewSearch = document.querySelector("#epg-preview-search");
 const epgPreviewStats = document.querySelector("#epg-preview-stats");
 const epgPreviewBody = document.querySelector("#epg-preview-body");
 const epgPreviewStatus = document.querySelector("#epg-preview-status");
+const programmingGridButton = document.querySelector(
+  "#programming-grid-button",
+);
+const programmingGridStatus = document.querySelector(
+  "#programming-grid-status",
+);
 
 let latestSchedule = [];
 
@@ -75,6 +81,7 @@ function updateFileLabel() {
   fileSubtitle.textContent = `${(file.size / 1024).toFixed(1)} KB — ready to validate`;
   latestSchedule = [];
   epgPreview.classList.add("is-hidden");
+  programmingGridStatus.textContent = "";
 }
 
 function formatPreviewTime(isoValue, timezoneName) {
@@ -375,6 +382,64 @@ epgPreviewDate.addEventListener("change", renderEpgPreview);
 epgPreviewSearch.addEventListener("input", renderEpgPreview);
 form.elements.channel_timezone.addEventListener("change", () => {
   if (latestSchedule.length) showEpgPreview(latestSchedule);
+});
+
+programmingGridButton.addEventListener("click", async () => {
+  if (!latestSchedule.length) {
+    programmingGridStatus.textContent = (
+      "Validate the EPG before creating the Programming Grid."
+    );
+    return;
+  }
+
+  const data = buildFormData();
+  if (!data) return;
+  data.append("channel_name", form.elements.channel_name.value);
+  data.append(
+    "accept_auto_fixes",
+    acceptAutoFixes.checked ? "true" : "false",
+  );
+
+  programmingGridButton.disabled = true;
+  programmingGridButton.textContent = "Creating PDF…";
+  programmingGridStatus.textContent = "";
+
+  try {
+    const response = await fetch("/api/xmltv/programming-grid", {
+      method: "POST",
+      body: data,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      showResult(normalizeResult(error, false));
+      programmingGridStatus.textContent = (
+        "The Programming Grid could not be created."
+      );
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const disposition = response.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    link.href = url;
+    link.download = match?.[1] || "programming-grid.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    programmingGridStatus.textContent = (
+      `${link.download} downloaded successfully.`
+    );
+  } catch {
+    programmingGridStatus.textContent = (
+      "The server could not create the Programming Grid."
+    );
+  } finally {
+    programmingGridButton.disabled = false;
+    programmingGridButton.textContent = "Download Programming Grid";
+  }
 });
 
 form.addEventListener("submit", async (event) => {

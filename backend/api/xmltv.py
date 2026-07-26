@@ -11,6 +11,7 @@ from backend.services.xmltv.parser import (
     read_schedule_file,
 )
 from backend.services.xmltv.generator import generate_xmltv
+from backend.services.xmltv.programming_grid import generate_programming_grid
 from backend.services.xmltv.feed_validator import validate_xmltv
 from backend.services.xmltv.feed_repair import repair_xmltv
 from backend.services.xmltv.normalizer import collapse_continuation_rows
@@ -397,6 +398,73 @@ async def generate_schedule(
         headers={
             "Content-Disposition": (
                 f'attachment; filename="{channel_id.strip()}-xmltv.xml"'
+            ),
+        },
+    )
+
+
+@router.post("/programming-grid", response_class=Response)
+async def download_programming_grid(
+    schedule_file: UploadFile = File(...),
+    channel_timezone: str = Form(...),
+    channel_name: str = Form(...),
+    accept_auto_fixes: bool = Form(False),
+):
+    result = await process_schedule(
+        schedule_file,
+        channel_timezone,
+        apply_fixes=accept_auto_fixes,
+    )
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=422,
+            detail=result["validation"],
+        )
+
+    if result["suggested_fixes"] and not accept_auto_fixes:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                **result["validation"],
+                "ready_to_generate": False,
+                "suggested_fixes": result["suggested_fixes"],
+                "issues": [{
+                    "rule_id": "AUTH-001",
+                    "severity": "critical",
+                    "message": (
+                        f"{result['suggested_fixes']} safe corrections "
+                        "require authorization before PDF generation."
+                    ),
+                    "row": None,
+                    "field": "Authorization",
+                }],
+            },
+        )
+
+    clean_channel_name = channel_name.strip()
+    if not clean_channel_name:
+        raise HTTPException(
+            status_code=422,
+            detail="Channel Name is required.",
+        )
+
+    pdf = generate_programming_grid(
+        programmes=result["programmes"],
+        channel_name=clean_channel_name,
+        timezone_name=channel_timezone,
+    )
+    output_name = (
+        clean_channel_name.lower().replace(" ", "-")
+        + "-programming-grid.pdf"
+    )
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{output_name}"'
             ),
         },
     )

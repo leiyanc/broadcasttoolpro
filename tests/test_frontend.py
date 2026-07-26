@@ -32,6 +32,7 @@ def test_frontend_uses_xmltv_endpoints():
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
+    assert "/api/xmltv/programming-grid" in javascript
     assert "/api/xmltv/validate" in validator_javascript
     assert "/api/xmltv/repair/preview" in repair_javascript
     assert "/api/xmltv/repair" in repair_javascript
@@ -82,6 +83,9 @@ def test_epg_preview_is_available_after_schedule_validation():
     assert "showEpgPreview" in javascript
     assert "normalized.programmes" in javascript
     assert "textContent" in javascript
+    assert 'id="programming-grid-button"' in html
+    assert 'id="programming-grid-status"' in html
+    assert "Download Programming Grid" in html
 
 
 def test_prelog_filter_builder_is_available():
