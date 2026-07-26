@@ -138,14 +138,22 @@ function renderEpgPreview() {
   epgPreviewBody.replaceChildren();
   for (const programme of visible) {
     const row = document.createElement("tr");
-    addPreviewCell(row, programme.air_date);
-    addPreviewCell(row, programme.start_time);
+    addPreviewCell(row, programme.air_date, "preview-date");
+    addPreviewCell(
+      row,
+      formatPreviewTime(
+        programme.start_utc,
+        form.elements.channel_timezone.value,
+      ),
+      "preview-time",
+    );
     addPreviewCell(
       row,
       formatPreviewTime(
         programme.stop_utc,
         form.elements.channel_timezone.value,
       ),
+      "preview-time",
     );
     addPreviewCell(row, programme.duration || "Calculated");
     addPreviewCell(row, programme.program_title, "programme-title");

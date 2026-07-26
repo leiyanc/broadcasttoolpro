@@ -324,6 +324,10 @@ h1 {
   border-radius: 14px;
 }
 
+.epg-preview.is-hidden {
+  display: none;
+}
+
 .preview-heading {
   align-items: flex-start;
   margin-bottom: 18px;
@@ -370,6 +374,15 @@ h1 {
   min-width: 180px;
   color: var(--navy);
   font-weight: 800;
+}
+
+.preview-date,
+.preview-time {
+  white-space: nowrap;
+}
+
+.preview-date {
+  min-width: 96px;
 }
 
 .section-heading {
