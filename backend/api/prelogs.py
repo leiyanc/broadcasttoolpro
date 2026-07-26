@@ -148,6 +148,7 @@ async def export_prelog(
     source_timezone: str | None = Form(None),
     channel_name: str = Form(...),
     report_language: str = Form("en"),
+    product: str | None = Form(None),
     agency: str | None = Form(None),
     logo_file: UploadFile | None = File(None),
 ):
@@ -185,6 +186,7 @@ async def export_prelog(
             matches,
             channel_name=channel_name,
             language=report_language,
+            product=product,
             agency=agency,
             logo_content=logo_content,
         )

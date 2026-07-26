@@ -31,6 +31,7 @@ const prelogPreviewBody = document.querySelector("#prelog-preview-body");
 const prelogExportPanel = document.querySelector("#prelog-export-panel");
 const prelogChannelName = document.querySelector("#prelog-channel-name");
 const prelogReportLanguage = document.querySelector("#prelog-report-language");
+const prelogProduct = document.querySelector("#prelog-product");
 const prelogAgency = document.querySelector("#prelog-agency");
 const prelogLogo = document.querySelector("#prelog-logo");
 const exportPrelogButton = document.querySelector("#export-prelog-button");
@@ -279,7 +280,8 @@ prelogForm.addEventListener("submit", async (event) => {
       for (const value of [
         match.channel_name || "—",
         match.asset_id,
-        new Date(match.air_datetime).toLocaleString(),
+        new Date(match.air_datetime).toLocaleDateString(),
+        new Date(match.air_datetime).toLocaleTimeString(),
         match.duration || "—",
       ]) {
         const cell = document.createElement("td");
@@ -325,6 +327,9 @@ exportPrelogButton.addEventListener("click", async () => {
   }
   data.append("channel_name", prelogChannelName.value);
   data.append("report_language", prelogReportLanguage.value);
+  if (prelogProduct.value.trim()) {
+    data.append("product", prelogProduct.value.trim());
+  }
   if (prelogAgency.value.trim()) {
     data.append("agency", prelogAgency.value.trim());
   }

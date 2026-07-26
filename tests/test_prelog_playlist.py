@@ -252,15 +252,21 @@ def test_prelog_workbook_uses_requested_language_and_columns():
         events[:2],
         channel_name="Comercio TV",
         language="es",
+        product="Campaña institucional",
     )
     workbook = load_workbook(BytesIO(content))
     worksheet = workbook["Pre Log"]
 
     assert worksheet["A5"].value == "Nombre del canal"
-    assert worksheet["B5"].value == "Identificador del elemento"
-    assert worksheet["C5"].value == "Fecha / Hora"
-    assert worksheet["D5"].value == "Duración"
+    assert worksheet["B5"].value == "Producto"
+    assert worksheet["C5"].value == "Identificador del elemento"
+    assert worksheet["D5"].value == "Fecha"
+    assert worksheet["E5"].value == "Hora"
+    assert worksheet["F5"].value == "Duración"
     assert worksheet["A6"].value == "Comercio TV"
+    assert worksheet["B6"].value == "Campaña institucional"
+    assert worksheet["D6"].number_format == "mm/dd/yyyy"
+    assert worksheet["E6"].number_format == "hh:mm:ss"
     assert "Pago" not in {
         cell.value
         for cell in worksheet[5]
@@ -282,6 +288,7 @@ def test_prelog_export_endpoint_downloads_xlsx():
         "America/New_York",
         "Comercio TV",
         "en",
+        None,
         None,
         None,
     ))

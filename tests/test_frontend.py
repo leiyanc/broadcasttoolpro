@@ -83,8 +83,11 @@ def test_prelog_filter_builder_is_available():
     assert "broadcastToolPro.prelogFilterMode" in javascript
     assert 'id="prelog-export-panel"' in html
     assert 'id="prelog-logo"' in html
+    assert 'id="prelog-product"' in html
     assert ".jpg,.jpeg" in html
     assert 'id="export-prelog-button"' in html
+    assert "<th>Date</th>" in html
+    assert "<th>Time</th>" in html
 
 
 def test_frontend_preserves_backend_field_names():
