@@ -15,7 +15,7 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260726-4" />
-    <script src="/static/app.js?v=20260726-2" defer></script>
+    <script src="/static/app.js?v=20260726-5" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
     <script src="/static/prelog-filter.js?v=20260726-4" defer></script>
@@ -408,6 +408,53 @@
 
           </div>
 
+        </section>
+
+        <section class="epg-preview is-hidden" id="epg-preview">
+          <div class="section-heading preview-heading">
+            <div>
+              <p class="eyebrow">EPG PREVIEW</p>
+              <h3>Schedule Timeline</h3>
+              <p class="section-copy" id="epg-preview-summary"></p>
+            </div>
+            <div class="epg-preview-filters">
+              <label>
+                <span>Broadcast Date</span>
+                <select id="epg-preview-date">
+                  <option value="">All dates</option>
+                </select>
+              </label>
+              <label>
+                <span>Search</span>
+                <input
+                  id="epg-preview-search"
+                  type="search"
+                  placeholder="Title, episode, genre…"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div class="epg-preview-stats" id="epg-preview-stats"></div>
+          <div class="table-scroll epg-preview-table">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Duration</th>
+                  <th>Programme</th>
+                  <th>Episode</th>
+                  <th>Genre</th>
+                  <th>Rating</th>
+                  <th>Flags</th>
+                </tr>
+              </thead>
+              <tbody id="epg-preview-body"></tbody>
+            </table>
+          </div>
+          <p class="history-status" id="epg-preview-status"></p>
         </section>
 
       </section>

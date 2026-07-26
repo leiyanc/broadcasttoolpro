@@ -71,6 +71,19 @@ def test_repair_frontend_is_available():
     assert 'href="#repair"' in html
 
 
+def test_epg_preview_is_available_after_schedule_validation():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "app.js").read_text()
+
+    assert 'id="epg-preview"' in html
+    assert 'id="epg-preview-date"' in html
+    assert 'id="epg-preview-search"' in html
+    assert 'id="epg-preview-body"' in html
+    assert "showEpgPreview" in javascript
+    assert "normalized.programmes" in javascript
+    assert "textContent" in javascript
+
+
 def test_prelog_filter_builder_is_available():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "prelog-filter.js").read_text()

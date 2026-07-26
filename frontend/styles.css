@@ -316,6 +316,62 @@ h1 {
   border-bottom: 1px solid #edf1f6;
 }
 
+.epg-preview {
+  margin-top: 24px;
+  padding: 24px;
+  background: #f8faff;
+  border: 1px solid #cfe0ff;
+  border-radius: 14px;
+}
+
+.preview-heading {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.epg-preview-filters {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(210px, 280px);
+  gap: 12px;
+}
+
+.epg-preview-filters label {
+  display: grid;
+  gap: 7px;
+}
+
+.epg-preview-filters label > span {
+  color: #40526a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.epg-preview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.epg-preview-stats span {
+  padding: 6px 9px;
+  color: #40526a;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.epg-preview-table {
+  max-height: 520px;
+}
+
+.programme-title {
+  min-width: 180px;
+  color: var(--navy);
+  font-weight: 800;
+}
+
 .section-heading {
   display: flex;
   align-items: end;
@@ -689,7 +745,8 @@ footer {
   .workflow,
   .form-grid,
   .filter-grid,
-  .profile-manager {
+  .profile-manager,
+  .epg-preview-filters {
     grid-template-columns: 1fr;
   }
 

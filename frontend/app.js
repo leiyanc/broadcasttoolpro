@@ -14,6 +14,15 @@ const issueList = document.querySelector("#issue-list");
 const authorizationPanel = document.querySelector("#authorization-panel");
 const authorizationMessage = document.querySelector("#authorization-message");
 const acceptAutoFixes = document.querySelector("#accept-auto-fixes");
+const epgPreview = document.querySelector("#epg-preview");
+const epgPreviewSummary = document.querySelector("#epg-preview-summary");
+const epgPreviewDate = document.querySelector("#epg-preview-date");
+const epgPreviewSearch = document.querySelector("#epg-preview-search");
+const epgPreviewStats = document.querySelector("#epg-preview-stats");
+const epgPreviewBody = document.querySelector("#epg-preview-body");
+const epgPreviewStatus = document.querySelector("#epg-preview-status");
+
+let latestSchedule = [];
 
 const fallbackValidation = (message, ruleId = "REQUEST") => ({
   score: 0,
@@ -64,6 +73,136 @@ function updateFileLabel() {
   if (!file) return;
   fileTitle.textContent = file.name;
   fileSubtitle.textContent = `${(file.size / 1024).toFixed(1)} KB — ready to validate`;
+  latestSchedule = [];
+  epgPreview.classList.add("is-hidden");
+}
+
+function formatPreviewTime(isoValue, timezoneName) {
+  if (!isoValue) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezoneName,
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(new Date(isoValue));
+  } catch {
+    return "—";
+  }
+}
+
+function programmeEpisode(programme) {
+  const parts = [];
+  if (programme.season_number != null) {
+    parts.push(`S${programme.season_number}`);
+  }
+  if (programme.episode_number != null) {
+    parts.push(`E${programme.episode_number}`);
+  }
+  const number = parts.join(" ");
+  return [number, programme.original_episode_title]
+    .filter(Boolean)
+    .join(" — ") || "—";
+}
+
+function programmeFlags(programme) {
+  return [
+    programme.live ? "Live" : "",
+    programme.new ? "New" : "",
+    programme.premiere ? "Premiere" : "",
+  ].filter(Boolean).join(", ") || "—";
+}
+
+function addPreviewCell(row, value, className = "") {
+  const cell = document.createElement("td");
+  cell.textContent = value ?? "—";
+  if (className) cell.className = className;
+  row.appendChild(cell);
+}
+
+function renderEpgPreview() {
+  const selectedDate = epgPreviewDate.value;
+  const query = epgPreviewSearch.value.trim().toLowerCase();
+  const filtered = latestSchedule.filter((programme) => {
+    if (selectedDate && programme.air_date !== selectedDate) return false;
+    if (!query) return true;
+    return [
+      programme.program_title,
+      programme.original_episode_title,
+      programme.genre,
+      programme.program_description,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+  const visible = filtered.slice(0, 300);
+
+  epgPreviewBody.replaceChildren();
+  for (const programme of visible) {
+    const row = document.createElement("tr");
+    addPreviewCell(row, programme.air_date);
+    addPreviewCell(row, programme.start_time);
+    addPreviewCell(
+      row,
+      formatPreviewTime(
+        programme.stop_utc,
+        form.elements.channel_timezone.value,
+      ),
+    );
+    addPreviewCell(row, programme.duration || "Calculated");
+    addPreviewCell(row, programme.program_title, "programme-title");
+    addPreviewCell(row, programmeEpisode(programme));
+    addPreviewCell(row, programme.genre);
+    addPreviewCell(row, programme.parental_rating);
+    addPreviewCell(row, programmeFlags(programme));
+    epgPreviewBody.appendChild(row);
+  }
+
+  epgPreviewStats.replaceChildren();
+  for (const value of [
+    `${filtered.length} Programmes`,
+    `${new Set(filtered.map((item) => item.air_date)).size} Dates`,
+    `${new Set(filtered.map((item) => item.genre).filter(Boolean)).size} Genres`,
+  ]) {
+    const metric = document.createElement("span");
+    metric.textContent = value;
+    epgPreviewStats.appendChild(metric);
+  }
+  epgPreviewStatus.textContent = filtered.length > visible.length
+    ? `Showing the first ${visible.length} of ${filtered.length} programmes.`
+    : filtered.length
+      ? `${filtered.length} programme${filtered.length === 1 ? "" : "s"} shown.`
+      : "No programmes match the selected preview filters.";
+}
+
+function showEpgPreview(programmes) {
+  latestSchedule = Array.isArray(programmes) ? programmes : [];
+  if (!latestSchedule.length) {
+    epgPreview.classList.add("is-hidden");
+    return;
+  }
+
+  const dates = [...new Set(
+    latestSchedule.map((programme) => programme.air_date).filter(Boolean),
+  )].sort();
+  epgPreviewDate.replaceChildren();
+  const allDates = document.createElement("option");
+  allDates.value = "";
+  allDates.textContent = "All dates";
+  epgPreviewDate.appendChild(allDates);
+  for (const date of dates) {
+    const option = document.createElement("option");
+    option.value = date;
+    option.textContent = date;
+    epgPreviewDate.appendChild(option);
+  }
+  epgPreviewSearch.value = "";
+  epgPreviewSummary.textContent = (
+    `Previewing ${latestSchedule.length} programmes in ` +
+    `${form.elements.channel_timezone.options[
+      form.elements.channel_timezone.selectedIndex
+    ].text}.`
+  );
+  epgPreview.classList.remove("is-hidden");
+  renderEpgPreview();
 }
 
 function buildFormData(includeProfile = false) {
@@ -155,6 +294,7 @@ function showResult(result) {
   if (suggestedFixes === 0) {
     acceptAutoFixes.checked = false;
   }
+  showEpgPreview(success ? normalized.programmes : []);
   resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -223,6 +363,11 @@ dropZone.addEventListener("drop", (event) => {
 });
 
 validateButton.addEventListener("click", validateSchedule);
+epgPreviewDate.addEventListener("change", renderEpgPreview);
+epgPreviewSearch.addEventListener("input", renderEpgPreview);
+form.elements.channel_timezone.addEventListener("change", () => {
+  if (latestSchedule.length) showEpgPreview(latestSchedule);
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
