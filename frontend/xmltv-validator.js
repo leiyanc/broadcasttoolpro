@@ -230,6 +230,7 @@ downloadValidatorReport.addEventListener("click", () => {
     "application/json",
     `${reportName}-validation-report.json`,
   );
+  downloadValidatorReport.closest("details").removeAttribute("open");
 });
 
 downloadValidatorHtmlReport.addEventListener("click", () => {
@@ -242,6 +243,7 @@ downloadValidatorHtmlReport.addEventListener("click", () => {
     "text/html;charset=utf-8",
     `${reportName}-validation-report.html`,
   );
+  downloadValidatorHtmlReport.closest("details").removeAttribute("open");
 });
 
 for (const eventName of ["dragenter", "dragover"]) {

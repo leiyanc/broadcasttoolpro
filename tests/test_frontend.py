@@ -38,6 +38,8 @@ def test_validator_frontend_is_available():
     assert 'href="#validator"' in html
     assert 'id="download-validator-report"' in html
     assert 'id="download-validator-html-report"' in html
+    assert 'class="download-menu"' in html
+    assert "Download Report" in html
     assert "validation-report.json" in javascript
     assert "validation-report.html" in javascript
     assert "escapeHtml" in javascript

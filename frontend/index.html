@@ -468,20 +468,27 @@
               class="result-actions is-hidden"
               id="validator-result-actions"
             >
-              <button
-                class="button button-secondary"
-                id="download-validator-report"
-                type="button"
-              >
-                Download JSON Report
-              </button>
-              <button
-                class="button button-secondary"
-                id="download-validator-html-report"
-                type="button"
-              >
-                Download HTML Report
-              </button>
+              <details class="download-menu">
+                <summary class="button button-secondary">
+                  Download Report
+                </summary>
+                <div class="download-menu-list">
+                  <button
+                    id="download-validator-html-report"
+                    type="button"
+                  >
+                    <strong>HTML Report</strong>
+                    <small>Share, print, or save as PDF</small>
+                  </button>
+                  <button
+                    id="download-validator-report"
+                    type="button"
+                  >
+                    <strong>JSON Report</strong>
+                    <small>Use with APIs and automation</small>
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
         </section>
