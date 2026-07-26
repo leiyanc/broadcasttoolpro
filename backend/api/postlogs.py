@@ -12,6 +12,7 @@ from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
     safe_prelog_filename,
 )
+from backend.services.traffic.report_pdf import generate_report_pdf
 
 
 router = APIRouter(
@@ -135,6 +136,7 @@ async def export_postlog(
     product: str | None = Form(None),
     agency: str | None = Form(None),
     logo_file: UploadFile | None = File(None),
+    output_format: str = Form("xlsx"),
 ):
     try:
         _, _, matches = await _filtered_events(
@@ -173,43 +175,86 @@ async def export_postlog(
 
     if len(grouped_matches) == 1:
         asset_id, asset_events = next(iter(grouped_matches.items()))
-        content = generate_prelog_workbook(
-            asset_events,
-            channel_name=channel_name,
-            language=report_language,
-            product=product,
-            agency=agency,
-            logo_content=logo_content,
-            report_type="postlog",
-        )
+        if output_format == "xlsx":
+            content = generate_prelog_workbook(
+                asset_events,
+                channel_name=channel_name,
+                language=report_language,
+                product=product,
+                agency=agency,
+                logo_content=logo_content,
+                report_type="postlog",
+            )
+            extension = ".xlsx"
+            media_type = (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            )
+        elif output_format == "pdf":
+            content = generate_report_pdf(
+                asset_events,
+                channel_name=channel_name,
+                language=report_language,
+                product=product,
+                agency=agency,
+                logo_content=logo_content,
+                report_type="postlog",
+            )
+            extension = ".pdf"
+            media_type = "application/pdf"
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Output format must be XLSX or PDF.",
+            )
         filename = safe_prelog_filename(
             f"postlog-{channel_name}-{asset_id}",
             start_date,
             end_date,
-        ).replace("prelog-postlog-", "postlog-", 1)
-        media_type = (
-            "application/vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet"
+        ).replace("prelog-postlog-", "postlog-", 1).replace(
+            ".xlsx",
+            extension,
         )
     else:
+        if output_format not in {"xlsx", "pdf"}:
+            raise HTTPException(
+                status_code=422,
+                detail="Output format must be XLSX or PDF.",
+            )
         archive = BytesIO()
         with ZipFile(archive, "w", ZIP_DEFLATED) as bundle:
             for asset_id, asset_events in sorted(grouped_matches.items()):
-                workbook = generate_prelog_workbook(
-                    asset_events,
-                    channel_name=channel_name,
-                    language=report_language,
-                    product=product,
-                    agency=agency,
-                    logo_content=logo_content,
-                    report_type="postlog",
-                )
+                if output_format == "xlsx":
+                    report = generate_prelog_workbook(
+                        asset_events,
+                        channel_name=channel_name,
+                        language=report_language,
+                        product=product,
+                        agency=agency,
+                        logo_content=logo_content,
+                        report_type="postlog",
+                    )
+                    extension = ".xlsx"
+                else:
+                    report = generate_report_pdf(
+                        asset_events,
+                        channel_name=channel_name,
+                        language=report_language,
+                        product=product,
+                        agency=agency,
+                        logo_content=logo_content,
+                        report_type="postlog",
+                    )
+                    extension = ".pdf"
                 workbook_name = safe_prelog_filename(
                     f"postlog-{channel_name}-{asset_id}",
                     start_date,
                     end_date,
-                ).replace("prelog-postlog-", "postlog-", 1)
-                bundle.writestr(workbook_name, workbook)
+                ).replace("prelog-postlog-", "postlog-", 1).replace(
+                    ".xlsx",
+                    extension,
+                )
+                bundle.writestr(workbook_name, report)
         content = archive.getvalue()
         filename = safe_prelog_filename(
             f"postlogs-{channel_name}",

@@ -31,6 +31,7 @@ const prelogPreviewBody = document.querySelector("#prelog-preview-body");
 const prelogExportPanel = document.querySelector("#prelog-export-panel");
 const prelogChannelName = document.querySelector("#prelog-channel-name");
 const prelogReportLanguage = document.querySelector("#prelog-report-language");
+const prelogOutputFormat = document.querySelector("#prelog-output-format");
 const prelogProduct = document.querySelector("#prelog-product");
 const prelogAgency = document.querySelector("#prelog-agency");
 const prelogLogo = document.querySelector("#prelog-logo");
@@ -327,6 +328,7 @@ exportPrelogButton.addEventListener("click", async () => {
   }
   data.append("channel_name", prelogChannelName.value);
   data.append("report_language", prelogReportLanguage.value);
+  data.append("output_format", prelogOutputFormat.value);
   if (prelogProduct.value.trim()) {
     data.append("product", prelogProduct.value.trim());
   }
@@ -377,7 +379,7 @@ exportPrelogButton.addEventListener("click", async () => {
     );
   } finally {
     exportPrelogButton.disabled = false;
-    exportPrelogButton.textContent = "Download Excel Pre Log";
+    exportPrelogButton.textContent = "Download Pre Log";
   }
 });
 

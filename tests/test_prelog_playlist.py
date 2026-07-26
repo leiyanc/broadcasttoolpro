@@ -293,6 +293,7 @@ def test_prelog_export_endpoint_downloads_xlsx():
         None,
         None,
         None,
+        "xlsx",
     ))
 
     assert response.media_type.endswith("spreadsheetml.sheet")
@@ -357,6 +358,7 @@ def test_postlog_export_is_a_broadcast_certification():
         "Campaign A",
         None,
         None,
+        "xlsx",
     ))
     workbook = load_workbook(BytesIO(response.body))
     worksheet = workbook["Pre Log"]
@@ -385,6 +387,7 @@ def test_postlog_export_separates_each_asset_into_its_own_workbook():
         None,
         None,
         None,
+        "xlsx",
     ))
 
     assert response.media_type == "application/zip"
@@ -407,6 +410,53 @@ def test_postlog_export_separates_each_asset_into_its_own_workbook():
         for workbook in workbooks
         for worksheet in [workbook["Pre Log"]]
     )
+
+
+def test_prelog_and_postlog_support_pdf_downloads():
+    prelog_upload = UploadFile(
+        filename="playlist.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    prelog_response = asyncio.run(export_prelog(
+        [prelog_upload],
+        "exact",
+        "client_spot_a",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+        "Comercio TV",
+        "en",
+        None,
+        None,
+        None,
+        "pdf",
+    ))
+
+    postlog_upload = UploadFile(
+        filename="as-run.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    postlog_response = asyncio.run(export_postlog(
+        [postlog_upload],
+        "exact",
+        "client_spot_a",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+        "Comercio TV",
+        "en",
+        None,
+        None,
+        None,
+        "pdf",
+    ))
+
+    assert prelog_response.media_type == "application/pdf"
+    assert postlog_response.media_type == "application/pdf"
+    assert prelog_response.body.startswith(b"%PDF")
+    assert postlog_response.body.startswith(b"%PDF")
 
 
 def test_amagi_excel_as_run_is_normalized():

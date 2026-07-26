@@ -218,6 +218,10 @@ exportPostlogButton.addEventListener("click", async () => {
     "report_language",
     document.querySelector("#postlog-report-language").value,
   );
+  data.append(
+    "output_format",
+    document.querySelector("#postlog-output-format").value,
+  );
   for (const [name, selector] of [
     ["product", "#postlog-product"],
     ["agency", "#postlog-agency"],

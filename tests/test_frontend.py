@@ -90,6 +90,7 @@ def test_prelog_filter_builder_is_available():
     assert 'id="prelog-export-panel"' in html
     assert 'id="prelog-logo"' in html
     assert 'id="prelog-product"' in html
+    assert 'id="prelog-output-format"' in html
     assert ".jpg,.jpeg" in html
     assert 'id="export-prelog-button"' in html
     assert "<th>Date</th>" in html
@@ -104,6 +105,7 @@ def test_postlog_certification_is_available():
     assert 'id="postlog-form"' in html
     assert 'name="as_run_files"' in html
     assert 'id="postlog-export-panel"' in html
+    assert 'id="postlog-output-format"' in html
     assert "Certify Actual Airings" in html
     for extension in (".csv", ".xlsx", ".json", ".txt", ".xml"):
         assert extension in html

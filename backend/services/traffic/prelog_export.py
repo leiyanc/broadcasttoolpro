@@ -151,7 +151,10 @@ def generate_prelog_workbook(
         cell = worksheet.cell(header_row, column, value)
         cell.font = Font(name="Aptos", size=10, bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="1D4ED8")
-        cell.alignment = Alignment(vertical="center")
+        cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+        )
 
     thin_border = Border(
         bottom=Side(style="thin", color="D9E2EC"),
@@ -176,7 +179,10 @@ def generate_prelog_workbook(
             cell = worksheet.cell(row_number, column, value)
             cell.font = Font(name="Aptos", size=10, color="243B53")
             cell.border = thin_border
-            cell.alignment = Alignment(vertical="center")
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
             if row_number % 2 == 0:
                 cell.fill = PatternFill("solid", fgColor="F8FAFC")
 

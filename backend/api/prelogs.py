@@ -8,6 +8,7 @@ from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
     safe_prelog_filename,
 )
+from backend.services.traffic.report_pdf import generate_report_pdf
 from backend.services.traffic.playlist import (
     filter_playlist_events,
     inspect_playlist,
@@ -152,6 +153,7 @@ async def export_prelog(
     product: str | None = Form(None),
     agency: str | None = Form(None),
     logo_file: UploadFile | None = File(None),
+    output_format: str = Form("xlsx"),
 ):
     try:
         _, _, matches = await _filtered_events(
@@ -183,24 +185,41 @@ async def export_prelog(
             if len(logo_content) > 2 * 1024 * 1024:
                 raise ValueError("The channel logo must be 2 MB or smaller.")
 
-        content = generate_prelog_workbook(
-            matches,
-            channel_name=channel_name,
-            language=report_language,
-            product=product,
-            agency=agency,
-            logo_content=logo_content,
-        )
+        if output_format == "xlsx":
+            content = generate_prelog_workbook(
+                matches,
+                channel_name=channel_name,
+                language=report_language,
+                product=product,
+                agency=agency,
+                logo_content=logo_content,
+            )
+            media_type = (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            )
+        elif output_format == "pdf":
+            content = generate_report_pdf(
+                matches,
+                channel_name=channel_name,
+                language=report_language,
+                product=product,
+                agency=agency,
+                logo_content=logo_content,
+                report_type="prelog",
+            )
+            media_type = "application/pdf"
+        else:
+            raise ValueError("Output format must be XLSX or PDF.")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     filename = safe_prelog_filename(channel_name, start_date, end_date)
+    if output_format == "pdf":
+        filename = filename.replace(".xlsx", ".pdf")
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet"
-        ),
+        media_type=media_type,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
