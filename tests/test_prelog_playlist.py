@@ -12,6 +12,7 @@ from backend.api.prelogs import (
     inspect_playlist_file,
     playlist_filter_options,
 )
+from backend.api.postlogs import export_postlog, filter_postlog_events
 from backend.services.traffic.prelog_export import generate_prelog_workbook
 from openpyxl import load_workbook
 from backend.services.traffic.playlist import (
@@ -316,3 +317,50 @@ def test_prelog_workbook_embeds_jpg_logo():
         ]
 
     assert len(media_files) == 1
+
+
+def test_postlog_filters_actual_airings():
+    upload = UploadFile(
+        filename="as-run.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    result = asyncio.run(filter_postlog_events(
+        [upload],
+        "exact",
+        "client_spot_a",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+    ))
+
+    assert result["matching_events"] == 2
+    assert result["unique_assets"] == 1
+
+
+def test_postlog_export_is_a_broadcast_certification():
+    upload = UploadFile(
+        filename="as-run.csv",
+        file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
+    )
+    response = asyncio.run(export_postlog(
+        [upload],
+        "exact",
+        "client_spot_a",
+        "2026-07-25",
+        "2026-07-25",
+        "06:00:00",
+        "America/New_York",
+        "Comercio TV",
+        "en",
+        "Campaign A",
+        None,
+        None,
+    ))
+    workbook = load_workbook(BytesIO(response.body))
+    worksheet = workbook["Pre Log"]
+
+    assert worksheet["A1"].value == "Post Log — Broadcast Certification"
+    assert worksheet["B5"].value == "Product"
+    assert "Total Airings: 2" in worksheet["A9"].value
+    assert "postlog-comercio-tv" in response.headers["content-disposition"]

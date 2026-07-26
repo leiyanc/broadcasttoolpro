@@ -26,6 +26,9 @@ def test_frontend_uses_xmltv_endpoints():
     prelog_javascript = (
         FRONTEND_DIR / "prelog-filter.js"
     ).read_text()
+    postlog_javascript = (
+        FRONTEND_DIR / "postlog-certification.js"
+    ).read_text()
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
@@ -35,6 +38,9 @@ def test_frontend_uses_xmltv_endpoints():
     assert "/api/prelogs/options" in prelog_javascript
     assert "/api/prelogs/filter" in prelog_javascript
     assert "/api/prelogs/export" in prelog_javascript
+    assert "/api/postlogs/options" in postlog_javascript
+    assert "/api/postlogs/filter" in postlog_javascript
+    assert "/api/postlogs/export" in postlog_javascript
 
 
 def test_validator_frontend_is_available():
@@ -88,6 +94,17 @@ def test_prelog_filter_builder_is_available():
     assert 'id="export-prelog-button"' in html
     assert "<th>Date</th>" in html
     assert "<th>Time</th>" in html
+
+
+def test_postlog_certification_is_available():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert (FRONTEND_DIR / "postlog-certification.js").is_file()
+    assert 'href="#postlog"' in html
+    assert 'id="postlog-form"' in html
+    assert 'name="as_run_files"' in html
+    assert 'id="postlog-export-panel"' in html
+    assert "Certify Actual Airings" in html
 
 
 def test_frontend_preserves_backend_field_names():

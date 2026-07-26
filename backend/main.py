@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.api.xmltv import router as xmltv_router
 from backend.api.prelogs import router as prelogs_router
+from backend.api.postlogs import router as postlogs_router
 
 
 app = FastAPI(
@@ -16,6 +17,7 @@ app = FastAPI(
 
 app.include_router(xmltv_router)
 app.include_router(prelogs_router)
+app.include_router(postlogs_router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 app.mount(

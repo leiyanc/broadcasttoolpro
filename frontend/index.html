@@ -19,6 +19,7 @@
     <script src="/static/xmltv-validator.js" defer></script>
     <script src="/static/xmltv-repair.js" defer></script>
     <script src="/static/prelog-filter.js" defer></script>
+    <script src="/static/postlog-certification.js" defer></script>
   </head>
 
   <body>
@@ -77,6 +78,10 @@
             href="#repair"
           >
             Launch Repair
+          </a>
+
+          <a class="button button-secondary" href="#postlog">
+            Launch Post Logs
           </a>
 
           <a
@@ -832,6 +837,182 @@
             </button>
           </div>
           <p class="export-status" id="prelog-export-status"></p>
+        </section>
+      </section>
+
+      <section
+        class="generator-shell validator-shell"
+        id="postlog"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">POST LOGS</p>
+            <h2>Certify Actual Airings</h2>
+          </div>
+          <span class="module-badge">MVP</span>
+        </div>
+
+        <p class="section-copy">
+          Upload one or more As-Run logs, select the clips to certify, and
+          export a detailed record of every actual airing.
+        </p>
+
+        <form id="postlog-form">
+          <label class="drop-zone compact-drop-zone" id="postlog-drop-zone">
+            <input
+              id="postlog-files"
+              name="as_run_files"
+              type="file"
+              accept=".csv,text/csv"
+              multiple
+              required
+            />
+            <span class="upload-icon">+</span>
+            <strong id="postlog-file-title">Drop your As-Run files here</strong>
+            <small id="postlog-file-subtitle">
+              or click to choose one or more .csv files
+            </small>
+          </label>
+
+          <section class="playlist-summary is-hidden" id="postlog-summary">
+            <div class="result-metrics" id="postlog-summary-metrics"></div>
+            <p id="postlog-summary-message"></p>
+          </section>
+
+          <div class="filter-grid">
+            <label>
+              <span>Filter Type</span>
+              <select id="postlog-filter-mode" name="filter_mode">
+                <option value="all">All Elements</option>
+                <option value="prefix">Starts With Prefix</option>
+                <option value="exact">Exact Asset ID</option>
+                <option value="contains">Contains Text</option>
+              </select>
+            </label>
+            <label id="postlog-filter-value-field">
+              <span>Filter Values</span>
+              <input
+                id="postlog-filter-value"
+                name="filter_value"
+                type="text"
+                list="postlog-filter-suggestions"
+                placeholder="Enter one or more values separated by commas"
+              />
+              <datalist id="postlog-filter-suggestions"></datalist>
+            </label>
+            <label>
+              <span>Start Date</span>
+              <input id="postlog-start-date" name="start_date" type="date" />
+            </label>
+            <label>
+              <span>End Date</span>
+              <input id="postlog-end-date" name="end_date" type="date" />
+            </label>
+            <label>
+              <span>As-Run Time Zone</span>
+              <select name="source_timezone">
+                <option value="America/New_York" selected>
+                  Eastern Time — New York
+                </option>
+                <option value="America/Santo_Domingo">
+                  Atlantic Time — Santo Domingo
+                </option>
+                <option value="America/Chicago">Central Time — Chicago</option>
+                <option value="America/Denver">Mountain Time — Denver</option>
+                <option value="America/Los_Angeles">
+                  Pacific Time — Los Angeles
+                </option>
+                <option value="UTC">UTC</option>
+                <option value="auto">Auto Detect from As-Run</option>
+              </select>
+            </label>
+          </div>
+          <input name="broadcast_day_start" type="hidden" value="06:00:00" />
+
+          <div class="form-actions">
+            <button
+              class="button button-secondary"
+              id="inspect-postlogs-button"
+              type="button"
+            >
+              Inspect As-Run
+            </button>
+            <button
+              class="button button-primary"
+              id="filter-postlogs-button"
+              type="submit"
+              disabled
+            >
+              Find Actual Airings
+            </button>
+          </div>
+        </form>
+
+        <section class="result-panel is-hidden" id="postlog-result-panel">
+          <div class="result-icon">✓</div>
+          <div class="result-content">
+            <h3 id="postlog-result-title">Airings ready for certification</h3>
+            <p id="postlog-result-message"></p>
+            <div class="result-metrics" id="postlog-result-metrics"></div>
+            <div class="table-scroll">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Asset ID</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="postlog-preview-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="export-panel is-hidden" id="postlog-export-panel">
+          <p class="eyebrow">CERTIFICATION SETTINGS</p>
+          <h3>Generate Post Log</h3>
+          <div class="filter-grid">
+            <label>
+              <span>Channel Name</span>
+              <input id="postlog-channel-name" type="text" required />
+            </label>
+            <label>
+              <span>Report Language</span>
+              <select id="postlog-report-language">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <label>
+              <span>Product (Optional)</span>
+              <input id="postlog-product" type="text" />
+            </label>
+            <label>
+              <span>Agency (Optional)</span>
+              <input id="postlog-agency" type="text" />
+            </label>
+            <label>
+              <span>Channel Logo (Optional PNG or JPG)</span>
+              <input
+                id="postlog-logo"
+                type="file"
+                accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+              />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button
+              class="button button-primary"
+              id="export-postlog-button"
+              type="button"
+            >
+              Download Excel Certification
+            </button>
+          </div>
+          <p class="export-status" id="postlog-export-status"></p>
         </section>
       </section>
 
