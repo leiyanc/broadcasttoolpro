@@ -18,6 +18,7 @@
     <script src="/static/app.js" defer></script>
     <script src="/static/xmltv-validator.js" defer></script>
     <script src="/static/xmltv-repair.js" defer></script>
+    <script src="/static/prelog-filter.js" defer></script>
   </head>
 
   <body>
@@ -76,6 +77,13 @@
             href="#repair"
           >
             Launch Repair
+          </a>
+
+          <a
+            class="button button-secondary"
+            href="#prelog"
+          >
+            Launch Pre Logs
           </a>
 
         </div>
@@ -602,6 +610,144 @@
               class="issue-list repair-list"
               id="repair-change-list"
             ></ul>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="generator-shell validator-shell"
+        id="prelog"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PRE LOGS</p>
+            <h2>Build Pre Log Selection</h2>
+          </div>
+          <span class="module-badge">Preview</span>
+        </div>
+
+        <p class="section-copy">
+          Upload one or more playlists, choose exactly which elements to
+          include, and preview every scheduled occurrence before export.
+        </p>
+
+        <form id="prelog-filter-form">
+          <label
+            class="drop-zone compact-drop-zone"
+            id="prelog-drop-zone"
+          >
+            <input
+              id="prelog-files"
+              name="playlist_files"
+              type="file"
+              accept=".csv,text/csv"
+              multiple
+              required
+            />
+            <span class="upload-icon">+</span>
+            <strong id="prelog-file-title">
+              Drop your playlist files here
+            </strong>
+            <small id="prelog-file-subtitle">
+              or click to choose one or more .csv files
+            </small>
+          </label>
+
+          <section
+            class="playlist-summary is-hidden"
+            id="playlist-summary"
+          >
+            <div class="result-metrics" id="playlist-summary-metrics"></div>
+            <p id="playlist-summary-message"></p>
+          </section>
+
+          <div class="filter-grid">
+            <label>
+              <span>Filter Type</span>
+              <select id="prelog-filter-mode" name="filter_mode">
+                <option value="all">All Elements</option>
+                <option value="prefix">Starts With Prefix</option>
+                <option value="exact">Exact Asset ID</option>
+                <option value="contains">Contains Text</option>
+              </select>
+            </label>
+
+            <label class="filter-value-field is-hidden">
+              <span>Filter Values</span>
+              <input
+                id="prelog-filter-value"
+                name="filter_value"
+                type="text"
+                list="prelog-filter-suggestions"
+                placeholder="Enter one or more values separated by commas"
+              />
+              <datalist id="prelog-filter-suggestions"></datalist>
+            </label>
+
+            <label>
+              <span>Start Date</span>
+              <input id="prelog-start-date" name="start_date" type="date" />
+            </label>
+
+            <label>
+              <span>End Date</span>
+              <input id="prelog-end-date" name="end_date" type="date" />
+            </label>
+
+            <label>
+              <span>Start Time</span>
+              <input id="prelog-start-time" name="start_time" type="time" step="1" />
+            </label>
+
+            <label>
+              <span>End Time</span>
+              <input id="prelog-end-time" name="end_time" type="time" step="1" />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button
+              class="button button-secondary"
+              id="inspect-playlists-button"
+              type="button"
+            >
+              Inspect Playlists
+            </button>
+            <button
+              class="button button-primary"
+              id="apply-prelog-filters-button"
+              type="submit"
+              disabled
+            >
+              Apply Filters
+            </button>
+          </div>
+        </form>
+
+        <section
+          class="result-panel is-hidden"
+          id="prelog-result-panel"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="result-icon" id="prelog-result-icon">✓</div>
+          <div class="result-content">
+            <h3 id="prelog-result-title">Selection ready</h3>
+            <p id="prelog-result-message"></p>
+            <div class="result-metrics" id="prelog-result-metrics"></div>
+            <div class="table-scroll">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Asset ID</th>
+                    <th>Date / Time</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="prelog-preview-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </section>

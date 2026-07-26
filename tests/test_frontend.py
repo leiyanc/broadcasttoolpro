@@ -23,12 +23,17 @@ def test_frontend_uses_xmltv_endpoints():
     repair_javascript = (
         FRONTEND_DIR / "xmltv-repair.js"
     ).read_text()
+    prelog_javascript = (
+        FRONTEND_DIR / "prelog-filter.js"
+    ).read_text()
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
     assert "/api/xmltv/validate" in validator_javascript
     assert "/api/xmltv/repair/preview" in repair_javascript
     assert "/api/xmltv/repair" in repair_javascript
+    assert "/api/prelogs/options" in prelog_javascript
+    assert "/api/prelogs/filter" in prelog_javascript
 
 
 def test_validator_frontend_is_available():
@@ -57,6 +62,18 @@ def test_repair_frontend_is_available():
     assert 'id="repair-form"' in html
     assert 'id="accept-repairs"' in html
     assert 'href="#repair"' in html
+
+
+def test_prelog_filter_builder_is_available():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert (FRONTEND_DIR / "prelog-filter.js").is_file()
+    assert 'id="prelog-filter-form"' in html
+    assert 'value="prefix"' in html
+    assert 'value="exact"' in html
+    assert 'value="contains"' in html
+    assert 'name="start_date"' in html
+    assert 'name="end_time"' in html
 
 
 def test_frontend_preserves_backend_field_names():

@@ -1,6 +1,7 @@
 import csv
 from collections import Counter
-from datetime import date, datetime, time
+from dataclasses import asdict, dataclass
+from datetime import datetime, time, timedelta
 from io import StringIO
 from re import match
 from typing import Any
@@ -29,6 +30,20 @@ HEADER_ALIASES = {
         "length",
     },
 }
+
+
+@dataclass(frozen=True)
+class PlaylistEvent:
+    channel_name: str | None
+    air_datetime: datetime
+    duration: str | None
+    asset_id: str
+    source_row: int
+
+    def to_dict(self) -> dict[str, Any]:
+        result = asdict(self)
+        result["air_datetime"] = self.air_datetime.isoformat()
+        return result
 
 
 def _normalized(value: str) -> str:
@@ -159,7 +174,11 @@ def _prefix(asset_id: str) -> str:
     return result.group(0).lower() if result else "(no prefix)"
 
 
-def inspect_playlist(content: bytes) -> dict[str, Any]:
+def _seconds(value: time) -> int:
+    return (value.hour * 3600) + (value.minute * 60) + value.second
+
+
+def _playlist_structure(content: bytes) -> dict[str, Any]:
     text = _decode_csv(content)
     rows = [
         [str(value).strip() for value in row]
@@ -223,4 +242,181 @@ def inspect_playlist(content: bytes) -> dict[str, Any]:
             for prefix, count in prefix_counts.most_common()
         ],
         "sample_rows": sample_rows,
+        "_raw_rows": data_rows,
+        "_raw_headers": headers,
     }
+
+
+def inspect_playlist(content: bytes) -> dict[str, Any]:
+    result = _playlist_structure(content)
+    result.pop("_raw_rows")
+    result.pop("_raw_headers")
+    return result
+
+
+def parse_playlist_events(content: bytes) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+    structure = _playlist_structure(content)
+    metadata = structure["metadata"]
+    detected = structure["detected_columns"]
+    headers = structure["_raw_headers"]
+
+    if not metadata["date"]:
+        raise ValueError(
+            "The playlist does not contain an embedded date. "
+            "A manual date is required."
+        )
+
+    if not detected["time"] or not detected["asset_id"]:
+        raise ValueError(
+            "Time and Asset ID columns must be mapped before filtering."
+        )
+
+    time_index = headers.index(detected["time"])
+    asset_index = headers.index(detected["asset_id"])
+    duration_index = (
+        headers.index(detected["duration"])
+        if detected["duration"]
+        else None
+    )
+    base_date = datetime.strptime(metadata["date"], "%Y-%m-%d")
+    previous_raw_seconds: int | None = None
+    previous_absolute_seconds: int | None = None
+    cycle_offset = 0
+    events: list[PlaylistEvent] = []
+
+    for offset, row in enumerate(structure["_raw_rows"], start=1):
+        if time_index >= len(row) or asset_index >= len(row):
+            continue
+
+        parsed_time = _parse_time(row[time_index])
+        asset_id = row[asset_index].strip()
+
+        if not parsed_time or not asset_id:
+            continue
+
+        event_time = time.fromisoformat(parsed_time)
+        raw_seconds = _seconds(event_time)
+        absolute_seconds = raw_seconds + cycle_offset
+
+        if (
+            previous_raw_seconds is not None
+            and previous_absolute_seconds is not None
+            and previous_raw_seconds - raw_seconds > 6 * 3600
+        ):
+            while absolute_seconds < previous_absolute_seconds:
+                cycle_offset += 12 * 3600
+                absolute_seconds = raw_seconds + cycle_offset
+
+        previous_raw_seconds = raw_seconds
+        previous_absolute_seconds = absolute_seconds
+        duration = (
+            row[duration_index].strip() or None
+            if duration_index is not None and duration_index < len(row)
+            else None
+        )
+        events.append(PlaylistEvent(
+            channel_name=metadata["channel_name"],
+            air_datetime=base_date + timedelta(seconds=absolute_seconds),
+            duration=duration,
+            asset_id=asset_id,
+            source_row=structure["header_row"] + offset,
+        ))
+
+    public_structure = {
+        key: value
+        for key, value in structure.items()
+        if key not in {"_raw_rows", "_raw_headers"}
+    }
+    return public_structure, events
+
+
+def _filter_values(value: str | None) -> list[str]:
+    if not value:
+        return []
+
+    return [
+        item.strip().lower()
+        for item in value.replace("\n", ",").split(",")
+        if item.strip()
+    ]
+
+
+def filter_playlist_events(
+    events: list[PlaylistEvent],
+    filter_mode: str = "all",
+    filter_value: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+) -> list[PlaylistEvent]:
+    allowed_modes = {"all", "prefix", "exact", "contains"}
+    if filter_mode not in allowed_modes:
+        raise ValueError(f"Unsupported filter mode: {filter_mode}.")
+
+    values = _filter_values(filter_value)
+    if filter_mode != "all" and not values:
+        raise ValueError("At least one filter value is required.")
+
+    parsed_start_date = (
+        datetime.strptime(start_date, "%Y-%m-%d").date()
+        if start_date
+        else None
+    )
+    parsed_end_date = (
+        datetime.strptime(end_date, "%Y-%m-%d").date()
+        if end_date
+        else None
+    )
+    parsed_start_time = time.fromisoformat(start_time) if start_time else None
+    parsed_end_time = time.fromisoformat(end_time) if end_time else None
+
+    if (
+        parsed_start_date is not None
+        and parsed_end_date is not None
+        and parsed_end_date < parsed_start_date
+    ):
+        raise ValueError("End date must be on or after start date.")
+
+    matches: list[PlaylistEvent] = []
+
+    for event in events:
+        event_date = event.air_datetime.date()
+        event_time = event.air_datetime.time()
+        asset = event.asset_id.lower()
+
+        if parsed_start_date and event_date < parsed_start_date:
+            continue
+        if parsed_end_date and event_date > parsed_end_date:
+            continue
+
+        if parsed_start_time and parsed_end_time:
+            in_time_range = (
+                parsed_start_time <= event_time <= parsed_end_time
+                if parsed_start_time <= parsed_end_time
+                else event_time >= parsed_start_time
+                or event_time <= parsed_end_time
+            )
+            if not in_time_range:
+                continue
+        elif parsed_start_time and event_time < parsed_start_time:
+            continue
+        elif parsed_end_time and event_time > parsed_end_time:
+            continue
+
+        if filter_mode == "prefix" and not any(
+            asset.startswith(value)
+            for value in values
+        ):
+            continue
+        if filter_mode == "exact" and asset not in values:
+            continue
+        if filter_mode == "contains" and not any(
+            value in asset
+            for value in values
+        ):
+            continue
+
+        matches.append(event)
+
+    return sorted(matches, key=lambda event: event.air_datetime)

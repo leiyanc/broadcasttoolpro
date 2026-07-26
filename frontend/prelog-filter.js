@@ -1,0 +1,249 @@
+const prelogForm = document.querySelector("#prelog-filter-form");
+const prelogFiles = document.querySelector("#prelog-files");
+const prelogDropZone = document.querySelector("#prelog-drop-zone");
+const prelogFileTitle = document.querySelector("#prelog-file-title");
+const prelogFileSubtitle = document.querySelector("#prelog-file-subtitle");
+const inspectPlaylistsButton = document.querySelector("#inspect-playlists-button");
+const applyPrelogFiltersButton = document.querySelector(
+  "#apply-prelog-filters-button",
+);
+const prelogFilterMode = document.querySelector("#prelog-filter-mode");
+const prelogFilterValue = document.querySelector("#prelog-filter-value");
+const prelogFilterSuggestions = document.querySelector(
+  "#prelog-filter-suggestions",
+);
+const filterValueField = document.querySelector(".filter-value-field");
+const prelogStartDate = document.querySelector("#prelog-start-date");
+const prelogEndDate = document.querySelector("#prelog-end-date");
+const playlistSummary = document.querySelector("#playlist-summary");
+const playlistSummaryMetrics = document.querySelector(
+  "#playlist-summary-metrics",
+);
+const playlistSummaryMessage = document.querySelector(
+  "#playlist-summary-message",
+);
+const prelogResultPanel = document.querySelector("#prelog-result-panel");
+const prelogResultIcon = document.querySelector("#prelog-result-icon");
+const prelogResultTitle = document.querySelector("#prelog-result-title");
+const prelogResultMessage = document.querySelector("#prelog-result-message");
+const prelogResultMetrics = document.querySelector("#prelog-result-metrics");
+const prelogPreviewBody = document.querySelector("#prelog-preview-body");
+
+let playlistsInspected = false;
+let availableFilterOptions = null;
+
+function appendFiles(data) {
+  for (const file of prelogFiles.files) {
+    data.append("playlist_files", file);
+  }
+}
+
+function addMetric(container, text) {
+  const metric = document.createElement("span");
+  metric.textContent = text;
+  container.appendChild(metric);
+}
+
+function updatePrelogFiles() {
+  const files = [...prelogFiles.files];
+  if (!files.length) return;
+
+  const invalid = files.some(
+    (file) => !file.name.toLowerCase().endsWith(".csv"),
+  );
+  prelogFiles.setCustomValidity(
+    invalid ? "All playlist files must use the .csv extension." : "",
+  );
+  prelogDropZone.classList.toggle("is-invalid", invalid);
+  prelogFileTitle.textContent = (
+    files.length === 1 ? files[0].name : `${files.length} playlists selected`
+  );
+  const totalKilobytes = (
+    files.reduce((total, file) => total + file.size, 0) / 1024
+  );
+  prelogFileSubtitle.textContent = `${totalKilobytes.toFixed(1)} KB total`;
+  playlistsInspected = false;
+  availableFilterOptions = null;
+  applyPrelogFiltersButton.disabled = true;
+  playlistSummary.classList.add("is-hidden");
+  prelogResultPanel.classList.add("is-hidden");
+}
+
+function updateFilterControls(options = null) {
+  const mode = prelogFilterMode.value;
+  const needsValue = mode !== "all";
+  filterValueField.classList.toggle("is-hidden", !needsValue);
+  prelogFilterValue.required = needsValue;
+  prelogFilterSuggestions.replaceChildren();
+
+  if (!options || !needsValue) return;
+
+  const suggestions = mode === "prefix"
+    ? options.prefixes
+        .map((item) => item.prefix)
+        .filter((value) => value !== "(no prefix)")
+    : options.assets.map((item) => item.asset_id);
+
+  for (const value of suggestions) {
+    const option = document.createElement("option");
+    option.value = value;
+    prelogFilterSuggestions.appendChild(option);
+  }
+}
+
+function showPrelogError(message) {
+  prelogResultPanel.classList.remove("is-hidden");
+  prelogResultPanel.classList.add("is-error");
+  prelogResultIcon.textContent = "!";
+  prelogResultTitle.textContent = "Playlist needs attention";
+  prelogResultMessage.textContent = message;
+  prelogResultMetrics.replaceChildren();
+  prelogPreviewBody.replaceChildren();
+}
+
+prelogFiles.addEventListener("change", updatePrelogFiles);
+prelogFilterMode.addEventListener("change", () => {
+  updateFilterControls(availableFilterOptions);
+});
+
+for (const eventName of ["dragenter", "dragover"]) {
+  prelogDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    prelogDropZone.classList.add("is-dragging");
+  });
+}
+
+for (const eventName of ["dragleave", "drop"]) {
+  prelogDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    prelogDropZone.classList.remove("is-dragging");
+  });
+}
+
+prelogDropZone.addEventListener("drop", (event) => {
+  if (!event.dataTransfer.files.length) return;
+  const transfer = new DataTransfer();
+  for (const file of event.dataTransfer.files) {
+    transfer.items.add(file);
+  }
+  prelogFiles.files = transfer.files;
+  updatePrelogFiles();
+});
+
+inspectPlaylistsButton.addEventListener("click", async () => {
+  if (!prelogFiles.reportValidity()) return;
+
+  const data = new FormData();
+  appendFiles(data);
+  inspectPlaylistsButton.disabled = true;
+  inspectPlaylistsButton.textContent = "Inspecting…";
+
+  try {
+    const response = await fetch("/api/prelogs/options", {
+      method: "POST",
+      body: data,
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      showPrelogError(result.detail || "The playlists could not be inspected.");
+      return;
+    }
+
+    playlistsInspected = true;
+    availableFilterOptions = result;
+    applyPrelogFiltersButton.disabled = false;
+    playlistSummary.classList.remove("is-hidden");
+    playlistSummaryMetrics.replaceChildren();
+    addMetric(playlistSummaryMetrics, `${result.files_processed} Files`);
+    addMetric(playlistSummaryMetrics, `${result.events_received} Events`);
+    addMetric(playlistSummaryMetrics, `${result.assets.length} Unique assets`);
+    addMetric(playlistSummaryMetrics, `${result.channels.length} Channels`);
+    playlistSummaryMessage.textContent = (
+      `${result.channels.join(", ") || "Unknown channel"} · ` +
+      `${result.start_date || "Unknown date"} to ${result.end_date || "Unknown date"}`
+    );
+    prelogStartDate.value = result.start_date || "";
+    prelogEndDate.value = result.end_date || "";
+    updateFilterControls(result);
+  } catch {
+    showPrelogError("The server could not inspect the playlists.");
+  } finally {
+    inspectPlaylistsButton.disabled = false;
+    inspectPlaylistsButton.textContent = "Inspect Playlists";
+  }
+});
+
+prelogForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!playlistsInspected || !prelogForm.reportValidity()) return;
+
+  const data = new FormData();
+  appendFiles(data);
+  for (const field of [
+    "filter_mode",
+    "filter_value",
+    "start_date",
+    "end_date",
+    "start_time",
+    "end_time",
+  ]) {
+    const value = prelogForm.elements[field].value;
+    if (value) data.append(field, value);
+  }
+
+  applyPrelogFiltersButton.disabled = true;
+  applyPrelogFiltersButton.textContent = "Filtering…";
+
+  try {
+    const response = await fetch("/api/prelogs/filter", {
+      method: "POST",
+      body: data,
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      showPrelogError(result.detail || "The filters could not be applied.");
+      return;
+    }
+
+    prelogResultPanel.classList.remove("is-hidden", "is-error");
+    prelogResultIcon.textContent = "✓";
+    prelogResultTitle.textContent = "Selection ready";
+    prelogResultMessage.textContent = result.matching_events
+      ? "Review the scheduled occurrences selected for this Pre Log."
+      : "No events match the selected filters.";
+    prelogResultMetrics.replaceChildren();
+    addMetric(prelogResultMetrics, `${result.files_processed} Files`);
+    addMetric(prelogResultMetrics, `${result.matching_events} Matches`);
+    addMetric(prelogResultMetrics, `${result.unique_assets} Unique assets`);
+    prelogPreviewBody.replaceChildren();
+
+    for (const match of result.matches) {
+      const row = document.createElement("tr");
+      for (const value of [
+        match.channel_name || "—",
+        match.asset_id,
+        new Date(match.air_datetime).toLocaleString(),
+        match.duration || "—",
+      ]) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      prelogPreviewBody.appendChild(row);
+    }
+
+    prelogResultPanel.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  } catch {
+    showPrelogError("The server could not apply the filters.");
+  } finally {
+    applyPrelogFiltersButton.disabled = false;
+    applyPrelogFiltersButton.textContent = "Apply Filters";
+  }
+});
+
+updateFilterControls();
