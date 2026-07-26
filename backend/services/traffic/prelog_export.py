@@ -192,7 +192,9 @@ def generate_prelog_workbook(
             logo.height = min(logo.height, 58)
             worksheet.add_image(logo, f"{last_column}1")
         except Exception as exc:
-            raise ValueError("The logo must be a valid PNG image.") from exc
+            raise ValueError(
+                "The logo must be a valid PNG, JPG, or JPEG image."
+            ) from exc
 
     output = BytesIO()
     workbook.save(output)

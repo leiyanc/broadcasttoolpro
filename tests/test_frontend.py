@@ -83,6 +83,7 @@ def test_prelog_filter_builder_is_available():
     assert "broadcastToolPro.prelogFilterMode" in javascript
     assert 'id="prelog-export-panel"' in html
     assert 'id="prelog-logo"' in html
+    assert ".jpg,.jpeg" in html
     assert 'id="export-prelog-button"' in html
 
 

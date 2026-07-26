@@ -170,8 +170,13 @@ async def export_prelog(
 
         logo_content = None
         if logo_file and logo_file.filename:
-            if not logo_file.filename.lower().endswith(".png"):
-                raise ValueError("The channel logo must be a PNG file.")
+            allowed_logo_extensions = (".png", ".jpg", ".jpeg")
+            if not logo_file.filename.lower().endswith(
+                allowed_logo_extensions
+            ):
+                raise ValueError(
+                    "The channel logo must be a PNG, JPG, or JPEG file."
+                )
             logo_content = await logo_file.read()
             if len(logo_content) > 2 * 1024 * 1024:
                 raise ValueError("The channel logo must be 2 MB or smaller.")
