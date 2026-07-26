@@ -15,6 +15,18 @@ NAVY = colors.HexColor("#102A43")
 GRID = colors.HexColor("#B7C8DE")
 MUTED = colors.HexColor("#52677F")
 LIVE_BACKGROUND = colors.HexColor("#7F1D1D")
+LIVE_COLORS = (
+    colors.HexColor("#7F1D1D"),
+    colors.HexColor("#78350F"),
+    colors.HexColor("#1E3A8A"),
+    colors.HexColor("#4C1D95"),
+    colors.HexColor("#064E3B"),
+    colors.HexColor("#831843"),
+    colors.HexColor("#164E63"),
+    colors.HexColor("#3F3F46"),
+    colors.HexColor("#713F12"),
+    colors.HexColor("#312E81"),
+)
 SHOW_COLORS = (
     colors.HexColor("#DDEAFE"),
     colors.HexColor("#DCF5E8"),
@@ -78,14 +90,20 @@ def _show_color(title: str) -> colors.Color:
     return SHOW_COLORS[int.from_bytes(digest[:2], "big") % len(SHOW_COLORS)]
 
 
+def _live_color(title: str) -> colors.Color:
+    normalized = " ".join(title.casefold().split())
+    digest = sha256(normalized.encode("utf-8")).digest()
+    return LIVE_COLORS[int.from_bytes(digest[:2], "big") % len(LIVE_COLORS)]
+
+
 def _draw_logo(
     pdf: canvas.Canvas,
     logo_content: bytes | None,
     left: float,
     page_height: float,
-) -> float:
+) -> None:
     if not logo_content:
-        return left
+        return
 
     try:
         image = ImageReader(BytesIO(logo_content))
@@ -95,7 +113,7 @@ def _draw_logo(
             "The channel logo must be a valid PNG, JPG, or JPEG image."
         ) from exc
 
-    max_width, max_height = 70, 30
+    max_width, max_height = 110, 34
     scale = min(max_width / width, max_height / height)
     draw_width = width * scale
     draw_height = height * scale
@@ -108,7 +126,6 @@ def _draw_logo(
         preserveAspectRatio=True,
         mask="auto",
     )
-    return left + draw_width + 10
 
 
 def _draw_page(
@@ -129,21 +146,25 @@ def _draw_page(
     grid_height = grid_top - grid_bottom
     half_hour_height = grid_height / 48
 
-    title_left = _draw_logo(pdf, logo_content, left, page_height)
+    _draw_logo(pdf, logo_content, left, page_height)
     pdf.setFillColor(NAVY)
-    pdf.setFont("Helvetica-Bold", 15)
-    pdf.drawString(title_left, page_height - 27, channel_name)
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawRightString(
         page_width - right,
-        page_height - 23,
+        page_height - 19,
         "PROGRAMMING GRID",
     )
-    pdf.setFillColor(MUTED)
-    pdf.setFont("Helvetica", 7)
+    pdf.setFont("Helvetica-Bold", 7.5)
     pdf.drawRightString(
         page_width - right,
-        page_height - 34,
+        page_height - 30,
+        channel_name,
+    )
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica", 6.5)
+    pdf.drawRightString(
+        page_width - right,
+        page_height - 40,
         f"Week of {week.strftime('%B %d, %Y')}  |  {timezone_name}",
     )
 
@@ -207,7 +228,7 @@ def _draw_page(
 
             is_live = bool(programme.get("live"))
             pdf.setFillColor(
-                LIVE_BACKGROUND
+                _live_color(programme["program_title"])
                 if is_live
                 else _show_color(programme["program_title"])
             )
