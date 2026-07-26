@@ -5,6 +5,7 @@ from datetime import datetime, time, timedelta
 from io import StringIO
 from re import match
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 MAX_PLAYLIST_SIZE = 20 * 1024 * 1024
@@ -143,6 +144,7 @@ def _metadata(rows: list[list[str]]) -> dict[str, Any]:
     embedded_date = None
     embedded_time = None
     channel_name = None
+    source_timezone = None
 
     for row in rows:
         for value in row:
@@ -159,6 +161,19 @@ def _metadata(rows: list[list[str]]) -> dict[str, Any]:
                 if embedded_time is not None:
                     continue
 
+            if source_timezone is None:
+                timezone_candidate = value.strip()
+                if timezone_candidate.upper() in {"UTC", "GMT"}:
+                    source_timezone = "UTC"
+                    continue
+                elif "/" in timezone_candidate:
+                    try:
+                        ZoneInfo(timezone_candidate)
+                        source_timezone = timezone_candidate
+                        continue
+                    except ZoneInfoNotFoundError:
+                        pass
+
             if channel_name is None:
                 channel_name = value.strip()
 
@@ -166,6 +181,7 @@ def _metadata(rows: list[list[str]]) -> dict[str, Any]:
         "date": embedded_date,
         "start_time": embedded_time,
         "channel_name": channel_name,
+        "source_timezone": source_timezone,
     }
 
 
@@ -254,7 +270,10 @@ def inspect_playlist(content: bytes) -> dict[str, Any]:
     return result
 
 
-def parse_playlist_events(content: bytes) -> tuple[dict[str, Any], list[PlaylistEvent]]:
+def parse_playlist_events(
+    content: bytes,
+    source_timezone: str | None = None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     structure = _playlist_structure(content)
     metadata = structure["metadata"]
     detected = structure["detected_columns"]
@@ -278,7 +297,29 @@ def parse_playlist_events(content: bytes) -> tuple[dict[str, Any], list[Playlist
         if detected["duration"]
         else None
     )
-    base_date = datetime.strptime(metadata["date"], "%Y-%m-%d")
+    if source_timezone == "auto":
+        timezone_name = metadata["source_timezone"]
+        if not timezone_name:
+            raise ValueError(
+                "The playlist does not declare a time zone. "
+                "Select the source time zone manually."
+            )
+    else:
+        timezone_name = source_timezone or metadata["source_timezone"]
+    timezone_info = None
+
+    if timezone_name:
+        try:
+            timezone_info = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Unknown source time zone "{timezone_name}".'
+            ) from exc
+
+    base_date = datetime.strptime(
+        metadata["date"],
+        "%Y-%m-%d",
+    ).replace(tzinfo=timezone_info)
     previous_raw_seconds: int | None = None
     previous_absolute_seconds: int | None = None
     cycle_offset = 0
@@ -349,6 +390,7 @@ def filter_playlist_events(
     end_date: str | None = None,
     start_time: str | None = None,
     end_time: str | None = None,
+    broadcast_day_start: str = "06:00:00",
 ) -> list[PlaylistEvent]:
     allowed_modes = {"all", "prefix", "exact", "contains"}
     if filter_mode not in allowed_modes:
@@ -370,6 +412,7 @@ def filter_playlist_events(
     )
     parsed_start_time = time.fromisoformat(start_time) if start_time else None
     parsed_end_time = time.fromisoformat(end_time) if end_time else None
+    parsed_broadcast_start = time.fromisoformat(broadcast_day_start)
 
     if (
         parsed_start_date is not None
@@ -379,15 +422,33 @@ def filter_playlist_events(
         raise ValueError("End date must be on or after start date.")
 
     matches: list[PlaylistEvent] = []
+    timezone_info = events[0].air_datetime.tzinfo if events else None
+    start_boundary = (
+        datetime.combine(
+            parsed_start_date,
+            parsed_broadcast_start,
+            tzinfo=timezone_info,
+        )
+        if parsed_start_date
+        else None
+    )
+    end_boundary = (
+        datetime.combine(
+            parsed_end_date + timedelta(days=1),
+            parsed_broadcast_start,
+            tzinfo=timezone_info,
+        )
+        if parsed_end_date
+        else None
+    )
 
     for event in events:
-        event_date = event.air_datetime.date()
         event_time = event.air_datetime.time()
         asset = event.asset_id.lower()
 
-        if parsed_start_date and event_date < parsed_start_date:
+        if start_boundary and event.air_datetime < start_boundary:
             continue
-        if parsed_end_date and event_date > parsed_end_date:
+        if end_boundary and event.air_datetime >= end_boundary:
             continue
 
         if parsed_start_time and parsed_end_time:

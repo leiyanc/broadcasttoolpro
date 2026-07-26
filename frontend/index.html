@@ -695,15 +695,38 @@
             </label>
 
             <label>
-              <span>Start Time</span>
-              <input id="prelog-start-time" name="start_time" type="time" step="1" />
-            </label>
-
-            <label>
-              <span>End Time</span>
-              <input id="prelog-end-time" name="end_time" type="time" step="1" />
+              <span>Playlist Time Zone</span>
+              <select id="prelog-source-timezone" name="source_timezone">
+                <option value="America/New_York" selected>
+                  Eastern Time — New York
+                </option>
+                <option value="America/Santo_Domingo">
+                  Atlantic Time — Santo Domingo
+                </option>
+                <option value="America/Chicago">
+                  Central Time — Chicago
+                </option>
+                <option value="America/Denver">
+                  Mountain Time — Denver
+                </option>
+                <option value="America/Los_Angeles">
+                  Pacific Time — Los Angeles
+                </option>
+                <option value="UTC">UTC</option>
+                <option value="auto">Auto Detect from Playlist</option>
+              </select>
             </label>
           </div>
+
+          <input
+            name="broadcast_day_start"
+            type="hidden"
+            value="06:00:00"
+          />
+
+          <p class="broadcast-day-note">
+            Broadcast days run from 06:00 through 05:59:59 the following day.
+          </p>
 
           <div class="form-actions">
             <button

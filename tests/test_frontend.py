@@ -73,7 +73,10 @@ def test_prelog_filter_builder_is_available():
     assert 'value="exact"' in html
     assert 'value="contains"' in html
     assert 'name="start_date"' in html
-    assert 'name="end_time"' in html
+    assert 'name="end_date"' in html
+    assert 'name="broadcast_day_start"' in html
+    assert 'name="source_timezone"' in html
+    assert "Auto Detect from Playlist" in html
 
 
 def test_frontend_preserves_backend_field_names():

@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import timedelta
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
@@ -44,6 +45,8 @@ async def filter_playlist_files(
     end_date: str | None = Form(None),
     start_time: str | None = Form(None),
     end_time: str | None = Form(None),
+    broadcast_day_start: str = Form("06:00:00"),
+    source_timezone: str | None = Form(None),
 ):
     events = []
     files = []
@@ -51,7 +54,8 @@ async def filter_playlist_files(
     try:
         for playlist_file in playlist_files:
             structure, parsed_events = parse_playlist_events(
-                await playlist_file.read()
+                await playlist_file.read(),
+                source_timezone=source_timezone,
             )
             events.extend(parsed_events)
             files.append({
@@ -68,6 +72,7 @@ async def filter_playlist_files(
             end_date=end_date,
             start_time=start_time,
             end_time=end_time,
+            broadcast_day_start=broadcast_day_start,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -91,6 +96,8 @@ async def filter_playlist_files(
             "end_date": end_date,
             "start_time": start_time,
             "end_time": end_time,
+            "broadcast_day_start": broadcast_day_start,
+            "source_timezone": source_timezone,
         },
         "matches": [
             event.to_dict()
@@ -103,6 +110,7 @@ async def filter_playlist_files(
 @router.post("/options")
 async def playlist_filter_options(
     playlist_files: list[UploadFile] = File(...),
+    source_timezone: str | None = Form(None),
 ):
     events = []
     files = []
@@ -110,7 +118,8 @@ async def playlist_filter_options(
     try:
         for playlist_file in playlist_files:
             structure, parsed_events = parse_playlist_events(
-                await playlist_file.read()
+                await playlist_file.read(),
+                source_timezone=source_timezone,
             )
             events.extend(parsed_events)
             files.append({
@@ -149,9 +158,23 @@ async def playlist_filter_options(
             else None
         ),
         "end_date": (
-            max(event.air_datetime for event in events).date().isoformat()
+            (
+                max(event.air_datetime for event in events)
+                - timedelta(hours=6)
+            ).date().isoformat()
             if events
             else None
+        ),
+        "source_timezone": (
+            source_timezone
+            or next(
+                (
+                    item["metadata"]["source_timezone"]
+                    for item in files
+                    if item["metadata"]["source_timezone"]
+                ),
+                None,
+            )
         ),
         "assets": [
             {

@@ -163,6 +163,8 @@ def test_filter_endpoint_combines_multiple_files():
             None,
             None,
             None,
+            "06:00:00",
+            None,
         )
     )
 
@@ -179,7 +181,7 @@ def test_filter_options_combine_assets_and_dates():
             file=BytesIO(SAMPLE_PLAYLIST.read_bytes()),
         )
     ]
-    result = asyncio.run(playlist_filter_options(uploads))
+    result = asyncio.run(playlist_filter_options(uploads, None))
 
     assert result["channels"] == ["Comercio TV"]
     assert result["start_date"] == "2026-07-25"
@@ -189,3 +191,51 @@ def test_filter_options_combine_assets_and_dates():
         item["prefix"] == "promo_"
         for item in result["prefixes"]
     )
+
+
+def test_broadcast_date_includes_overnight_events_until_next_six_am():
+    content = b"""2026-07-26,06:00:00,,Tarima TV
+HOUR,DURATION,ASSET ID
+11:59:00,0:00:30,day
+12:00:00,0:00:30,noon
+01:00:00,0:00:30,afternoon
+11:59:00,0:00:30,night
+12:00:00,0:00:30,midnight
+05:59:59,0:00:30,last_event
+06:00:00,0:00:30,next_broadcast_day
+"""
+    _, events = parse_playlist_events(content)
+    matches = filter_playlist_events(
+        events,
+        start_date="2026-07-26",
+        end_date="2026-07-26",
+        broadcast_day_start="06:00:00",
+    )
+
+    assert matches[-1].asset_id == "last_event"
+    assert "next_broadcast_day" not in {
+        event.asset_id
+        for event in matches
+    }
+
+
+def test_auto_timezone_requires_playlist_metadata():
+    try:
+        parse_playlist_events(
+            SAMPLE_PLAYLIST.read_bytes(),
+            source_timezone="auto",
+        )
+    except ValueError as exc:
+        assert "does not declare a time zone" in str(exc)
+    else:
+        raise AssertionError("Expected manual time zone selection.")
+
+
+def test_selected_timezone_is_attached_to_events():
+    _, events = parse_playlist_events(
+        SAMPLE_PLAYLIST.read_bytes(),
+        source_timezone="America/New_York",
+    )
+
+    assert events[0].air_datetime.utcoffset() is not None
+    assert events[0].air_datetime.isoformat().endswith("-04:00")

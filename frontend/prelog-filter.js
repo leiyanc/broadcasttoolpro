@@ -135,6 +135,10 @@ inspectPlaylistsButton.addEventListener("click", async () => {
 
   const data = new FormData();
   appendFiles(data);
+  data.append(
+    "source_timezone",
+    prelogForm.elements.source_timezone.value,
+  );
   inspectPlaylistsButton.disabled = true;
   inspectPlaylistsButton.textContent = "Inspecting…";
 
@@ -159,9 +163,14 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     addMetric(playlistSummaryMetrics, `${result.events_received} Events`);
     addMetric(playlistSummaryMetrics, `${result.assets.length} Unique assets`);
     addMetric(playlistSummaryMetrics, `${result.channels.length} Channels`);
+    addMetric(
+      playlistSummaryMetrics,
+      result.source_timezone || "Time zone not detected",
+    );
     playlistSummaryMessage.textContent = (
       `${result.channels.join(", ") || "Unknown channel"} · ` +
-      `${result.start_date || "Unknown date"} to ${result.end_date || "Unknown date"}`
+      `Broadcast days ${result.start_date || "Unknown"} to ` +
+      `${result.end_date || "Unknown"} · 06:00–05:59`
     );
     prelogStartDate.value = result.start_date || "";
     prelogEndDate.value = result.end_date || "";
@@ -185,8 +194,8 @@ prelogForm.addEventListener("submit", async (event) => {
     "filter_value",
     "start_date",
     "end_date",
-    "start_time",
-    "end_time",
+    "broadcast_day_start",
+    "source_timezone",
   ]) {
     const value = prelogForm.elements[field].value;
     if (value) data.append(field, value);
