@@ -1,0 +1,7 @@
+2026-07-25,06:00:00,,Comercio TV,,,
+HOUR,DURATION,ASSET ID,SEGMENT ID,TYPE,MEDIA TYPE,START TIME TYPE
+06:00:00,,Morning Programming,1,show-start,show,
+06:00:00,0:00:30,promo_open,1,,primary,
+06:00:30,0:00:45,client_spot_a,1,,primary,
+06:01:15,0:00:45,client_spot_a,1,,primary,
+06:02:00,0:00:15,promo_close,1,,primary,
