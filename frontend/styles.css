@@ -441,6 +441,17 @@ h2 {
   font-weight: 700;
 }
 
+.template-downloads {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.text-link-secondary {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
