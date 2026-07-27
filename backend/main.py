@@ -8,6 +8,7 @@ from backend.api.xmltv import router as xmltv_router
 from backend.api.prelogs import router as prelogs_router
 from backend.api.postlogs import router as postlogs_router
 from backend.api.history import router as history_router
+from backend.api.hls import router as hls_router
 
 
 app = FastAPI(
@@ -20,6 +21,7 @@ app.include_router(xmltv_router)
 app.include_router(prelogs_router)
 app.include_router(postlogs_router)
 app.include_router(history_router)
+app.include_router(hls_router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 app.mount(

@@ -29,6 +29,9 @@ def test_frontend_uses_xmltv_endpoints():
     postlog_javascript = (
         FRONTEND_DIR / "postlog-certification.js"
     ).read_text()
+    hls_javascript = (
+        FRONTEND_DIR / "hls-validator.js"
+    ).read_text()
 
     assert "/api/xmltv/import" in javascript
     assert "/api/xmltv/generate" in javascript
@@ -42,6 +45,7 @@ def test_frontend_uses_xmltv_endpoints():
     assert "/api/postlogs/options" in postlog_javascript
     assert "/api/postlogs/filter" in postlog_javascript
     assert "/api/postlogs/export" in postlog_javascript
+    assert "/api/hls/validate" in hls_javascript
 
 
 def test_validator_frontend_is_available():

@@ -14,7 +14,7 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260727-8" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260727-9" />
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -24,6 +24,7 @@
       defer
     ></script>
     <script src="/static/report-history.js?v=20260726-4" defer></script>
+    <script src="/static/hls-validator.js?v=20260727-1" defer></script>
   </head>
 
   <body>
@@ -93,6 +94,10 @@
             href="#prelog"
           >
             Launch Pre Logs
+          </a>
+
+          <a class="button button-secondary" href="#hls-validator">
+            Launch HLS Validator
           </a>
 
         </div>
@@ -1180,6 +1185,76 @@
             </button>
           </div>
           <p class="export-status" id="postlog-export-status"></p>
+        </section>
+      </section>
+
+      <section
+        class="generator-shell validator-shell"
+        id="hls-validator"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">STREAMING QC</p>
+            <h2>Validate HLS Stream</h2>
+            <p class="section-copy">
+              Inspect an HLS playlist before distribution or playback.
+            </p>
+          </div>
+          <span class="module-badge">New</span>
+        </div>
+
+        <form id="hls-validator-form">
+          <label class="hls-url-field">
+            <span>HLS Playlist URL</span>
+            <input
+              id="hls-playlist-url"
+              name="playlist_url"
+              type="url"
+              placeholder="https://example.com/live/master.m3u8"
+              required
+            />
+          </label>
+          <div class="form-actions">
+            <button
+              class="button button-primary"
+              id="validate-hls-button"
+              type="submit"
+            >
+              Validate HLS
+            </button>
+          </div>
+        </form>
+
+        <section
+          class="result-panel is-hidden"
+          id="hls-result-panel"
+          aria-live="polite"
+        >
+          <div class="result-icon" id="hls-result-icon">✓</div>
+          <div class="hls-result-content">
+            <h3 id="hls-result-title">HLS stream is valid</h3>
+            <p id="hls-result-message"></p>
+            <div class="result-metrics" id="hls-result-metrics"></div>
+            <ul class="issue-list" id="hls-issue-list"></ul>
+            <div
+              class="table-scroll is-hidden"
+              id="hls-variant-table"
+            >
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Bandwidth</th>
+                    <th>Resolution</th>
+                    <th>Frame Rate</th>
+                    <th>Codecs</th>
+                    <th>Segments</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="hls-variant-body"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
       </section>
 
