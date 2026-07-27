@@ -17,6 +17,10 @@
     sans-serif;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
