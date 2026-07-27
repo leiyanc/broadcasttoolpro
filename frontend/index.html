@@ -24,7 +24,7 @@
       defer
     ></script>
     <script src="/static/report-history.js?v=20260726-4" defer></script>
-    <script src="/static/hls-validator.js?v=20260727-2" defer></script>
+    <script src="/static/hls-validator.js?v=20260727-3" defer></script>
   </head>
 
   <body>
@@ -1214,13 +1214,37 @@
               required
             />
           </label>
-          <div class="form-actions">
+          <div class="hls-monitor-controls">
+            <label>
+              <span>Monitoring Period</span>
+              <select id="hls-monitor-duration">
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-actions hls-actions">
             <button
               class="button button-primary"
               id="validate-hls-button"
               type="submit"
             >
               Validate HLS
+            </button>
+            <button
+              class="button button-secondary"
+              id="monitor-hls-button"
+              type="button"
+            >
+              Monitor Stream
+            </button>
+            <button
+              class="button button-secondary is-hidden"
+              id="stop-hls-monitor-button"
+              type="button"
+            >
+              Stop Monitoring
             </button>
           </div>
         </form>
@@ -1271,6 +1295,31 @@
                 <tbody id="hls-trigger-body"></tbody>
               </table>
             </div>
+            <section
+              class="hls-monitor-panel is-hidden"
+              id="hls-monitor-panel"
+            >
+              <div class="hls-monitor-heading">
+                <div>
+                  <strong id="hls-monitor-title">Monitoring stream…</strong>
+                  <small id="hls-monitor-status"></small>
+                </div>
+                <span id="hls-monitor-countdown">00:00</span>
+              </div>
+              <div class="table-scroll">
+                <table class="preview-table">
+                  <thead>
+                    <tr>
+                      <th>Detected</th>
+                      <th>Type</th>
+                      <th>ID</th>
+                      <th>Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hls-monitor-trigger-body"></tbody>
+                </table>
+              </div>
+            </section>
           </div>
         </section>
       </section>

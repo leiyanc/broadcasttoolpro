@@ -11,6 +11,23 @@ const hlsVariantTable = document.querySelector("#hls-variant-table");
 const hlsVariantBody = document.querySelector("#hls-variant-body");
 const hlsTriggerTable = document.querySelector("#hls-trigger-table");
 const hlsTriggerBody = document.querySelector("#hls-trigger-body");
+const hlsMonitorDuration = document.querySelector("#hls-monitor-duration");
+const hlsMonitorButton = document.querySelector("#monitor-hls-button");
+const hlsStopButton = document.querySelector("#stop-hls-monitor-button");
+const hlsMonitorPanel = document.querySelector("#hls-monitor-panel");
+const hlsMonitorTitle = document.querySelector("#hls-monitor-title");
+const hlsMonitorStatus = document.querySelector("#hls-monitor-status");
+const hlsMonitorCountdown = document.querySelector("#hls-monitor-countdown");
+const hlsMonitorTriggerBody = document.querySelector(
+  "#hls-monitor-trigger-body",
+);
+
+let hlsMonitorTimer = null;
+let hlsCountdownTimer = null;
+let hlsMonitorEndsAt = null;
+let hlsMonitorUrl = "";
+let hlsPolls = 0;
+const hlsSeenTriggers = new Set();
 
 function hlsMetric(label) {
   const metric = document.createElement("span");
@@ -119,6 +136,119 @@ function renderHlsRequestError(message) {
   hlsMessage.textContent = "The playlist could not be inspected.";
 }
 
+async function requestHlsValidation(playlistUrl) {
+  const formData = new FormData();
+  formData.append("playlist_url", playlistUrl);
+  const response = await fetch("/api/hls/validate", {
+    method: "POST",
+    body: formData,
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.detail === "string"
+        ? payload.detail
+        : "The HLS validation request failed.",
+    );
+  }
+  return payload;
+}
+
+function hlsTriggerKey(trigger) {
+  return JSON.stringify([
+    trigger.type,
+    trigger.id,
+    trigger.start_date,
+    trigger.duration,
+    trigger.payload,
+  ]);
+}
+
+function addMonitoredTriggers(result) {
+  const variants = Array.isArray(result.variants) ? result.variants : [];
+  const triggers = result.media?.triggers
+    || variants.flatMap((variant) => variant.triggers || []);
+  let added = 0;
+
+  triggers.forEach((trigger) => {
+    const key = hlsTriggerKey(trigger);
+    if (hlsSeenTriggers.has(key)) return;
+    hlsSeenTriggers.add(key);
+    added += 1;
+
+    const row = document.createElement("tr");
+    hlsCell(row, new Date().toLocaleTimeString());
+    hlsCell(row, trigger.type);
+    hlsCell(row, trigger.id);
+    hlsCell(
+      row,
+      trigger.duration == null ? "—" : `${trigger.duration}s`,
+    );
+    hlsMonitorTriggerBody.prepend(row);
+  });
+  return added;
+}
+
+function stopHlsMonitoring(completed = false) {
+  window.clearTimeout(hlsMonitorTimer);
+  window.clearInterval(hlsCountdownTimer);
+  hlsMonitorTimer = null;
+  hlsCountdownTimer = null;
+  hlsMonitorButton.disabled = false;
+  hlsMonitorButton.textContent = "Monitor Stream";
+  hlsStopButton.classList.add("is-hidden");
+  hlsMonitorTitle.textContent = completed
+    ? "Monitoring complete"
+    : "Monitoring stopped";
+  hlsMonitorStatus.textContent = (
+    `${hlsPolls} inspections · ${hlsSeenTriggers.size} unique triggers`
+  );
+  hlsMonitorCountdown.textContent = "00:00";
+}
+
+function updateHlsCountdown() {
+  const remaining = Math.max(0, hlsMonitorEndsAt - Date.now());
+  const seconds = Math.ceil(remaining / 1000);
+  const minutes = Math.floor(seconds / 60);
+  hlsMonitorCountdown.textContent = (
+    `${String(minutes).padStart(2, "0")}:`
+    + `${String(seconds % 60).padStart(2, "0")}`
+  );
+  if (remaining <= 0 && hlsMonitorTimer) {
+    stopHlsMonitoring(true);
+  }
+}
+
+async function pollHlsMonitor() {
+  if (!hlsMonitorTimer || Date.now() >= hlsMonitorEndsAt) {
+    stopHlsMonitoring(true);
+    return;
+  }
+
+  try {
+    const result = await requestHlsValidation(hlsMonitorUrl);
+    hlsPolls += 1;
+    addMonitoredTriggers(result);
+
+    if (result.playlist_type === "master" && result.variants?.length) {
+      hlsMonitorUrl = result.variants[0].url;
+    }
+    const targetDuration = result.media?.target_duration
+      || result.variants?.[0]?.target_duration
+      || 6;
+    hlsMonitorStatus.textContent = (
+      `${hlsPolls} inspections · ${hlsSeenTriggers.size} unique triggers`
+    );
+    hlsMonitorTimer = window.setTimeout(
+      pollHlsMonitor,
+      Math.max(2, targetDuration) * 1000,
+    );
+  } catch (error) {
+    hlsMonitorStatus.textContent = error.message;
+    hlsMonitorTimer = window.setTimeout(pollHlsMonitor, 6000);
+  }
+}
+
 if (hlsForm) {
   hlsForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -127,29 +257,43 @@ if (hlsForm) {
     hlsButton.disabled = true;
     hlsButton.textContent = "Validating…";
 
-    const formData = new FormData();
-    formData.append("playlist_url", hlsUrl.value.trim());
-
     try {
-      const response = await fetch("/api/hls/validate", {
-        method: "POST",
-        body: formData,
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        renderHlsRequestError(
-          typeof payload.detail === "string"
-            ? payload.detail
-            : "The HLS validation request failed.",
-        );
-      } else {
-        renderHlsResult(payload);
-      }
-    } catch {
-      renderHlsRequestError("The HLS validation service is unavailable.");
+      renderHlsResult(await requestHlsValidation(hlsUrl.value.trim()));
+    } catch (error) {
+      renderHlsRequestError(error.message);
     } finally {
       hlsButton.disabled = false;
       hlsButton.textContent = "Validate HLS";
     }
+  });
+}
+
+if (hlsMonitorButton) {
+  hlsMonitorButton.addEventListener("click", () => {
+    if (!hlsForm.reportValidity()) return;
+
+    stopHlsMonitoring();
+    hlsSeenTriggers.clear();
+    hlsMonitorTriggerBody.replaceChildren();
+    hlsPolls = 0;
+    hlsMonitorUrl = hlsUrl.value.trim();
+    hlsMonitorEndsAt = (
+      Date.now() + Number(hlsMonitorDuration.value) * 60 * 1000
+    );
+    hlsMonitorPanel.classList.remove("is-hidden");
+    hlsStopButton.classList.remove("is-hidden");
+    hlsMonitorButton.disabled = true;
+    hlsMonitorButton.textContent = "Monitoring…";
+    hlsMonitorTitle.textContent = "Monitoring stream…";
+    hlsMonitorStatus.textContent = "Starting first inspection…";
+    hlsMonitorTimer = window.setTimeout(pollHlsMonitor, 0);
+    hlsCountdownTimer = window.setInterval(updateHlsCountdown, 1000);
+    updateHlsCountdown();
+  });
+}
+
+if (hlsStopButton) {
+  hlsStopButton.addEventListener("click", () => {
+    stopHlsMonitoring();
   });
 }

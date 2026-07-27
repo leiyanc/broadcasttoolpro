@@ -524,6 +524,62 @@ h2 {
   font: inherit;
 }
 
+.hls-monitor-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px);
+  margin-top: 18px;
+}
+
+.hls-monitor-controls label {
+  display: grid;
+  gap: 9px;
+}
+
+.hls-monitor-controls span {
+  color: #40526a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hls-monitor-controls select {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cbd8e7;
+  border-radius: 10px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+}
+
+.hls-monitor-panel {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.hls-monitor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.hls-monitor-heading div {
+  display: grid;
+  gap: 4px;
+}
+
+.hls-monitor-heading small {
+  color: var(--muted);
+}
+
+#hls-monitor-countdown {
+  color: var(--blue);
+  font-size: 20px;
+  font-weight: 800;
+}
+
 .hls-result-content {
   min-width: 0;
   width: 100%;
