@@ -113,12 +113,108 @@ def _issue(severity: str, rule_id: str, message: str) -> dict:
     }
 
 
+def _trigger_duration(value: str | None) -> float | None:
+    if not value:
+        return None
+    candidate = value.split(":", 1)[-1]
+    attributes = _attributes(candidate)
+    candidate = (
+        attributes.get("DURATION")
+        or attributes.get("Duration")
+        or candidate.split(",", 1)[0]
+    )
+    try:
+        return float(candidate)
+    except ValueError:
+        return None
+
+
+def _detect_triggers(lines: list[str]) -> tuple[list[dict], list[dict]]:
+    triggers = []
+    issues = []
+    cue_outs = 0
+    cue_ins = 0
+
+    for line_number, line in enumerate(lines, 1):
+        if line.startswith("#EXT-X-DATERANGE:"):
+            attributes = _attributes(line.split(":", 1)[1])
+            scte_fields = {
+                key: value
+                for key, value in attributes.items()
+                if key.startswith("SCTE35-")
+            }
+            is_ad_trigger = bool(scte_fields) or any(
+                word in attributes.get("CLASS", "").lower()
+                for word in ("ad", "scte", "interstitial")
+            )
+            triggers.append({
+                "line": line_number,
+                "type": "SCTE-35 DATERANGE"
+                if scte_fields
+                else "DATERANGE",
+                "id": attributes.get("ID"),
+                "class": attributes.get("CLASS"),
+                "start_date": attributes.get("START-DATE"),
+                "duration": _trigger_duration(
+                    attributes.get("DURATION")
+                    or attributes.get("PLANNED-DURATION")
+                ),
+                "payload": next(iter(scte_fields.values()), None),
+                "ad_trigger": is_ad_trigger,
+            })
+            continue
+
+        trigger_type = None
+        if line.startswith("#EXT-X-CUE-OUT-CONT"):
+            trigger_type = "CUE-OUT-CONT"
+        elif line.startswith("#EXT-X-CUE-OUT"):
+            trigger_type = "CUE-OUT"
+            cue_outs += 1
+        elif line.startswith("#EXT-X-CUE-IN"):
+            trigger_type = "CUE-IN"
+            cue_ins += 1
+        elif line.startswith("#EXT-OATCLS-SCTE35"):
+            trigger_type = "OATCLS-SCTE35"
+        elif line.startswith("#EXT-X-SPLICEPOINT-SCTE35"):
+            trigger_type = "SPLICEPOINT-SCTE35"
+        elif line.startswith("#EXT-X-ASSET"):
+            trigger_type = "ASSET"
+
+        if trigger_type:
+            value = line.split(":", 1)[1] if ":" in line else None
+            triggers.append({
+                "line": line_number,
+                "type": trigger_type,
+                "id": None,
+                "class": None,
+                "start_date": None,
+                "duration": (
+                    _trigger_duration(value)
+                    if trigger_type.startswith("CUE-OUT")
+                    else None
+                ),
+                "payload": value,
+                "ad_trigger": True,
+            })
+
+    if cue_ins > cue_outs:
+        issues.append(_issue(
+            "warning",
+            "HLS-012",
+            "The playlist contains more CUE-IN than CUE-OUT markers.",
+        ))
+
+    return triggers, issues
+
+
 def _inspect_media_playlist(
     text: str,
     url: str,
 ) -> tuple[dict, list[dict]]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     issues = []
+    triggers, trigger_issues = _detect_triggers(lines)
+    issues.extend(trigger_issues)
     segment_uris = [
         line
         for line in lines
@@ -189,6 +285,12 @@ def _inspect_media_playlist(
             for line in lines
         ),
         "discontinuities": lines.count("#EXT-X-DISCONTINUITY"),
+        "triggers": triggers,
+        "trigger_count": len(triggers),
+        "scte35_detected": any(
+            "SCTE" in trigger["type"] or trigger["type"].startswith("CUE-")
+            for trigger in triggers
+        ),
         "first_segment_url": (
             urljoin(url, segment_uris[0])
             if segment_uris
@@ -297,6 +399,9 @@ def validate_hls(
                 "segments": variant_media["segments"],
                 "target_duration": variant_media["target_duration"],
                 "live": variant_media["live"],
+                "trigger_count": variant_media["trigger_count"],
+                "scte35_detected": variant_media["scte35_detected"],
+                "triggers": variant_media["triggers"],
             })
             for issue in variant_issues:
                 issues.append({
@@ -311,6 +416,11 @@ def validate_hls(
 
     critical = sum(issue["severity"] == "critical" for issue in issues)
     warnings = sum(issue["severity"] == "warning" for issue in issues)
+    trigger_count = (
+        sum(variant.get("trigger_count", 0) for variant in variants)
+        if variants
+        else (media or {}).get("trigger_count", 0)
+    )
     return {
         "valid": critical == 0,
         "url": normalized_url,
@@ -322,6 +432,12 @@ def validate_hls(
             MAX_VARIANTS_TO_INSPECT,
         ),
         "media": media,
+        "trigger_count": trigger_count,
+        "scte35_detected": (
+            any(variant.get("scte35_detected") for variant in variants)
+            if variants
+            else bool((media or {}).get("scte35_detected"))
+        ),
         "critical": critical,
         "warnings": warnings,
         "issues": issues,

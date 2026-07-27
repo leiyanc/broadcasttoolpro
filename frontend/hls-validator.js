@@ -9,6 +9,8 @@ const hlsMetrics = document.querySelector("#hls-result-metrics");
 const hlsIssues = document.querySelector("#hls-issue-list");
 const hlsVariantTable = document.querySelector("#hls-variant-table");
 const hlsVariantBody = document.querySelector("#hls-variant-body");
+const hlsTriggerTable = document.querySelector("#hls-trigger-table");
+const hlsTriggerBody = document.querySelector("#hls-trigger-body");
 
 function hlsMetric(label) {
   const metric = document.createElement("span");
@@ -27,7 +29,9 @@ function renderHlsResult(result) {
   hlsMetrics.replaceChildren();
   hlsIssues.replaceChildren();
   hlsVariantBody.replaceChildren();
+  hlsTriggerBody.replaceChildren();
   hlsVariantTable.classList.add("is-hidden");
+  hlsTriggerTable.classList.add("is-hidden");
 
   hlsPanel.classList.toggle("is-error", !result.valid);
   hlsIcon.textContent = result.valid ? "✓" : "!";
@@ -43,6 +47,8 @@ function renderHlsResult(result) {
     : "Media Playlist");
   hlsMetric(`${result.critical || 0} Critical`);
   hlsMetric(`${result.warnings || 0} Warnings`);
+  hlsMetric(`${result.trigger_count || 0} Triggers`);
+  hlsMetric(result.scte35_detected ? "SCTE-35 Detected" : "No SCTE-35");
 
   if (result.media) {
     hlsMetric(`${result.media.segments || 0} Segments`);
@@ -73,11 +79,29 @@ function renderHlsResult(result) {
       hlsCell(row, variant.frame_rate);
       hlsCell(row, variant.codecs);
       hlsCell(row, variant.segments);
+      hlsCell(row, variant.trigger_count || 0);
       hlsCell(row, variant.valid === false ? "Needs attention" : "Valid");
       hlsVariantBody.appendChild(row);
     });
     hlsVariantTable.classList.remove("is-hidden");
     hlsMetric(`${result.variant_count || variants.length} Variants`);
+  }
+
+  const triggers = result.media?.triggers
+    || variants.flatMap((variant) => variant.triggers || []);
+  if (triggers.length) {
+    triggers.forEach((trigger) => {
+      const row = document.createElement("tr");
+      hlsCell(row, trigger.type);
+      hlsCell(row, trigger.id);
+      hlsCell(row, trigger.start_date);
+      hlsCell(
+        row,
+        trigger.duration == null ? "—" : `${trigger.duration}s`,
+      );
+      hlsTriggerBody.appendChild(row);
+    });
+    hlsTriggerTable.classList.remove("is-hidden");
   }
 }
 

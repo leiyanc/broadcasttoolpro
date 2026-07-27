@@ -25,6 +25,18 @@ segment101.ts
 #EXT-X-ENDLIST
 """
 
+SCTE35_PLAYLIST = """#EXTM3U
+#EXT-X-TARGETDURATION:8
+#EXT-X-PROGRAM-DATE-TIME:2026-07-27T12:00:00Z
+#EXT-X-DATERANGE:ID="break-100",CLASS="com.apple.hls.scte35",START-DATE="2026-07-27T12:00:00Z",PLANNED-DURATION=30.0,SCTE35-OUT=0xFC30
+#EXT-X-CUE-OUT:30
+#EXTINF:8,
+segment100.ts
+#EXT-X-CUE-IN
+#EXTINF:8,
+segment101.ts
+"""
+
 
 def test_master_playlist_reports_variants():
     playlists = {
@@ -70,6 +82,28 @@ def test_invalid_media_playlist_reports_blocking_issues():
         issue["rule_id"] == "HLS-008"
         for issue in result["issues"]
     )
+
+
+def test_scte35_and_legacy_cue_triggers_are_detected():
+    result = validate_hls(
+        "https://cdn.example.com/live/index.m3u8",
+        fetcher=lambda _: SCTE35_PLAYLIST,
+    )
+
+    trigger_types = {
+        trigger["type"]
+        for trigger in result["media"]["triggers"]
+    }
+    assert result["valid"] is True
+    assert result["scte35_detected"] is True
+    assert result["trigger_count"] == 3
+    assert {
+        "SCTE-35 DATERANGE",
+        "CUE-OUT",
+        "CUE-IN",
+    } <= trigger_types
+    assert result["media"]["triggers"][0]["id"] == "break-100"
+    assert result["media"]["triggers"][0]["duration"] == 30.0
 
 
 def test_non_playlist_resource_is_rejected():
