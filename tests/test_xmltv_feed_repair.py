@@ -39,9 +39,13 @@ def repair_upload() -> UploadFile:
     )
 
 
-def test_safe_repairs_produce_valid_xmltv():
+def test_safe_repairs_preserve_missing_metadata_findings():
     result = repair_xmltv(REPAIRABLE_XMLTV)
     rule_ids = {change["rule_id"] for change in result["changes"]}
+    validation_rule_ids = {
+        issue["rule_id"]
+        for issue in result["validation"]["validation"]["issues"]
+    }
 
     assert result["changes_count"] == 7
     assert {
@@ -50,7 +54,8 @@ def test_safe_repairs_produce_valid_xmltv():
         "REPAIR-003",
         "REPAIR-004",
     } <= rule_ids
-    assert result["validation"]["valid"] is True
+    assert result["validation"]["valid"] is False
+    assert {"XMLTV-017", "XMLTV-018"} <= validation_rule_ids
     assert b'stop="20260718123000 +0000"' in result["xml"]
 
 

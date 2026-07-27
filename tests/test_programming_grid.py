@@ -66,9 +66,13 @@ def test_different_live_shows_use_different_dark_backgrounds():
 
 def test_programming_grid_endpoint_uses_the_original_epg_upload():
     path = Path("tests/sample_schedule.csv")
+    content = path.read_text().replace(
+        ",morning-news-s01e01,",
+        ",,",
+    ).encode()
     upload = UploadFile(
         filename=path.name,
-        file=BytesIO(path.read_bytes()),
+        file=BytesIO(content),
     )
 
     response = asyncio.run(
