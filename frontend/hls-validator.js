@@ -297,6 +297,9 @@ if (hlsForm) {
     event.preventDefault();
     if (!hlsForm.reportValidity()) return;
 
+    stopHlsMonitoring();
+    hlsMonitorPanel.classList.add("is-hidden");
+    hlsStopButton.classList.add("is-hidden");
     hlsButton.disabled = true;
     hlsButton.textContent = "Validating…";
     hlsMonitorStartedAt = null;

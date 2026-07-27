@@ -1,10 +1,13 @@
 import ipaddress
 import socket
+import ssl
 from collections.abc import Callable
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import (
     HTTPRedirectHandler,
+    HTTPSHandler,
     Request,
     build_opener,
 )
@@ -21,6 +24,18 @@ class HlsValidationError(ValueError):
 class _NoRedirects(HTTPRedirectHandler):
     def redirect_request(self, request, file_pointer, code, message, headers, new_url):
         return None
+
+
+def _https_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    verify_paths = ssl.get_default_verify_paths()
+
+    if verify_paths.cafile is None:
+        system_bundle = Path("/etc/ssl/cert.pem")
+        if system_bundle.is_file():
+            context.load_verify_locations(cafile=system_bundle)
+
+    return context
 
 
 def _validate_public_url(url: str) -> None:
@@ -64,7 +79,11 @@ def fetch_playlist(url: str) -> str:
     )
 
     try:
-        with build_opener(_NoRedirects()).open(request, timeout=10) as response:
+        opener = build_opener(
+            _NoRedirects(),
+            HTTPSHandler(context=_https_context()),
+        )
+        with opener.open(request, timeout=10) as response:
             content = response.read(MAX_PLAYLIST_SIZE + 1)
     except HTTPError as exc:
         raise HlsValidationError(
