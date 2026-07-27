@@ -12,6 +12,7 @@ const hlsVariantBody = document.querySelector("#hls-variant-body");
 const hlsTriggerTable = document.querySelector("#hls-trigger-table");
 const hlsTriggerBody = document.querySelector("#hls-trigger-body");
 const hlsMonitorDuration = document.querySelector("#hls-monitor-duration");
+const hlsReportLanguage = document.querySelector("#hls-report-language");
 const hlsMonitorButton = document.querySelector("#monitor-hls-button");
 const hlsStopButton = document.querySelector("#stop-hls-monitor-button");
 const hlsMonitorPanel = document.querySelector("#hls-monitor-panel");
@@ -368,6 +369,7 @@ function hlsReportPayload() {
     monitoring_minutes: monitoringMinutes,
     inspections: hlsPolls || 1,
     generated_at: new Date().toISOString(),
+    report_language: hlsReportLanguage.value,
     scte35_detected: (
       result.scte35_detected
       || triggers.some((trigger) => (

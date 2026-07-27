@@ -85,6 +85,9 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert 'id="stop-hls-monitor-button"' in html
     assert 'id="hls-monitor-trigger-body"' in html
     assert 'id="download-hls-report-button"' in html
+    assert 'id="hls-report-language"' in html
+    assert '<option value="en">English</option>' in html
+    assert '<option value="es">Español</option>' in html
     assert '<option value="5">5 minutes</option>' in html
     assert '<option value="10">10 minutes</option>' in html
     assert '<option value="15">15 minutes</option>' in html

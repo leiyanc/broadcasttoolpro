@@ -142,6 +142,7 @@ def sample_report() -> dict:
         "monitoring_minutes": 5,
         "inspections": 50,
         "generated_at": "2026-07-27T16:00:00Z",
+        "report_language": "en",
         "scte35_detected": True,
         "trigger_count": 1,
         "variants": [{
@@ -179,3 +180,15 @@ def test_hls_pdf_report_is_branded_and_downloadable():
     assert "broadcast-tool-pro-hls-report.pdf" in response.headers[
         "content-disposition"
     ]
+
+
+def test_hls_pdf_report_supports_spanish():
+    report = sample_report()
+    report["report_language"] = "es"
+
+    content = generate_hls_report(report)
+    english_content = generate_hls_report(sample_report())
+
+    assert content.startswith(b"%PDF")
+    assert len(content) > 3_000
+    assert content != english_content
