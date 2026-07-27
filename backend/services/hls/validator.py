@@ -14,6 +14,7 @@ from urllib.request import (
 
 
 MAX_PLAYLIST_SIZE = 2 * 1024 * 1024
+MAX_SEGMENT_INSPECTION_SIZE = 512 * 1024
 MAX_VARIANTS_TO_INSPECT = 10
 
 
@@ -99,6 +100,163 @@ def fetch_playlist(url: str) -> str:
         return content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise HlsValidationError("The playlist must use UTF-8 encoding.") from exc
+
+
+def fetch_segment_sample(url: str) -> bytes:
+    _validate_public_url(url)
+    request = Request(
+        url,
+        headers={
+            "Range": f"bytes=0-{MAX_SEGMENT_INSPECTION_SIZE - 1}",
+            "User-Agent": "BroadcastToolPro-HLSValidator/1.0",
+        },
+    )
+    try:
+        opener = build_opener(
+            _NoRedirects(),
+            HTTPSHandler(context=_https_context()),
+        )
+        with opener.open(request, timeout=10) as response:
+            return response.read(MAX_SEGMENT_INSPECTION_SIZE)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise HlsValidationError(
+            "The media segment could not be inspected."
+        ) from exc
+
+
+def _transport_payload(packet: bytes) -> tuple[int, bool, bytes] | None:
+    if len(packet) != 188 or packet[0] != 0x47:
+        return None
+    pid = ((packet[1] & 0x1F) << 8) | packet[2]
+    payload_start = bool(packet[1] & 0x40)
+    adaptation_control = (packet[3] >> 4) & 0x03
+    if adaptation_control not in {1, 3}:
+        return pid, payload_start, b""
+    offset = 4
+    if adaptation_control == 3:
+        offset += 1 + packet[4]
+    return pid, payload_start, packet[offset:] if offset < 188 else b""
+
+
+def _psi_section(payload: bytes, payload_start: bool) -> bytes:
+    if not payload_start or not payload:
+        return b""
+    pointer = payload[0]
+    start = 1 + pointer
+    return payload[start:] if start < len(payload) else b""
+
+
+def inspect_mpegts_scte35(content: bytes) -> dict:
+    sync_offset = next(
+        (
+            offset
+            for offset in range(min(188, len(content)))
+            if content[offset] == 0x47
+            and offset + 188 < len(content)
+            and content[offset + 188] == 0x47
+        ),
+        None,
+    )
+    if sync_offset is None:
+        return {
+            "mpegts": False,
+            "track_detected": False,
+            "pids": [],
+            "triggers": [],
+        }
+
+    packets = [
+        content[index:index + 188]
+        for index in range(sync_offset, len(content) - 187, 188)
+    ]
+    pmt_pids = set()
+    scte_pids = set()
+
+    for packet in packets:
+        parsed = _transport_payload(packet)
+        if parsed is None:
+            continue
+        pid, payload_start, payload = parsed
+        section = _psi_section(payload, payload_start)
+        if pid == 0 and len(section) >= 12 and section[0] == 0:
+            section_length = ((section[1] & 0x0F) << 8) | section[2]
+            end = min(len(section), 3 + section_length - 4)
+            position = 8
+            while position + 4 <= end:
+                program = (section[position] << 8) | section[position + 1]
+                program_pid = (
+                    ((section[position + 2] & 0x1F) << 8)
+                    | section[position + 3]
+                )
+                if program:
+                    pmt_pids.add(program_pid)
+                position += 4
+
+    for packet in packets:
+        parsed = _transport_payload(packet)
+        if parsed is None:
+            continue
+        pid, payload_start, payload = parsed
+        if pid not in pmt_pids:
+            continue
+        section = _psi_section(payload, payload_start)
+        if len(section) < 16 or section[0] != 2:
+            continue
+        section_length = ((section[1] & 0x0F) << 8) | section[2]
+        program_info_length = ((section[10] & 0x0F) << 8) | section[11]
+        position = 12 + program_info_length
+        end = min(len(section), 3 + section_length - 4)
+        while position + 5 <= end:
+            stream_type = section[position]
+            elementary_pid = (
+                ((section[position + 1] & 0x1F) << 8)
+                | section[position + 2]
+            )
+            descriptor_length = (
+                ((section[position + 3] & 0x0F) << 8)
+                | section[position + 4]
+            )
+            descriptors = section[
+                position + 5:position + 5 + descriptor_length
+            ]
+            if stream_type == 0x86 or b"CUEI" in descriptors:
+                scte_pids.add(elementary_pid)
+            position += 5 + descriptor_length
+
+    triggers = []
+    seen_payloads = set()
+    for packet in packets:
+        parsed = _transport_payload(packet)
+        if parsed is None:
+            continue
+        pid, payload_start, payload = parsed
+        if pid not in scte_pids:
+            continue
+        section = _psi_section(payload, payload_start)
+        if not section or section[0] != 0xFC:
+            continue
+        signature = section[:64].hex()
+        if signature in seen_payloads:
+            continue
+        seen_payloads.add(signature)
+        triggers.append({
+            "line": None,
+            "type": "SCTE-35 MPEG-TS",
+            "id": None,
+            "class": None,
+            "start_date": None,
+            "duration": None,
+            "payload": signature,
+            "ad_trigger": True,
+            "pid": pid,
+        })
+
+    return {
+        "mpegts": True,
+        "track_detected": bool(scte_pids),
+        "pids": sorted(scte_pids),
+        "triggers": triggers,
+    }
 
 
 def _attributes(value: str) -> dict[str, str]:
@@ -315,12 +473,19 @@ def _inspect_media_playlist(
             if segment_uris
             else None
         ),
+        "last_segment_url": (
+            urljoin(url, segment_uris[-1])
+            if segment_uris
+            else None
+        ),
     }, issues
 
 
 def validate_hls(
     url: str,
     fetcher: Callable[[str], str] = fetch_playlist,
+    inspect_segments: bool = False,
+    segment_fetcher: Callable[[str], bytes] = fetch_segment_sample,
 ) -> dict:
     normalized_url = url.strip()
     if not normalized_url:
@@ -410,6 +575,22 @@ def validate_hls(
                 variant_text,
                 variant["url"],
             )
+            segment_inspection = None
+            if inspect_segments and variant_media["last_segment_url"]:
+                try:
+                    segment_inspection = inspect_mpegts_scte35(
+                        segment_fetcher(variant_media["last_segment_url"])
+                    )
+                except HlsValidationError:
+                    segment_inspection = None
+            segment_triggers = (
+                segment_inspection.get("triggers", [])
+                if segment_inspection
+                else []
+            )
+            combined_triggers = (
+                variant_media["triggers"] + segment_triggers
+            )
             variant.update({
                 "valid": not any(
                     issue["severity"] == "critical"
@@ -418,9 +599,21 @@ def validate_hls(
                 "segments": variant_media["segments"],
                 "target_duration": variant_media["target_duration"],
                 "live": variant_media["live"],
-                "trigger_count": variant_media["trigger_count"],
-                "scte35_detected": variant_media["scte35_detected"],
-                "triggers": variant_media["triggers"],
+                "trigger_count": len(combined_triggers),
+                "scte35_detected": (
+                    variant_media["scte35_detected"]
+                    or bool(segment_triggers)
+                ),
+                "scte35_track_detected": bool(
+                    segment_inspection
+                    and segment_inspection["track_detected"]
+                ),
+                "scte35_pids": (
+                    segment_inspection["pids"]
+                    if segment_inspection
+                    else []
+                ),
+                "triggers": combined_triggers,
             })
             for issue in variant_issues:
                 issues.append({
@@ -432,6 +625,24 @@ def validate_hls(
     else:
         media, media_issues = _inspect_media_playlist(text, normalized_url)
         issues.extend(media_issues)
+        if inspect_segments and media["last_segment_url"]:
+            try:
+                segment_inspection = inspect_mpegts_scte35(
+                    segment_fetcher(media["last_segment_url"])
+                )
+                segment_triggers = segment_inspection["triggers"]
+                media["triggers"].extend(segment_triggers)
+                media["trigger_count"] = len(media["triggers"])
+                media["scte35_detected"] = (
+                    media["scte35_detected"] or bool(segment_triggers)
+                )
+                media["scte35_track_detected"] = (
+                    segment_inspection["track_detected"]
+                )
+                media["scte35_pids"] = segment_inspection["pids"]
+            except HlsValidationError:
+                media["scte35_track_detected"] = False
+                media["scte35_pids"] = []
 
     critical = sum(issue["severity"] == "critical" for issue in issues)
     warnings = sum(issue["severity"] == "warning" for issue in issues)
@@ -456,6 +667,14 @@ def validate_hls(
             any(variant.get("scte35_detected") for variant in variants)
             if variants
             else bool((media or {}).get("scte35_detected"))
+        ),
+        "scte35_track_detected": (
+            any(
+                variant.get("scte35_track_detected")
+                for variant in variants
+            )
+            if variants
+            else bool((media or {}).get("scte35_track_detected"))
         ),
         "critical": critical,
         "warnings": warnings,

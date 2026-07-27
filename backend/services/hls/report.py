@@ -72,6 +72,7 @@ SPANISH = {
     "inspections": "Inspecciones",
     "detected": "Detectado",
     "not_detected": "No Detectado",
+    "track_present": "Pista Presente; Ningun Cue Observado",
     "triggers": "Triggers Unicos",
     "generated": "Generado",
     "variants": "Resumen de Variantes",
@@ -253,7 +254,14 @@ def generate_hls_report(payload: dict) -> bytes:
             "SCTE-35",
             translated("detected", "Detected")
             if payload.get("scte35_detected")
-            else translated("not_detected", "Not Detected"),
+            else (
+                translated(
+                    "track_present",
+                    "Track Present; No Cue Observed",
+                )
+                if payload.get("scte35_track_detected")
+                else translated("not_detected", "Not Detected")
+            ),
         ],
         [translated("triggers", "Unique Triggers"), str(payload.get("trigger_count", 0))],
         [translated("generated", "Generated"), str(payload.get("generated_at") or "")],

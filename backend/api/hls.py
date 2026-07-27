@@ -17,9 +17,13 @@ router = APIRouter(
 @router.post("/validate")
 def validate_hls_url(
     playlist_url: str = Form(...),
+    inspect_segments: bool = Form(True),
 ):
     try:
-        return validate_hls(playlist_url)
+        return validate_hls(
+            playlist_url,
+            inspect_segments=inspect_segments,
+        )
     except HlsValidationError as exc:
         raise HTTPException(
             status_code=422,

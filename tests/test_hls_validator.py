@@ -2,6 +2,7 @@ from backend.main import app
 from backend.services.hls.validator import (
     HlsValidationError,
     _validate_public_url,
+    inspect_mpegts_scte35,
     validate_hls,
 )
 from backend.api.hls import download_hls_report
@@ -106,6 +107,41 @@ def test_scte35_and_legacy_cue_triggers_are_detected():
     } <= trigger_types
     assert result["media"]["triggers"][0]["id"] == "break-100"
     assert result["media"]["triggers"][0]["duration"] == 30.0
+
+
+def _ts_packet(pid: int, payload: bytes) -> bytes:
+    header = bytes([
+        0x47,
+        0x40 | ((pid >> 8) & 0x1F),
+        pid & 0xFF,
+        0x10,
+    ])
+    return (header + b"\x00" + payload).ljust(188, b"\xFF")
+
+
+def test_mpegts_scte35_track_and_cue_are_detected():
+    pat = bytes.fromhex(
+        "00b00d0001c100000001e1e000000000"
+    )
+    pmt = bytes.fromhex(
+        "02b01a0001c10000e1e1f000"
+        "1be1e1f000"
+        "86e1e3f003520100"
+        "00000000"
+    )
+    cue = bytes.fromhex("fc301100000000000000000000000000")
+    content = (
+        _ts_packet(0, pat)
+        + _ts_packet(480, pmt)
+        + _ts_packet(483, cue)
+    )
+
+    result = inspect_mpegts_scte35(content)
+
+    assert result["mpegts"] is True
+    assert result["track_detected"] is True
+    assert result["pids"] == [483]
+    assert result["triggers"][0]["type"] == "SCTE-35 MPEG-TS"
 
 
 def test_non_playlist_resource_is_rejected():

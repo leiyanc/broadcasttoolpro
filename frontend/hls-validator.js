@@ -77,7 +77,13 @@ function renderHlsResult(result) {
   hlsMetric(`${result.critical || 0} Critical`);
   hlsMetric(`${result.warnings || 0} Warnings`);
   hlsMetric(`${result.trigger_count || 0} Triggers`);
-  hlsMetric(result.scte35_detected ? "SCTE-35 Detected" : "No SCTE-35");
+  if (result.scte35_detected) {
+    hlsMetric("SCTE-35 Cue Detected");
+  } else if (result.scte35_track_detected) {
+    hlsMetric("SCTE-35 Track Present");
+  } else {
+    hlsMetric("No SCTE-35");
+  }
 
   if (result.media) {
     hlsMetric(`${result.media.segments || 0} Segments`);
@@ -151,6 +157,7 @@ function renderHlsRequestError(message) {
 async function requestHlsValidation(playlistUrl) {
   const formData = new FormData();
   formData.append("playlist_url", playlistUrl);
+  formData.append("inspect_segments", "true");
   const response = await fetch("/api/hls/validate", {
     method: "POST",
     body: formData,
@@ -380,6 +387,7 @@ function hlsReportPayload() {
         || trigger.type?.startsWith("CUE-")
       ))
     ),
+    scte35_track_detected: Boolean(result.scte35_track_detected),
     trigger_count: triggers.length,
     variants: hlsInitialVariants.length
       ? hlsInitialVariants
