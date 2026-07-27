@@ -34,7 +34,7 @@ EXCEL_TEMPLATE = ASSETS_DIR / "Broadcast_Tool_Pro_XMLTV_Template.xlsx"
 def fix_category(fix: dict) -> str:
     message = fix["message"]
 
-    if fix["field"] == "Duration (Optional)":
+    if fix["field"] in {"Duration (Optional)", "Duration (Conditional)"}:
         return "Convert numeric durations to HH:MM:SS."
 
     if fix["field"] in {"Premiere", "Live", "New"}:

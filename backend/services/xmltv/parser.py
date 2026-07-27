@@ -15,29 +15,36 @@ EXPECTED_COLUMNS = [
     "Air Date",
     "Start Time",
     "Program Title",
-    "Duration (Optional)",
+    "Duration (Conditional)",
     "Parental Rating",
-    "Program Description",
-    "Original Title",
-    "Cast",
-    "Season Number",
-    "Episode Number",
-    "Original Episode Title",
-    "Episode Description",
+    "Program Description (Conditional)",
+    "Original Title (Optional)",
+    "Cast (Optional)",
+    "Season Number (Optional)",
+    "Episode Number (Optional)",
+    "Original Episode Title (Optional)",
+    "Episode Description (Conditional)",
     "Genre",
-    "Country of Production",
-    "Production Year",
-    "Premiere",
-    "Live",
-    "New",
+    "Country of Production (Optional)",
+    "Production Year (Optional)",
+    "Premiere (Optional)",
+    "Live (Optional)",
+    "New (Optional)",
     "Asset ID",
-    "Original Air Date",
+    "Original Air Date (Optional)",
     "Icon URL (Optional)",
     "Icon Width (Optional)",
     "Icon Height (Optional)",
     "Keywords (Optional)",
-    "Previously Shown",
+    "Previously Shown (Optional)",
 ]
+
+LEGACY_COLUMN_ALIASES = {
+    column.replace(" (Optional)", "").replace(" (Conditional)", ""): column
+    for column in EXPECTED_COLUMNS
+    if column.endswith((" (Optional)", " (Conditional)"))
+}
+LEGACY_COLUMN_ALIASES["Duration (Optional)"] = "Duration (Conditional)"
 
 
 def clean_text(value: Any) -> str | None:
@@ -198,7 +205,7 @@ def normalize_duration(
     if auto_fixes is not None:
         auto_fixes.append({
             "row": source_row,
-            "field": "Duration (Optional)",
+            "field": "Duration (Conditional)",
             "original_value": str(value),
             "normalized_value": normalized,
             "message": "Numeric duration was interpreted as minutes.",
@@ -345,15 +352,27 @@ def read_schedule_file(
     extension = Path(filename).suffix.lower()
 
     if extension == ".csv":
-        return read_csv_rows(content)
+        headers, rows = read_csv_rows(content)
+    elif extension == ".xlsx":
+        headers, rows = read_excel_rows(content)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .xlsx and .csv files are supported.",
+        )
 
-    if extension == ".xlsx":
-        return read_excel_rows(content)
-
-    raise HTTPException(
-        status_code=400,
-        detail="Only .xlsx and .csv files are supported.",
-    )
+    normalized_headers = [
+        LEGACY_COLUMN_ALIASES.get(header, header)
+        for header in headers
+    ]
+    normalized_rows = [
+        {
+            LEGACY_COLUMN_ALIASES.get(key, key): value
+            for key, value in row.items()
+        }
+        for row in rows
+    ]
+    return normalized_headers, normalized_rows
 
 
 def build_programme(
@@ -373,7 +392,7 @@ def build_programme(
         start_time=parse_time(row.get("Start Time")),
         program_title=title,
         duration=normalize_duration(
-            row.get("Duration (Optional)"),
+            row.get("Duration (Conditional)"),
             source_row,
             auto_fixes,
         ),
@@ -382,50 +401,52 @@ def build_programme(
             source_row,
             auto_fixes,
         ),
-        program_description=clean_text(row.get("Program Description")),
-        original_title=clean_text(row.get("Original Title")),
-        cast=parse_cast(row.get("Cast")),
-        season_number=parse_integer(row.get("Season Number")),
-        episode_number=parse_integer(row.get("Episode Number")),
+        program_description=clean_text(
+            row.get("Program Description (Conditional)")
+        ),
+        original_title=clean_text(row.get("Original Title (Optional)")),
+        cast=parse_cast(row.get("Cast (Optional)")),
+        season_number=parse_integer(row.get("Season Number (Optional)")),
+        episode_number=parse_integer(row.get("Episode Number (Optional)")),
         original_episode_title=clean_text(
-            row.get("Original Episode Title")
+            row.get("Original Episode Title (Optional)")
         ),
         episode_description=clean_text(
-            row.get("Episode Description")
+            row.get("Episode Description (Conditional)")
         ),
         genre=clean_text(row.get("Genre")),
         country_of_production=clean_text(
-            row.get("Country of Production")
+            row.get("Country of Production (Optional)")
         ),
-        production_year=parse_integer(row.get("Production Year")),
+        production_year=parse_integer(row.get("Production Year (Optional)")),
         premiere=normalize_boolean(
-            row.get("Premiere"),
+            row.get("Premiere (Optional)"),
             "Premiere",
             source_row,
             auto_fixes,
         ),
         live=normalize_boolean(
-            row.get("Live"),
+            row.get("Live (Optional)"),
             "Live",
             source_row,
             auto_fixes,
         ),
         new=normalize_boolean(
-            row.get("New"),
+            row.get("New (Optional)"),
             "New",
             source_row,
             auto_fixes,
         ),
         asset_id=clean_text(row.get("Asset ID")),
         original_air_date=parse_optional_date(
-            row.get("Original Air Date")
+            row.get("Original Air Date (Optional)")
         ),
         icon_url=clean_text(row.get("Icon URL (Optional)")),
         icon_width=parse_integer(row.get("Icon Width (Optional)")),
         icon_height=parse_integer(row.get("Icon Height (Optional)")),
         keywords=parse_keywords(row.get("Keywords (Optional)")),
         previously_shown=normalize_boolean(
-            row.get("Previously Shown"),
+            row.get("Previously Shown (Optional)"),
             "Previously Shown",
             source_row,
             auto_fixes,
