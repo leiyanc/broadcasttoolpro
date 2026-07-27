@@ -32,6 +32,19 @@ def test_sample_csv_import_is_valid():
     assert result["programmes"][0]["xmltv_stop"] == "20260718123000 +0000"
 
 
+def test_asset_id_is_generated_when_blank():
+    lines = Path("tests/sample_schedule.csv").read_text().splitlines()
+    row = lines[1].replace(",morning-news-s01e01,", ",,")
+
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "automatic_asset_id.csv"
+        path.write_text("\n".join([lines[0], row]))
+        result = import_file(path)
+
+    assert result["success"] is True
+    assert result["programmes"][0]["asset_id"] == "morning-news-s01e01"
+
+
 def test_empty_schedule_is_not_ready_to_generate():
     headers = Path("tests/sample_schedule.csv").read_text().splitlines()[0]
 

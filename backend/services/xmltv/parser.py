@@ -1,4 +1,6 @@
 import csv
+import re
+import unicodedata
 from datetime import date, datetime, time, timedelta
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -30,7 +32,7 @@ EXPECTED_COLUMNS = [
     "Premiere (Optional)",
     "Live (Optional)",
     "New (Optional)",
-    "Asset ID",
+    "Asset ID (Optional)",
     "Original Air Date (Optional)",
     "Icon URL (Optional)",
     "Icon Width (Optional)",
@@ -281,6 +283,38 @@ def parse_optional_date(value: Any) -> str | None:
     return parse_date(value)
 
 
+def generate_asset_id(
+    title: str,
+    air_date: str,
+    season_number: int | None,
+    episode_number: int | None,
+    episode_title: str | None,
+    original_air_date: str | None,
+) -> str:
+    normalized_title = unicodedata.normalize("NFKD", title)
+    slug = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        normalized_title.encode("ascii", "ignore").decode().lower(),
+    ).strip("-") or "programme"
+
+    if season_number is not None and episode_number is not None:
+        return f"{slug}-s{season_number:02d}e{episode_number:02d}"
+
+    if episode_title:
+        normalized_episode = unicodedata.normalize("NFKD", episode_title)
+        episode_slug = re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            normalized_episode.encode("ascii", "ignore").decode().lower(),
+        ).strip("-")
+        if episode_slug:
+            return f"{slug}-{episode_slug}"
+
+    reference_date = original_air_date or air_date
+    return f"{slug}-{reference_date.replace('-', '')}"
+
+
 def read_csv_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
     try:
         text = content.decode("utf-8-sig")
@@ -385,10 +419,26 @@ def build_programme(
     if not title:
         raise ValueError("Program Title is required.")
 
+    air_date = parse_date(row.get("Air Date"))
+    season_number = parse_integer(row.get("Season Number (Optional)"))
+    episode_number = parse_integer(row.get("Episode Number (Optional)"))
+    episode_title = clean_text(row.get("Original Episode Title (Optional)"))
+    original_air_date = parse_optional_date(
+        row.get("Original Air Date (Optional)")
+    )
+    asset_id = clean_text(row.get("Asset ID (Optional)")) or generate_asset_id(
+        title,
+        air_date,
+        season_number,
+        episode_number,
+        episode_title,
+        original_air_date,
+    )
+
     return Programme(
         source_row=source_row,
         channel=clean_text(row.get("Channel (Optional)")),
-        air_date=parse_date(row.get("Air Date")),
+        air_date=air_date,
         start_time=parse_time(row.get("Start Time")),
         program_title=title,
         duration=normalize_duration(
@@ -406,11 +456,9 @@ def build_programme(
         ),
         original_title=clean_text(row.get("Original Title (Optional)")),
         cast=parse_cast(row.get("Cast (Optional)")),
-        season_number=parse_integer(row.get("Season Number (Optional)")),
-        episode_number=parse_integer(row.get("Episode Number (Optional)")),
-        original_episode_title=clean_text(
-            row.get("Original Episode Title (Optional)")
-        ),
+        season_number=season_number,
+        episode_number=episode_number,
+        original_episode_title=episode_title,
         episode_description=clean_text(
             row.get("Episode Description (Conditional)")
         ),
@@ -437,10 +485,8 @@ def build_programme(
             source_row,
             auto_fixes,
         ),
-        asset_id=clean_text(row.get("Asset ID")),
-        original_air_date=parse_optional_date(
-            row.get("Original Air Date (Optional)")
-        ),
+        asset_id=asset_id,
+        original_air_date=original_air_date,
         icon_url=clean_text(row.get("Icon URL (Optional)")),
         icon_width=parse_integer(row.get("Icon Width (Optional)")),
         icon_height=parse_integer(row.get("Icon Height (Optional)")),
