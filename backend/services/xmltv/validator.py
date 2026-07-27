@@ -239,6 +239,40 @@ class StopTimeRule(ValidationRule):
         return issues
 
 
+class RequiredMetadataRule(ValidationRule):
+    rule_id = "VAL-011"
+
+    def validate(
+        self,
+        programmes: list[Programme],
+    ) -> list[ValidationIssue]:
+        issues = []
+
+        for programme in programmes:
+            required = (
+                (
+                    "Description",
+                    programme.episode_description
+                    or programme.program_description,
+                ),
+                ("Genre", programme.genre),
+                ("Parental Rating", programme.parental_rating),
+                ("Asset ID", programme.asset_id),
+            )
+            for field, value in required:
+                if value:
+                    continue
+                issues.append(ValidationIssue(
+                    rule_id=self.rule_id,
+                    severity="critical",
+                    row=programme.source_row,
+                    field=field,
+                    message=f"{field} is required for XMLTV delivery.",
+                ))
+
+        return issues
+
+
 DEFAULT_RULES: tuple[ValidationRule, ...] = (
     ProductionYearRule(),
     DurationRule(),
@@ -246,6 +280,7 @@ DEFAULT_RULES: tuple[ValidationRule, ...] = (
     DuplicateStartRule(),
     OverlapRule(),
     StopTimeRule(),
+    RequiredMetadataRule(),
 )
 
 

@@ -30,6 +30,13 @@ EXPECTED_COLUMNS = [
     "Premiere",
     "Live",
     "New",
+    "Asset ID",
+    "Original Air Date",
+    "Icon URL (Optional)",
+    "Icon Width (Optional)",
+    "Icon Height (Optional)",
+    "Keywords (Optional)",
+    "Previously Shown",
 ]
 
 
@@ -248,6 +255,25 @@ def parse_cast(value: Any) -> list[str]:
     ]
 
 
+def parse_keywords(value: Any) -> list[str]:
+    text = clean_text(value)
+
+    if not text:
+        return []
+
+    return [
+        keyword.strip()
+        for keyword in text.replace(",", ";").split(";")
+        if keyword.strip()
+    ]
+
+
+def parse_optional_date(value: Any) -> str | None:
+    if clean_text(value) is None:
+        return None
+    return parse_date(value)
+
+
 def read_csv_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
     try:
         text = content.decode("utf-8-sig")
@@ -387,6 +413,20 @@ def build_programme(
         new=normalize_boolean(
             row.get("New"),
             "New",
+            source_row,
+            auto_fixes,
+        ),
+        asset_id=clean_text(row.get("Asset ID")),
+        original_air_date=parse_optional_date(
+            row.get("Original Air Date")
+        ),
+        icon_url=clean_text(row.get("Icon URL (Optional)")),
+        icon_width=parse_integer(row.get("Icon Width (Optional)")),
+        icon_height=parse_integer(row.get("Icon Height (Optional)")),
+        keywords=parse_keywords(row.get("Keywords (Optional)")),
+        previously_shown=normalize_boolean(
+            row.get("Previously Shown"),
+            "Previously Shown",
             source_row,
             auto_fixes,
         ),

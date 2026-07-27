@@ -58,6 +58,10 @@ def to_xmltv_utc(value: datetime) -> str:
     return value.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S +0000")
 
 
+def to_xmltv_iso(value: datetime) -> str:
+    return value.strftime("%Y-%m-%dT%H:%M:%S.000%z")
+
+
 def build_utc_schedule(
     programmes: list[Programme],
     timezone_name: str,
@@ -93,6 +97,8 @@ def build_utc_schedule(
                 "stop_utc": stop.astimezone(timezone.utc).isoformat(),
                 "xmltv_start": to_xmltv_utc(start),
                 "xmltv_stop": to_xmltv_utc(stop),
+                "iso_start": to_xmltv_iso(start),
+                "iso_stop": to_xmltv_iso(stop),
             })
 
     return sorted(result, key=lambda item: item["start_utc"])

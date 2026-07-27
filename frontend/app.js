@@ -245,6 +245,7 @@ function buildFormData(includeProfile = false) {
       "primary_language",
       "original_language",
       "rating_system",
+      "timestamp_format",
     ]) {
       data.append(field, form.elements[field].value);
     }

@@ -1,5 +1,7 @@
 from xml.etree import ElementTree
 
+from backend.services.xmltv.validator import parse_duration
+
 
 def add_text_element(
     parent: ElementTree.Element,
@@ -47,9 +49,12 @@ def add_programme_metadata(
     add_text_element(
         element,
         "desc",
-        programme.get("program_description"),
+        programme.get("episode_description")
+        or programme.get("program_description"),
         lang=primary_language,
     )
+    add_text_element(element, "language", primary_language)
+    add_text_element(element, "orig-language", original_language)
 
     cast = programme.get("cast") or []
     if cast:
@@ -57,7 +62,13 @@ def add_programme_metadata(
         for actor in cast:
             add_text_element(credits, "actor", actor)
 
-    add_text_element(element, "date", programme.get("production_year"))
+    original_air_date = programme.get("original_air_date")
+    if original_air_date:
+        add_text_element(
+            element,
+            "date",
+            original_air_date.replace("-", ""),
+        )
     add_text_element(
         element,
         "category",
@@ -69,6 +80,25 @@ def add_programme_metadata(
         "country",
         programme.get("country_of_production"),
     )
+
+    duration = programme.get("duration")
+    if duration:
+        total_seconds = int(parse_duration(duration).total_seconds())
+        add_text_element(
+            element,
+            "length",
+            total_seconds,
+            units="seconds",
+        )
+
+    icon_url = programme.get("icon_url")
+    if icon_url:
+        attributes = {"src": icon_url}
+        if programme.get("icon_width") is not None:
+            attributes["width"] = str(programme["icon_width"])
+        if programme.get("icon_height") is not None:
+            attributes["height"] = str(programme["icon_height"])
+        ElementTree.SubElement(element, "icon", attributes)
 
     season = programme.get("season_number")
     episode = programme.get("episode_number")
@@ -87,6 +117,13 @@ def add_programme_metadata(
             system="onscreen",
         )
 
+    add_text_element(
+        element,
+        "episode-num",
+        programme.get("asset_id"),
+        system="assetID",
+    )
+
     rating = programme.get("parental_rating")
     if rating:
         rating_element = ElementTree.SubElement(
@@ -99,11 +136,17 @@ def add_programme_metadata(
     if programme.get("premiere"):
         ElementTree.SubElement(element, "premiere")
 
+    if programme.get("previously_shown"):
+        ElementTree.SubElement(element, "previously-shown")
+
     if programme.get("live"):
         ElementTree.SubElement(element, "live")
 
     if programme.get("new"):
         ElementTree.SubElement(element, "new")
+
+    for keyword in programme.get("keywords") or []:
+        add_text_element(element, "keyword", keyword)
 
 
 def generate_xmltv(
@@ -113,6 +156,7 @@ def generate_xmltv(
     primary_language: str = "en",
     original_language: str = "en",
     rating_system: str = "VCHIP",
+    timestamp_format: str = "xmltv",
 ) -> bytes:
     root = ElementTree.Element(
         "tv",
@@ -127,12 +171,18 @@ def generate_xmltv(
     )
 
     for programme in programmes:
+        if timestamp_format == "iso8601":
+            start_value = programme["iso_start"]
+            stop_value = programme["iso_stop"]
+        else:
+            start_value = programme["xmltv_start"]
+            stop_value = programme["xmltv_stop"]
         element = ElementTree.SubElement(
             root,
             "programme",
             {
-                "start": programme["xmltv_start"],
-                "stop": programme["xmltv_stop"],
+                "start": start_value,
+                "stop": stop_value,
                 "channel": channel_id,
             },
         )

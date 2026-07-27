@@ -30,6 +30,9 @@ def test_generator_creates_valid_xmltv_structure():
     assert programme is not None
     assert programme.attrib["start"] == "20260718120000 +0000"
     assert programme.findtext("title") == "Morning News"
+    assert programme.findtext("language") == "en"
+    assert programme.findtext("episode-num[@system='assetID']")
+    assert programme.findtext("length") == "1800"
     assert programme.findtext("episode-num[@system='onscreen']") == "S01E01"
     assert programme.find("live") is not None
 

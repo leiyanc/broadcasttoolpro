@@ -24,6 +24,13 @@ class Programme:
     premiere: bool
     live: bool
     new: bool
+    asset_id: str | None = None
+    original_air_date: str | None = None
+    icon_url: str | None = None
+    icon_width: int | None = None
+    icon_height: int | None = None
+    keywords: list[str] | None = None
+    previously_shown: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -9,6 +9,10 @@ from backend.models.validation import ValidationIssue, ValidationReport
 
 MAX_XMLTV_SIZE = 10 * 1024 * 1024
 XMLTV_TIMESTAMP_PATTERN = r"\d{14} [+-]\d{4}"
+ISO_TIMESTAMP_PATTERN = (
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+    r"(?:\.\d{1,6})?[+-]\d{4}"
+)
 
 
 def _issue(
@@ -28,10 +32,11 @@ def _issue(
 
 
 def _parse_timestamp(value: str) -> datetime:
-    if not fullmatch(XMLTV_TIMESTAMP_PATTERN, value):
-        raise ValueError
-
-    return datetime.strptime(value, "%Y%m%d%H%M%S %z")
+    if fullmatch(XMLTV_TIMESTAMP_PATTERN, value):
+        return datetime.strptime(value, "%Y%m%d%H%M%S %z")
+    if fullmatch(ISO_TIMESTAMP_PATTERN, value):
+        return datetime.fromisoformat(value)
+    raise ValueError
 
 
 def _has_text(element: etree._Element | None) -> bool:
@@ -181,7 +186,8 @@ def validate_xmltv(content: bytes) -> dict[str, Any]:
                     "critical",
                     (
                         f"{label} has an invalid {attribute} timestamp. "
-                        "Use YYYYMMDDHHMMSS +0000."
+                        "Use YYYYMMDDHHMMSS +0000 or "
+                        "YYYY-MM-DDTHH:MM:SS.fff+0000."
                     ),
                     programme,
                     attribute,
@@ -209,6 +215,34 @@ def validate_xmltv(content: bytes) -> dict[str, Any]:
                 f"{label} requires a non-empty title.",
                 programme,
                 "title",
+            ))
+
+        required_elements = (
+            ("desc", "description"),
+            ("category", "category"),
+            ("rating", "rating"),
+        )
+        for tag, field_label in required_elements:
+            if any(_has_text(item) for item in programme.findall(tag)):
+                continue
+            issues.append(_issue(
+                "XMLTV-017",
+                "critical",
+                f"{label} requires a non-empty {field_label}.",
+                programme,
+                tag,
+            ))
+
+        asset_ids = programme.xpath(
+            './episode-num[@system="assetID"]'
+        )
+        if not any(_has_text(item) for item in asset_ids):
+            issues.append(_issue(
+                "XMLTV-018",
+                "critical",
+                f"{label} requires an Asset ID.",
+                programme,
+                "episode-num",
             ))
 
         for description in programme.findall("desc"):

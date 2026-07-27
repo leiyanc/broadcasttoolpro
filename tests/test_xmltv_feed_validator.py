@@ -18,6 +18,10 @@ VALID_XMLTV = b"""<?xml version="1.0" encoding="UTF-8"?>
     channel="news"
   >
     <title>Morning News</title>
+    <desc>Daily morning news.</desc>
+    <category>News</category>
+    <episode-num system="assetID">morning-news-20260718</episode-num>
+    <rating system="VCHIP"><value>TV-PG</value></rating>
   </programme>
 </tv>
 """

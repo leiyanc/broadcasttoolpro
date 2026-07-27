@@ -24,6 +24,8 @@ def make_programme(**overrides) -> Programme:
         "premiere": False,
         "live": True,
         "new": True,
+        "asset_id": "morning-news-s01e01",
+        "original_air_date": "2026-07-18",
     }
     values.update(overrides)
     return Programme(**values)

@@ -344,7 +344,11 @@ async def generate_schedule(
     original_language: str = Form("en"),
     rating_system: str = Form("VCHIP"),
     accept_auto_fixes: bool = Form(False),
+    timestamp_format: str = Form("xmltv"),
 ):
+    if not isinstance(timestamp_format, str):
+        timestamp_format = "xmltv"
+
     result = await process_schedule(
         schedule_file,
         channel_timezone,
@@ -390,6 +394,7 @@ async def generate_schedule(
         primary_language=primary_language.strip(),
         original_language=original_language.strip(),
         rating_system=rating_system.strip(),
+        timestamp_format=timestamp_format.strip(),
     )
 
     return Response(
