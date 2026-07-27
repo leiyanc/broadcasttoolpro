@@ -76,9 +76,8 @@ function renderHlsResult(result) {
     : "Media Playlist");
   hlsMetric(`${result.critical || 0} Critical`);
   hlsMetric(`${result.warnings || 0} Warnings`);
-  hlsMetric(`${result.trigger_count || 0} Triggers`);
   if (result.scte35_detected) {
-    hlsMetric("SCTE-35 Cue Detected");
+    hlsMetric("SCTE-35 Track Present");
   } else if (result.scte35_track_detected) {
     hlsMetric("SCTE-35 Track Present");
   } else {
@@ -114,7 +113,12 @@ function renderHlsResult(result) {
       hlsCell(row, variant.frame_rate);
       hlsCell(row, variant.codecs);
       hlsCell(row, variant.segments);
-      hlsCell(row, variant.trigger_count || 0);
+      hlsCell(
+        row,
+        variant.scte35_track_detected
+          ? `Present (PID ${(variant.scte35_pids || []).join(", ")})`
+          : "Not detected",
+      );
       hlsCell(row, variant.valid === false ? "Needs attention" : "Valid");
       hlsVariantBody.appendChild(row);
     });
