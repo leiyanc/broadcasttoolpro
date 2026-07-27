@@ -111,6 +111,16 @@ programming.getRange("B5:B504").format.numberFormat = "yyyy-mm-dd";
 programming.getRange("C5:C504").format.numberFormat = "h:mm AM/PM";
 programming.getRange("E5:E504").format.numberFormat = "hh:mm:ss";
 programming.getRange("U5:U504").format.numberFormat = "yyyy-mm-dd";
+for (const range of ["B5:B504", "U5:U504"]) {
+  programming.getRange(range).dataValidation = {
+    rule: {
+      type: "date",
+      operator: "between",
+      formula1: 36526,
+      formula2: 73415,
+    },
+  };
+}
 for (const range of ["Q5:S504", "Z5:Z504"]) {
   programming.getRange(range).dataValidation = {
     rule: { type: "list", values: ["Yes", "No"] },
