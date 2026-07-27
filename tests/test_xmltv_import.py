@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from starlette.datastructures import UploadFile
 
 from backend.api.xmltv import import_schedule
+from backend.services.xmltv.parser import parse_date, parse_time
 
 
 def import_file(
@@ -43,6 +44,12 @@ def test_asset_id_is_generated_when_blank():
 
     assert result["success"] is True
     assert result["programmes"][0]["asset_id"] == "morning-news-s01e01"
+
+
+def test_excel_serial_dates_and_times_are_supported():
+    assert parse_date(46230) == "2026-07-27"
+    assert parse_date("2026-07-27 00:00:00") == "2026-07-27"
+    assert parse_time(0.25) == "06:00:00"
 
 
 def test_empty_schedule_is_not_ready_to_generate():

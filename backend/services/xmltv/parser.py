@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from openpyxl import load_workbook
+from openpyxl.utils.datetime import from_excel
 
 from backend.models.programme import Programme
 
@@ -64,6 +65,13 @@ def parse_date(value: Any) -> str:
     if isinstance(value, date):
         return value.isoformat()
 
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        converted = from_excel(value)
+        if isinstance(converted, datetime):
+            return converted.date().isoformat()
+        if isinstance(converted, date):
+            return converted.isoformat()
+
     text = clean_text(value)
 
     if not text:
@@ -71,8 +79,11 @@ def parse_date(value: Any) -> str:
 
     accepted_formats = (
         "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
         "%m/%d/%Y",
         "%m/%d/%y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %I:%M:%S %p",
     )
 
     for date_format in accepted_formats:
@@ -90,6 +101,13 @@ def parse_time(value: Any) -> str:
 
     if isinstance(value, time):
         return value.replace(microsecond=0).isoformat()
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        converted = from_excel(value)
+        if isinstance(converted, datetime):
+            return converted.time().replace(microsecond=0).isoformat()
+        if isinstance(converted, time):
+            return converted.replace(microsecond=0).isoformat()
 
     text = clean_text(value)
 
