@@ -102,7 +102,7 @@ def fetch_playlist(url: str) -> str:
         raise HlsValidationError("The playlist must use UTF-8 encoding.") from exc
 
 
-def fetch_segment_sample(url: str) -> bytes:
+def fetch_segment_sample(url: str) -> tuple[bytes, int | None]:
     _validate_public_url(url)
     request = Request(
         url,
@@ -117,7 +117,18 @@ def fetch_segment_sample(url: str) -> bytes:
             HTTPSHandler(context=_https_context()),
         )
         with opener.open(request, timeout=10) as response:
-            return response.read(MAX_SEGMENT_INSPECTION_SIZE)
+            content = response.read(MAX_SEGMENT_INSPECTION_SIZE)
+            content_range = response.headers.get("Content-Range", "")
+            total_size = None
+            if "/" in content_range:
+                total = content_range.rsplit("/", 1)[-1]
+                if total.isdigit():
+                    total_size = int(total)
+            if total_size is None:
+                content_length = response.headers.get("Content-Length", "")
+                if content_length.isdigit():
+                    total_size = int(content_length)
+            return content, total_size
     except (HTTPError, URLError, TimeoutError) as exc:
         raise HlsValidationError(
             "The media segment could not be inspected."
@@ -478,6 +489,7 @@ def _inspect_media_playlist(
             if segment_uris
             else None
         ),
+        "last_segment_duration": durations[-1] if durations else None,
     }, issues
 
 
@@ -485,7 +497,10 @@ def validate_hls(
     url: str,
     fetcher: Callable[[str], str] = fetch_playlist,
     inspect_segments: bool = False,
-    segment_fetcher: Callable[[str], bytes] = fetch_segment_sample,
+    segment_fetcher: Callable[
+        [str],
+        bytes | tuple[bytes, int | None],
+    ] = fetch_segment_sample,
 ) -> dict:
     normalized_url = url.strip()
     if not normalized_url:
@@ -576,11 +591,28 @@ def validate_hls(
                 variant["url"],
             )
             segment_inspection = None
+            measured_bandwidth_kbps = None
             if inspect_segments and variant_media["last_segment_url"]:
                 try:
-                    segment_inspection = inspect_mpegts_scte35(
-                        segment_fetcher(variant_media["last_segment_url"])
+                    segment_sample = segment_fetcher(
+                        variant_media["last_segment_url"]
                     )
+                    if isinstance(segment_sample, tuple):
+                        segment_content, segment_size = segment_sample
+                    else:
+                        segment_content = segment_sample
+                        segment_size = len(segment_sample)
+                    segment_inspection = inspect_mpegts_scte35(
+                        segment_content
+                    )
+                    segment_duration = variant_media[
+                        "last_segment_duration"
+                    ]
+                    if segment_size and segment_duration:
+                        measured_bandwidth_kbps = round(
+                            segment_size * 8 / segment_duration / 1000,
+                            2,
+                        )
                 except HlsValidationError:
                     segment_inspection = None
             segment_triggers = (
@@ -613,6 +645,7 @@ def validate_hls(
                     if segment_inspection
                     else []
                 ),
+                "measured_bandwidth_kbps": measured_bandwidth_kbps,
                 "triggers": combined_triggers,
             })
             for issue in variant_issues:
@@ -627,8 +660,16 @@ def validate_hls(
         issues.extend(media_issues)
         if inspect_segments and media["last_segment_url"]:
             try:
+                segment_sample = segment_fetcher(
+                    media["last_segment_url"]
+                )
+                if isinstance(segment_sample, tuple):
+                    segment_content, segment_size = segment_sample
+                else:
+                    segment_content = segment_sample
+                    segment_size = len(segment_sample)
                 segment_inspection = inspect_mpegts_scte35(
-                    segment_fetcher(media["last_segment_url"])
+                    segment_content
                 )
                 segment_triggers = segment_inspection["triggers"]
                 media["triggers"].extend(segment_triggers)
@@ -640,6 +681,15 @@ def validate_hls(
                     segment_inspection["track_detected"]
                 )
                 media["scte35_pids"] = segment_inspection["pids"]
+                segment_duration = media["last_segment_duration"]
+                media["measured_bandwidth_kbps"] = (
+                    round(
+                        segment_size * 8 / segment_duration / 1000,
+                        2,
+                    )
+                    if segment_size and segment_duration
+                    else None
+                )
             except HlsValidationError:
                 media["scte35_track_detected"] = False
                 media["scte35_pids"] = []

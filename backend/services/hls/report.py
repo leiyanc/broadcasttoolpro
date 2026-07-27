@@ -1,6 +1,7 @@
 from io import BytesIO
 from xml.sax.saxutils import escape
 
+from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, String
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import letter
@@ -105,6 +106,101 @@ def _text(value, limit: int = 500) -> str:
 
 def _paragraph(value, style):
     return Paragraph(_text(value), style)
+
+
+def _bandwidth_chart(samples: list[dict], spanish: bool) -> Drawing:
+    width = 6.9 * inch
+    height = 2.45 * inch
+    left = 48
+    right = width - 16
+    top = height - 18
+    bottom = 30
+    values = [
+        max(0.0, float(sample.get("bandwidth_kbps") or 0))
+        for sample in samples
+    ]
+    upper = max(values) if values else 1
+    lower = min(values) if values else 0
+    padding = max((upper - lower) * 0.15, upper * 0.05, 50)
+    y_min = max(0, lower - padding)
+    y_max = upper + padding
+    drawing = Drawing(width, height)
+
+    for step in range(5):
+        y = bottom + (top - bottom) * step / 4
+        value = y_min + (y_max - y_min) * step / 4
+        drawing.add(Line(
+            left,
+            y,
+            right,
+            y,
+            strokeColor=LINE,
+            strokeWidth=0.5,
+        ))
+        drawing.add(String(
+            left - 5,
+            y - 2,
+            f"{value:.0f}",
+            textAnchor="end",
+            fontName="Helvetica",
+            fontSize=6.5,
+            fillColor=MUTED,
+        ))
+
+    points = []
+    divisor = max(1, len(values) - 1)
+    for index, value in enumerate(values):
+        x = left + (right - left) * index / divisor
+        y = bottom + (top - bottom) * (
+            (value - y_min) / max(1, y_max - y_min)
+        )
+        points.extend([x, y])
+    if len(points) >= 4:
+        drawing.add(PolyLine(
+            points,
+            strokeColor=BLUE,
+            strokeWidth=2,
+        ))
+    for index in {0, len(values) - 1}:
+        if index < 0 or not values:
+            continue
+        drawing.add(Circle(
+            points[index * 2],
+            points[index * 2 + 1],
+            2.4,
+            fillColor=BLUE,
+            strokeColor=colors.white,
+            strokeWidth=0.6,
+        ))
+
+    drawing.add(Line(left, bottom, right, bottom, strokeColor=NAVY))
+    drawing.add(Line(left, bottom, left, top, strokeColor=NAVY))
+    drawing.add(String(
+        8,
+        top + 2,
+        "kbps",
+        fontName="Helvetica-Bold",
+        fontSize=7,
+        fillColor=NAVY,
+    ))
+    drawing.add(String(
+        left,
+        12,
+        "Inicio" if spanish else "Start",
+        fontName="Helvetica",
+        fontSize=7,
+        fillColor=MUTED,
+    ))
+    drawing.add(String(
+        right,
+        12,
+        "Fin" if spanish else "End",
+        textAnchor="end",
+        fontName="Helvetica",
+        fontSize=7,
+        fillColor=MUTED,
+    ))
+    return drawing
 
 
 def generate_hls_report(payload: dict) -> bytes:
@@ -279,6 +375,60 @@ def generate_hls_report(payload: dict) -> bytes:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
     story.extend([summary_table, Spacer(1, 0.12 * inch)])
+
+    bandwidth_samples = list(payload.get("bandwidth_samples") or [])[:1000]
+    if bandwidth_samples:
+        values = [
+            float(sample.get("bandwidth_kbps") or 0)
+            for sample in bandwidth_samples
+        ]
+        story.append(Paragraph(
+            "Comportamiento del Bandwidth"
+            if spanish
+            else "Bandwidth Behavior",
+            heading,
+        ))
+        story.append(Paragraph(
+            (
+                "Bitrate observado por segmento durante el periodo de "
+                "monitoreo."
+                if spanish
+                else
+                "Observed segment bitrate throughout the monitoring period."
+            ),
+            small,
+        ))
+        story.append(Spacer(1, 0.05 * inch))
+        story.append(_bandwidth_chart(bandwidth_samples, spanish))
+        bandwidth_summary = [
+            [
+                "Minimo" if spanish else "Minimum",
+                "Promedio" if spanish else "Average",
+                "Maximo" if spanish else "Maximum",
+                "Muestras" if spanish else "Samples",
+            ],
+            [
+                f"{min(values):.0f} kbps",
+                f"{sum(values) / len(values):.0f} kbps",
+                f"{max(values):.0f} kbps",
+                str(len(values)),
+            ],
+        ]
+        bandwidth_table = Table(
+            [
+                [
+                    _paragraph(
+                        cell,
+                        table_header if row_index == 0 else body,
+                    )
+                    for cell in row
+                ]
+                for row_index, row in enumerate(bandwidth_summary)
+            ],
+            colWidths=[1.725 * inch] * 4,
+        )
+        bandwidth_table.setStyle(_table_style())
+        story.extend([bandwidth_table, Spacer(1, 0.08 * inch)])
 
     variants = list(payload.get("variants") or [])[:50]
     story.append(Paragraph(
@@ -475,17 +625,17 @@ def generate_hls_report(payload: dict) -> bytes:
                 (
                     "Este reporte valida la estructura del manifiesto HLS y "
                     "la senalizacion SCTE-35/marcadores publicitarios compatible "
-                    "a nivel de manifiesto. No altera el stream de origen. Las "
-                    "senales SCTE-35 presentes solamente dentro de los segmentos "
-                    "requieren inspeccion del elementary stream y estan fuera "
-                    "del alcance actual de este reporte."
+                    "a nivel de manifiesto y en las muestras MPEG-TS inspeccionadas. "
+                    "No altera el stream de origen. Los eventos fuera del periodo "
+                    "seleccionado o fuera de las porciones muestreadas no forman "
+                    "parte de este reporte."
                     if spanish
                     else
                     "This report validates HLS manifest structure and supported "
-                    "manifest-level SCTE-35/ad-marker signaling. It does not "
-                    "alter the source stream. SCTE-35 carried only inside media "
-                    "segments requires elementary-stream inspection and is "
-                    "outside this report's current scope."
+                    "SCTE-35/ad-marker signaling in manifests and inspected "
+                    "MPEG-TS samples. It does not alter the source stream. Events "
+                    "outside the selected period or sampled segment portions are "
+                    "not included in this report."
                 ),
                 body,
             ),

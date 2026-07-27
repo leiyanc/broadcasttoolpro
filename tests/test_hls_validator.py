@@ -74,6 +74,17 @@ def test_media_playlist_reports_segments_and_duration():
     assert result["media"]["live"] is False
 
 
+def test_media_playlist_reports_observed_segment_bandwidth():
+    result = validate_hls(
+        "https://cdn.example.com/live/index.m3u8",
+        fetcher=lambda _: MEDIA_PLAYLIST,
+        inspect_segments=True,
+        segment_fetcher=lambda _: (b"", 1_100_000),
+    )
+
+    assert result["media"]["measured_bandwidth_kbps"] == 1600.0
+
+
 def test_invalid_media_playlist_reports_blocking_issues():
     result = validate_hls(
         "https://cdn.example.com/live/index.m3u8",
@@ -181,6 +192,16 @@ def sample_report() -> dict:
         "report_language": "en",
         "scte35_detected": True,
         "trigger_count": 1,
+        "bandwidth_samples": [
+            {
+                "detected_at": "2026-07-27T15:55:00Z",
+                "bandwidth_kbps": 2380,
+            },
+            {
+                "detected_at": "2026-07-27T16:00:00Z",
+                "bandwidth_kbps": 2510,
+            },
+        ],
         "variants": [{
             "bandwidth": 2_400_000,
             "resolution": "1280x720",

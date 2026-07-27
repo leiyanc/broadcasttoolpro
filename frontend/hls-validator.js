@@ -38,6 +38,7 @@ const hlsSeenTriggers = new Set();
 const hlsMonitorTriggers = [];
 const hlsMonitorIssues = new Map();
 let hlsInitialVariants = [];
+const hlsBandwidthSamples = [];
 
 function hlsMetric(label) {
   const metric = document.createElement("span");
@@ -230,6 +231,16 @@ function collectMonitorIssues(result) {
   if (!result.valid) hlsMonitorFailed = true;
 }
 
+function collectBandwidthSample(result) {
+  const measured = result.media?.measured_bandwidth_kbps
+    ?? result.variants?.[0]?.measured_bandwidth_kbps;
+  if (!Number.isFinite(Number(measured))) return;
+  hlsBandwidthSamples.push({
+    detected_at: new Date().toISOString(),
+    bandwidth_kbps: Number(measured),
+  });
+}
+
 function stopHlsMonitoring(completed = false) {
   window.clearTimeout(hlsMonitorTimer);
   window.clearInterval(hlsCountdownTimer);
@@ -273,6 +284,7 @@ async function pollHlsMonitor() {
     hlsPolls += 1;
     addMonitoredTriggers(result);
     collectMonitorIssues(result);
+    collectBandwidthSample(result);
 
     if (result.playlist_type === "master" && result.variants?.length) {
       hlsInitialVariants = result.variants;
@@ -318,6 +330,7 @@ if (hlsForm) {
     hlsMonitorTriggers.length = 0;
     hlsMonitorIssues.clear();
     hlsInitialVariants = [];
+    hlsBandwidthSamples.length = 0;
 
     try {
       renderHlsResult(await requestHlsValidation(hlsUrl.value.trim()));
@@ -338,6 +351,7 @@ if (hlsMonitorButton) {
     hlsSeenTriggers.clear();
     hlsMonitorTriggers.length = 0;
     hlsMonitorIssues.clear();
+    hlsBandwidthSamples.length = 0;
     hlsMonitorTriggerBody.replaceChildren();
     hlsPolls = 0;
     hlsMonitorFailed = false;
@@ -397,6 +411,7 @@ function hlsReportPayload() {
       ? hlsInitialVariants
       : (result.variants || []),
     triggers,
+    bandwidth_samples: hlsBandwidthSamples,
     issues,
   };
 }
