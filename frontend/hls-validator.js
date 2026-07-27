@@ -21,13 +21,22 @@ const hlsMonitorCountdown = document.querySelector("#hls-monitor-countdown");
 const hlsMonitorTriggerBody = document.querySelector(
   "#hls-monitor-trigger-body",
 );
+const hlsReportButton = document.querySelector(
+  "#download-hls-report-button",
+);
 
 let hlsMonitorTimer = null;
 let hlsCountdownTimer = null;
 let hlsMonitorEndsAt = null;
 let hlsMonitorUrl = "";
 let hlsPolls = 0;
+let latestHlsResult = null;
+let hlsMonitorStartedAt = null;
+let hlsMonitorFailed = false;
 const hlsSeenTriggers = new Set();
+const hlsMonitorTriggers = [];
+const hlsMonitorIssues = new Map();
+let hlsInitialVariants = [];
 
 function hlsMetric(label) {
   const metric = document.createElement("span");
@@ -42,6 +51,8 @@ function hlsCell(row, value) {
 }
 
 function renderHlsResult(result) {
+  latestHlsResult = result;
+  hlsReportButton.classList.remove("is-hidden");
   hlsPanel.classList.remove("is-hidden", "is-error");
   hlsMetrics.replaceChildren();
   hlsIssues.replaceChildren();
@@ -175,6 +186,11 @@ function addMonitoredTriggers(result) {
     if (hlsSeenTriggers.has(key)) return;
     hlsSeenTriggers.add(key);
     added += 1;
+    hlsMonitorTriggers.push({
+      ...trigger,
+      detected_at: new Date().toISOString(),
+      source_url: result.url,
+    });
 
     const row = document.createElement("tr");
     hlsCell(row, new Date().toLocaleTimeString());
@@ -187,6 +203,19 @@ function addMonitoredTriggers(result) {
     hlsMonitorTriggerBody.prepend(row);
   });
   return added;
+}
+
+function collectMonitorIssues(result) {
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  issues.forEach((issue) => {
+    const key = JSON.stringify([
+      issue.rule_id,
+      issue.severity,
+      issue.message,
+    ]);
+    hlsMonitorIssues.set(key, issue);
+  });
+  if (!result.valid) hlsMonitorFailed = true;
 }
 
 function stopHlsMonitoring(completed = false) {
@@ -227,10 +256,14 @@ async function pollHlsMonitor() {
 
   try {
     const result = await requestHlsValidation(hlsMonitorUrl);
+    latestHlsResult = result;
+    hlsReportButton.classList.remove("is-hidden");
     hlsPolls += 1;
     addMonitoredTriggers(result);
+    collectMonitorIssues(result);
 
     if (result.playlist_type === "master" && result.variants?.length) {
+      hlsInitialVariants = result.variants;
       hlsMonitorUrl = result.variants[0].url;
     }
     const targetDuration = result.media?.target_duration
@@ -245,6 +278,15 @@ async function pollHlsMonitor() {
     );
   } catch (error) {
     hlsMonitorStatus.textContent = error.message;
+    hlsMonitorFailed = true;
+    hlsMonitorIssues.set(error.message, {
+      severity: "critical",
+      rule_id: "REQUEST",
+      message: error.message,
+      recommendation: (
+        "Verify stream availability, authorization, DNS, and origin health."
+      ),
+    });
     hlsMonitorTimer = window.setTimeout(pollHlsMonitor, 6000);
   }
 }
@@ -256,6 +298,11 @@ if (hlsForm) {
 
     hlsButton.disabled = true;
     hlsButton.textContent = "Validating…";
+    hlsMonitorStartedAt = null;
+    hlsMonitorFailed = false;
+    hlsMonitorTriggers.length = 0;
+    hlsMonitorIssues.clear();
+    hlsInitialVariants = [];
 
     try {
       renderHlsResult(await requestHlsValidation(hlsUrl.value.trim()));
@@ -274,8 +321,12 @@ if (hlsMonitorButton) {
 
     stopHlsMonitoring();
     hlsSeenTriggers.clear();
+    hlsMonitorTriggers.length = 0;
+    hlsMonitorIssues.clear();
     hlsMonitorTriggerBody.replaceChildren();
     hlsPolls = 0;
+    hlsMonitorFailed = false;
+    hlsMonitorStartedAt = new Date();
     hlsMonitorUrl = hlsUrl.value.trim();
     hlsMonitorEndsAt = (
       Date.now() + Number(hlsMonitorDuration.value) * 60 * 1000
@@ -290,6 +341,78 @@ if (hlsMonitorButton) {
     hlsCountdownTimer = window.setInterval(updateHlsCountdown, 1000);
     updateHlsCountdown();
   });
+}
+
+function hlsReportPayload() {
+  const result = latestHlsResult || {};
+  const monitoringMinutes = hlsMonitorStartedAt
+    ? Number(hlsMonitorDuration.value)
+    : 0;
+  const instantTriggers = result.media?.triggers
+    || (result.variants || []).flatMap((variant) => variant.triggers || []);
+  const triggers = hlsMonitorTriggers.length
+    ? hlsMonitorTriggers
+    : instantTriggers.map((trigger) => ({
+        ...trigger,
+        detected_at: new Date().toISOString(),
+        source_url: result.url,
+      }));
+  const issues = hlsMonitorIssues.size
+    ? [...hlsMonitorIssues.values()]
+    : (result.issues || []);
+
+  return {
+    valid: Boolean(result.valid) && !hlsMonitorFailed,
+    url: hlsUrl.value.trim(),
+    playlist_type: result.playlist_type || "unknown",
+    monitoring_minutes: monitoringMinutes,
+    inspections: hlsPolls || 1,
+    generated_at: new Date().toISOString(),
+    scte35_detected: (
+      result.scte35_detected
+      || triggers.some((trigger) => (
+        trigger.type?.includes("SCTE")
+        || trigger.type?.startsWith("CUE-")
+      ))
+    ),
+    trigger_count: triggers.length,
+    variants: hlsInitialVariants.length
+      ? hlsInitialVariants
+      : (result.variants || []),
+    triggers,
+    issues,
+  };
+}
+
+async function downloadHlsPdfReport() {
+  hlsReportButton.disabled = true;
+  hlsReportButton.textContent = "Preparing PDF…";
+  try {
+    const response = await fetch("/api/hls/report/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(hlsReportPayload()),
+    });
+    if (!response.ok) throw new Error("The PDF report could not be created.");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "broadcast-tool-pro-hls-report.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    hlsMonitorStatus.textContent = error.message;
+  } finally {
+    hlsReportButton.disabled = false;
+    hlsReportButton.textContent = "Download PDF Report";
+  }
+}
+
+if (hlsReportButton) {
+  hlsReportButton.addEventListener("click", downloadHlsPdfReport);
 }
 
 if (hlsStopButton) {

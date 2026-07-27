@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Body, Form, HTTPException
+from fastapi.responses import Response
 
 from backend.services.hls.validator import (
     HlsValidationError,
     validate_hls,
 )
+from backend.services.hls.report import generate_hls_report
 
 
 router = APIRouter(
@@ -23,3 +25,19 @@ def validate_hls_url(
             status_code=422,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/report/pdf", response_class=Response)
+def download_hls_report(
+    report: dict = Body(...),
+):
+    content = generate_hls_report(report)
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="broadcast-tool-pro-hls-report.pdf"'
+            ),
+        },
+    )

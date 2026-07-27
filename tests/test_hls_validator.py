@@ -4,6 +4,8 @@ from backend.services.hls.validator import (
     _validate_public_url,
     validate_hls,
 )
+from backend.api.hls import download_hls_report
+from backend.services.hls.report import generate_hls_report
 
 
 MASTER_PLAYLIST = """#EXTM3U
@@ -129,3 +131,51 @@ def test_hls_router_is_registered():
     paths = set(app.openapi()["paths"])
 
     assert "/api/hls/validate" in paths
+    assert "/api/hls/report/pdf" in paths
+
+
+def sample_report() -> dict:
+    return {
+        "valid": False,
+        "url": "https://cdn.example.com/live/master.m3u8",
+        "playlist_type": "master",
+        "monitoring_minutes": 5,
+        "inspections": 50,
+        "generated_at": "2026-07-27T16:00:00Z",
+        "scte35_detected": True,
+        "trigger_count": 1,
+        "variants": [{
+            "bandwidth": 2_400_000,
+            "resolution": "1280x720",
+            "frame_rate": "29.97",
+            "codecs": "avc1.4d401f,mp4a.40.2",
+            "segments": 6,
+            "trigger_count": 1,
+            "valid": True,
+        }],
+        "triggers": [{
+            "detected_at": "2026-07-27T15:59:30Z",
+            "type": "SCTE-35 DATERANGE",
+            "id": "break-100",
+            "start_date": "2026-07-27T16:00:00Z",
+            "duration": 30,
+            "source_url": "https://cdn.example.com/live/720p.m3u8",
+        }],
+        "issues": [{
+            "severity": "warning",
+            "rule_id": "HLS-012",
+            "message": "An unmatched CUE-IN marker was detected.",
+        }],
+    }
+
+
+def test_hls_pdf_report_is_branded_and_downloadable():
+    content = generate_hls_report(sample_report())
+    response = download_hls_report(sample_report())
+
+    assert content.startswith(b"%PDF")
+    assert len(content) > 3_000
+    assert response.media_type == "application/pdf"
+    assert "broadcast-tool-pro-hls-report.pdf" in response.headers[
+        "content-disposition"
+    ]
