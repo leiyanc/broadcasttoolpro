@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.api.auth import current_user
-from backend.models.support import SupportRequestCreate
+from backend.models.support import SupportMessageCreate, SupportRequestCreate
 from backend.services.admin_store import admin_store
 from backend.services.identity_store import identity_store
 
@@ -58,3 +58,67 @@ def my_support_requests(user: dict = Depends(current_user)):
         "requests": admin_store.list_user_incidents(user["id"]),
     }
 
+
+@router.get("/requests/{incident_id}")
+def support_request_detail(
+    incident_id: str,
+    user: dict = Depends(current_user),
+):
+    _primary_organization(user)
+    try:
+        return admin_store.get_incident(
+            incident_id,
+            reporter_user_id=user["id"],
+            customer_view=True,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+
+
+@router.post("/requests/{incident_id}/messages")
+def add_support_message(
+    incident_id: str,
+    request: SupportMessageCreate,
+    user: dict = Depends(current_user),
+):
+    _primary_organization(user)
+    try:
+        admin_store.get_incident(
+            incident_id,
+            reporter_user_id=user["id"],
+            customer_view=True,
+        )
+        return admin_store.add_incident_message(
+            incident_id,
+            author_user_id=user["id"],
+            visibility="customer",
+            message=request.message,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+
+
+@router.post("/requests/{incident_id}/reopen")
+def reopen_support_request(
+    incident_id: str,
+    user: dict = Depends(current_user),
+):
+    _primary_organization(user)
+    try:
+        detail = admin_store.get_incident(
+            incident_id,
+            reporter_user_id=user["id"],
+            customer_view=True,
+        )
+        if detail["incident"]["status"] != "resolved":
+            raise HTTPException(
+                status_code=409,
+                detail="Only resolved requests can be reopened.",
+            )
+        return admin_store.update_incident_status(
+            incident_id,
+            "open",
+            actor_user_id=user["id"],
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc

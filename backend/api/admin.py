@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.auth import current_user
 from backend.models.admin import (
     AddonAdminUpdate,
+    IncidentMessageCreate,
     IncidentStatusUpdate,
     OrganizationAdminUpdate,
 )
@@ -119,12 +120,44 @@ def admin_incidents(
 def update_incident_status(
     incident_id: str,
     request: IncidentStatusUpdate,
-    _: dict = Depends(superuser),
+    user: dict = Depends(superuser),
 ):
     try:
         return admin_store.update_incident_status(
             incident_id,
             request.status,
+            actor_user_id=user["id"],
+            resolution=request.resolution,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/incidents/{incident_id}")
+def incident_detail(
+    incident_id: str,
+    _: dict = Depends(superuser),
+):
+    try:
+        return admin_store.get_incident(incident_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+
+
+@router.post("/incidents/{incident_id}/messages")
+def add_incident_message(
+    incident_id: str,
+    request: IncidentMessageCreate,
+    user: dict = Depends(superuser),
+):
+    try:
+        return admin_store.add_incident_message(
+            incident_id,
+            author_user_id=user["id"],
+            visibility=request.visibility,
+            message=request.message,
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=exc.args[0]) from exc

@@ -13,6 +13,29 @@ const adminMessage = document.querySelector("#admin-message");
 const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
+const adminTicketPanel = document.querySelector("#admin-ticket-panel");
+const adminTicketTitle = document.querySelector("#admin-ticket-title");
+const adminTicketMeta = document.querySelector("#admin-ticket-meta");
+const adminTicketDetails = document.querySelector("#admin-ticket-details");
+const adminTicketConversation = document.querySelector(
+  "#admin-ticket-conversation",
+);
+const adminTicketNotes = document.querySelector("#admin-ticket-notes");
+const adminCustomerReplyForm = document.querySelector(
+  "#admin-customer-reply-form",
+);
+const adminInternalNoteForm = document.querySelector(
+  "#admin-internal-note-form",
+);
+const adminTicketStatus = document.querySelector("#admin-ticket-status");
+const adminTicketResolution = document.querySelector(
+  "#admin-ticket-resolution",
+);
+const adminSaveTicketStatus = document.querySelector("#save-ticket-status");
+const adminTicketActivity = document.querySelector("#admin-ticket-activity");
+const adminTicketMessage = document.querySelector("#admin-ticket-message");
+const adminCloseTicket = document.querySelector("#close-admin-ticket");
+let adminCurrentTicketId = null;
 
 async function adminRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -47,6 +70,93 @@ function adminSelect(options, selected) {
     select.appendChild(option);
   });
   return select;
+}
+
+function adminTicketItem(author, message, createdAt, visibility = "") {
+  const item = document.createElement("article");
+  const heading = document.createElement("div");
+  const strong = document.createElement("strong");
+  const small = document.createElement("small");
+  const paragraph = document.createElement("p");
+  strong.textContent = author || "System";
+  small.textContent = `${visibility ? `${visibility} · ` : ""}${
+    new Date(createdAt).toLocaleString()
+  }`;
+  paragraph.textContent = message;
+  heading.append(strong, small);
+  item.append(heading, paragraph);
+  return item;
+}
+
+async function openAdminTicket(incidentId) {
+  adminCurrentTicketId = incidentId;
+  adminTicketPanel.classList.remove("is-hidden");
+  adminTicketMessage.textContent = "Loading ticket…";
+  adminTicketMessage.classList.remove("is-error");
+  try {
+    const payload = await adminRequest(
+      `/api/admin/incidents/${incidentId}`,
+    );
+    const incident = payload.incident;
+    adminTicketTitle.textContent = `${incident.id} · ${incident.summary}`;
+    adminTicketMeta.textContent =
+      `${incident.organization_name || "Platform"} · ${
+        incident.reporter_name || "System"
+      } · ${incident.reporter_email || ""}`;
+    adminTicketDetails.replaceChildren(
+      adminTicketItem(
+        "Customer report",
+        incident.details || "No details provided.",
+        incident.created_at,
+        incident.module,
+      ),
+    );
+    if (incident.error_message) {
+      adminTicketDetails.appendChild(
+        adminTicketItem(
+          "Exact error message",
+          incident.error_message,
+          incident.created_at,
+        ),
+      );
+    }
+    adminTicketConversation.replaceChildren();
+    adminTicketNotes.replaceChildren();
+    payload.messages.forEach((message) => {
+      const target = message.visibility === "internal"
+        ? adminTicketNotes
+        : adminTicketConversation;
+      target.appendChild(adminTicketItem(
+        message.author_name,
+        message.message,
+        message.created_at,
+        message.visibility,
+      ));
+    });
+    if (!adminTicketConversation.children.length) {
+      adminTicketConversation.textContent = "No customer messages yet.";
+    }
+    if (!adminTicketNotes.children.length) {
+      adminTicketNotes.textContent = "No internal notes yet.";
+    }
+    adminTicketStatus.value = incident.status;
+    adminTicketResolution.value = incident.resolution || "";
+    adminTicketActivity.replaceChildren();
+    payload.activity.forEach((activity) => {
+      adminTicketActivity.appendChild(adminTicketItem(
+        activity.actor_name || "System",
+        `${activity.event_type.replaceAll("_", " ")}${
+          activity.details ? `: ${activity.details}` : ""
+        }`,
+        activity.created_at,
+      ));
+    });
+    adminTicketMessage.textContent = "";
+    adminTicketPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    adminTicketMessage.textContent = error.message;
+    adminTicketMessage.classList.add("is-error");
+  }
 }
 
 function addonToggle(enabled, label) {
@@ -259,40 +369,92 @@ function renderIncidents(incidents) {
     adminCell(row, incident.category || "—");
     adminCell(row, incident.priority || "—");
     adminCell(row, incident.severity);
-    const incidentStatusCell = adminCell(row, "");
-    const incidentStatus = adminSelect(
-      ["open", "investigating", "resolved"],
-      incident.status,
-    );
-    incidentStatus.setAttribute(
-      "aria-label",
-      `Status for ${incident.id}`,
-    );
-    incidentStatus.addEventListener("change", async () => {
-      incidentStatus.disabled = true;
-      try {
-        await adminRequest(`/api/admin/incidents/${incident.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: incidentStatus.value }),
-        });
-        incident.status = incidentStatus.value;
-        await loadControlPlane();
-        adminMessage.textContent = `${incident.id} was updated.`;
-        adminMessage.classList.remove("is-error");
-        adminMessage.classList.add("is-success");
-      } catch (error) {
-        adminMessage.textContent = error.message;
-        adminMessage.classList.add("is-error");
-        incidentStatus.value = incident.status;
-      } finally {
-        incidentStatus.disabled = false;
-      }
-    });
-    incidentStatusCell.replaceChildren(incidentStatus);
+    adminCell(row, incident.status);
+    adminCell(row, incident.summary);
     adminCell(row, new Date(incident.created_at).toLocaleString());
+    const openCell = adminCell(row, "");
+    const openButton = document.createElement("button");
+    openButton.className = "button button-secondary admin-save";
+    openButton.type = "button";
+    openButton.textContent = "Open Ticket";
+    openButton.addEventListener("click", () => {
+      openAdminTicket(incident.id);
+    });
+    openCell.replaceChildren(openButton);
     adminIncidentsBody.appendChild(row);
   });
 }
+
+async function submitAdminTicketMessage(form, visibility) {
+  if (!adminCurrentTicketId) return;
+  const button = form.querySelector("button[type='submit']");
+  const message = new FormData(form).get("message");
+  button.disabled = true;
+  adminTicketMessage.textContent = "";
+  try {
+    await adminRequest(
+      `/api/admin/incidents/${adminCurrentTicketId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ visibility, message }),
+      },
+    );
+    form.reset();
+    await openAdminTicket(adminCurrentTicketId);
+    adminTicketMessage.textContent = visibility === "internal"
+      ? "Internal note saved."
+      : "Reply sent to the customer.";
+  } catch (error) {
+    adminTicketMessage.textContent = error.message;
+    adminTicketMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+adminCustomerReplyForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitAdminTicketMessage(adminCustomerReplyForm, "customer");
+});
+
+adminInternalNoteForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitAdminTicketMessage(adminInternalNoteForm, "internal");
+});
+
+adminSaveTicketStatus.addEventListener("click", async () => {
+  if (!adminCurrentTicketId) return;
+  adminSaveTicketStatus.disabled = true;
+  adminTicketMessage.textContent = "";
+  adminTicketMessage.classList.remove("is-error");
+  try {
+    await adminRequest(
+      `/api/admin/incidents/${adminCurrentTicketId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: adminTicketStatus.value,
+          resolution: adminTicketResolution.value || null,
+        }),
+      },
+    );
+    await Promise.all([
+      openAdminTicket(adminCurrentTicketId),
+      loadControlPlane(),
+    ]);
+    adminTicketMessage.textContent = "Ticket status updated.";
+  } catch (error) {
+    adminTicketMessage.textContent = error.message;
+    adminTicketMessage.classList.add("is-error");
+  } finally {
+    adminSaveTicketStatus.disabled = false;
+  }
+});
+
+adminCloseTicket.addEventListener("click", () => {
+  adminTicketPanel.classList.add("is-hidden");
+  adminCurrentTicketId = null;
+});
 
 async function loadControlPlane() {
   adminMessage.textContent = "";

@@ -136,7 +136,11 @@ def test_secure_account_interface_is_present():
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
     assert "/api/admin/incidents/" in admin_javascript
-    assert "incident.status = incidentStatus.value" in admin_javascript
+    assert "openAdminTicket" in admin_javascript
+    assert 'id="admin-ticket-panel"' in html
+    assert 'id="admin-customer-reply-form"' in html
+    assert 'id="admin-internal-note-form"' in html
+    assert 'id="admin-ticket-resolution"' in html
 
 
 def test_billing_and_subscription_interface_is_present():
@@ -175,6 +179,10 @@ def test_contextual_help_center_is_present():
     assert 'id="help-support-form"' in html
     assert "/api/support/requests" in javascript
     assert "Ticket:" in javascript
+    assert 'id="help-request-detail"' in html
+    assert 'id="help-request-reply-form"' in html
+    assert 'id="help-reopen-request"' in html
+    assert "helpOpenRequest" in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

@@ -18,3 +18,6 @@ class SupportRequestCreate(BaseModel):
     details: str = Field(min_length=10, max_length=4000)
     error_message: str | None = Field(default=None, max_length=2000)
 
+
+class SupportMessageCreate(BaseModel):
+    message: str = Field(min_length=2, max_length=4000)

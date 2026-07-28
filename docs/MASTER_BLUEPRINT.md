@@ -120,7 +120,12 @@ category, priority, summary, details, optional exact error message, status, and
 timestamps.
 
 - Users can review the status of requests they submitted.
-- Super Admins manage all requests from the Control Plane.
+- Users can exchange customer-visible messages and reopen resolved requests.
+- Super Admins manage all requests from the Control Panel.
+- Super Admins can send customer-visible replies and maintain private internal
+  notes.
+- Every status change and message is recorded in the ticket activity history.
+- A written resolution is mandatory before a request can be marked Resolved.
 - Supported states are Open, Investigating, and Resolved.
 - Support remains available to authenticated users whose organization is
   suspended.

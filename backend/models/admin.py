@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class OrganizationAdminUpdate(BaseModel):
@@ -14,3 +14,9 @@ class AddonAdminUpdate(BaseModel):
 
 class IncidentStatusUpdate(BaseModel):
     status: Literal["open", "investigating", "resolved"]
+    resolution: str | None = Field(default=None, max_length=4000)
+
+
+class IncidentMessageCreate(BaseModel):
+    visibility: Literal["customer", "internal"]
+    message: str = Field(min_length=2, max_length=4000)

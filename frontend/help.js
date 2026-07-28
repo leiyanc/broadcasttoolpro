@@ -17,6 +17,24 @@ const helpRequests = document.querySelector("#help-requests");
 const helpRequestsBack = document.querySelector("#help-requests-back");
 const helpRequestsStatus = document.querySelector("#help-requests-status");
 const helpRequestList = document.querySelector("#help-request-list");
+const helpRequestDetail = document.querySelector("#help-request-detail");
+const helpRequestDetailTitle = document.querySelector(
+  "#help-request-detail-title",
+);
+const helpRequestDetailBack = document.querySelector(
+  "#help-request-detail-back",
+);
+const helpRequestDetailBody = document.querySelector(
+  "#help-request-detail-body",
+);
+const helpRequestThread = document.querySelector("#help-request-thread");
+const helpRequestReplyForm = document.querySelector(
+  "#help-request-reply-form",
+);
+const helpReopenRequest = document.querySelector("#help-reopen-request");
+const helpRequestDetailMessage = document.querySelector(
+  "#help-request-detail-message",
+);
 const helpFormTitle = document.querySelector("#help-form-title");
 const helpRequestsTitle = document.querySelector("#help-requests-title");
 const helpCategoryLabel = document.querySelector("#help-category-label");
@@ -262,6 +280,7 @@ const helpGuides = {
 
 let helpCurrentGuide = "getting_started";
 let helpSupportAvailable = false;
+let helpCurrentRequestId = null;
 
 function helpTranslateSupportUi(language) {
   const spanish = language === "es";
@@ -459,6 +478,8 @@ async function helpLoadRequests() {
   helpRequests.classList.remove("is-hidden");
   helpRequestsStatus.textContent = "Loading requests…";
   helpRequestList.replaceChildren();
+  helpRequestDetail.classList.add("is-hidden");
+  helpRequestList.classList.remove("is-hidden");
   try {
     const payload = await authRequest("/api/support/requests");
     const requests = payload.requests || [];
@@ -478,12 +499,147 @@ async function helpLoadRequests() {
       }`;
       heading.append(title, status);
       card.append(heading, detail);
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Open ${request.id}`);
+      card.addEventListener("click", () => {
+        helpOpenRequest(request.id);
+      });
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          helpOpenRequest(request.id);
+        }
+      });
       helpRequestList.appendChild(card);
     });
   } catch (error) {
     helpRequestsStatus.textContent = error.message;
   }
 }
+
+function helpThreadMessage(author, message, createdAt) {
+  const item = document.createElement("article");
+  const heading = document.createElement("div");
+  const strong = document.createElement("strong");
+  const small = document.createElement("small");
+  const paragraph = document.createElement("p");
+  strong.textContent = author || "Support";
+  small.textContent = new Date(createdAt).toLocaleString();
+  paragraph.textContent = message;
+  heading.append(strong, small);
+  item.append(heading, paragraph);
+  return item;
+}
+
+async function helpOpenRequest(incidentId) {
+  helpCurrentRequestId = incidentId;
+  helpRequestList.classList.add("is-hidden");
+  helpRequestDetail.classList.remove("is-hidden");
+  helpRequestDetailMessage.textContent = "Loading request…";
+  try {
+    const payload = await authRequest(
+      `/api/support/requests/${incidentId}`,
+    );
+    const incident = payload.incident;
+    helpRequestDetailTitle.textContent =
+      `${incident.id} · ${incident.summary}`;
+    helpRequestDetailBody.replaceChildren(
+      helpThreadMessage(
+        "Original request",
+        incident.details,
+        incident.created_at,
+      ),
+    );
+    if (incident.error_message) {
+      helpRequestDetailBody.appendChild(
+        helpThreadMessage(
+          "Exact error message",
+          incident.error_message,
+          incident.created_at,
+        ),
+      );
+    }
+    if (incident.resolution) {
+      helpRequestDetailBody.appendChild(
+        helpThreadMessage(
+          "Resolution",
+          incident.resolution,
+          incident.resolved_at,
+        ),
+      );
+    }
+    helpRequestThread.replaceChildren();
+    payload.messages.forEach((message) => {
+      helpRequestThread.appendChild(helpThreadMessage(
+        message.author_name,
+        message.message,
+        message.created_at,
+      ));
+    });
+    if (!payload.messages.length) {
+      helpRequestThread.textContent = "No replies yet.";
+    }
+    helpReopenRequest.classList.toggle(
+      "is-hidden",
+      incident.status !== "resolved",
+    );
+    helpRequestReplyForm.classList.toggle(
+      "is-hidden",
+      incident.status === "resolved",
+    );
+    helpRequestDetailMessage.textContent =
+      `Status: ${incident.status}`;
+  } catch (error) {
+    helpRequestDetailMessage.textContent = error.message;
+    helpRequestDetailMessage.classList.add("is-error");
+  }
+}
+
+helpRequestDetailBack.addEventListener("click", helpLoadRequests);
+
+helpRequestReplyForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!helpCurrentRequestId) return;
+  const button = helpRequestReplyForm.querySelector(
+    "button[type='submit']",
+  );
+  const message = new FormData(helpRequestReplyForm).get("message");
+  button.disabled = true;
+  try {
+    await authRequest(
+      `/api/support/requests/${helpCurrentRequestId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      },
+    );
+    helpRequestReplyForm.reset();
+    await helpOpenRequest(helpCurrentRequestId);
+  } catch (error) {
+    helpRequestDetailMessage.textContent = error.message;
+    helpRequestDetailMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+helpReopenRequest.addEventListener("click", async () => {
+  if (!helpCurrentRequestId) return;
+  helpReopenRequest.disabled = true;
+  try {
+    await authRequest(
+      `/api/support/requests/${helpCurrentRequestId}/reopen`,
+      { method: "POST" },
+    );
+    await helpOpenRequest(helpCurrentRequestId);
+  } catch (error) {
+    helpRequestDetailMessage.textContent = error.message;
+    helpRequestDetailMessage.classList.add("is-error");
+  } finally {
+    helpReopenRequest.disabled = false;
+  }
+});
 
 helpRequestsButton.addEventListener("click", helpLoadRequests);
 window.addEventListener("btp:identity", (event) => {

@@ -51,6 +51,7 @@ class AdminStore:
                 "category": "TEXT",
                 "priority": "TEXT",
                 "error_message": "TEXT",
+                "resolution": "TEXT",
             }
             for column, definition in migrations.items():
                 if column not in columns:
@@ -58,6 +59,40 @@ class AdminStore:
                         f"ALTER TABLE incidents "
                         f"ADD COLUMN {column} {definition}"
                     )
+            connection.executescript("""
+                CREATE TABLE IF NOT EXISTS incident_messages (
+                    id TEXT PRIMARY KEY,
+                    incident_id TEXT NOT NULL,
+                    author_user_id TEXT NOT NULL,
+                    visibility TEXT NOT NULL CHECK (
+                        visibility IN ('customer', 'internal')
+                    ),
+                    message TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (incident_id)
+                        REFERENCES incidents(id) ON DELETE CASCADE,
+                    FOREIGN KEY (author_user_id)
+                        REFERENCES users(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS incident_activity (
+                    id TEXT PRIMARY KEY,
+                    incident_id TEXT NOT NULL,
+                    actor_user_id TEXT,
+                    event_type TEXT NOT NULL,
+                    details TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (incident_id)
+                        REFERENCES incidents(id) ON DELETE CASCADE,
+                    FOREIGN KEY (actor_user_id)
+                        REFERENCES users(id) ON DELETE SET NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_incident_messages_incident
+                    ON incident_messages(incident_id, created_at);
+                CREATE INDEX IF NOT EXISTS idx_incident_activity_incident
+                    ON incident_activity(incident_id, created_at);
+            """)
 
     def overview(self) -> dict:
         with self._connection() as connection:
@@ -185,6 +220,21 @@ class AdminStore:
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
+            connection.execute(
+                """
+                INSERT INTO incident_activity (
+                    id, incident_id, actor_user_id, event_type,
+                    details, created_at
+                ) VALUES (?, ?, ?, 'created', ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    incident_id,
+                    reporter_user_id,
+                    summary,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
         return incident_id
 
     def list_incidents(self, limit: int = 100) -> list[dict]:
@@ -231,7 +281,14 @@ class AdminStore:
         self,
         incident_id: str,
         status: str,
+        *,
+        actor_user_id: str | None = None,
+        resolution: str | None = None,
     ) -> dict:
+        if status == "resolved" and not (resolution or "").strip():
+            raise ValueError(
+                "A resolution is required before resolving the ticket."
+            )
         resolved_at = (
             datetime.now(timezone.utc).isoformat()
             if status == "resolved"
@@ -241,10 +298,15 @@ class AdminStore:
             cursor = connection.execute(
                 """
                 UPDATE incidents
-                SET status = ?, resolved_at = ?
+                SET status = ?, resolved_at = ?, resolution = ?
                 WHERE id = ?
                 """,
-                (status, resolved_at, incident_id),
+                (
+                    status,
+                    resolved_at,
+                    resolution.strip() if resolution else None,
+                    incident_id,
+                ),
             )
             if cursor.rowcount == 0:
                 raise KeyError("Incident not found.")
@@ -252,7 +314,141 @@ class AdminStore:
                 "SELECT * FROM incidents WHERE id = ?",
                 (incident_id,),
             ).fetchone()
+            connection.execute(
+                """
+                INSERT INTO incident_activity (
+                    id, incident_id, actor_user_id, event_type,
+                    details, created_at
+                ) VALUES (?, ?, ?, 'status_changed', ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    incident_id,
+                    actor_user_id,
+                    status,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
         return dict(row)
+
+    def get_incident(
+        self,
+        incident_id: str,
+        *,
+        reporter_user_id: str | None = None,
+        customer_view: bool = False,
+    ) -> dict:
+        conditions = ["incidents.id = ?"]
+        values: list[object] = [incident_id]
+        if reporter_user_id is not None:
+            conditions.append("incidents.reporter_user_id = ?")
+            values.append(reporter_user_id)
+        with self._connection() as connection:
+            incident = connection.execute(
+                f"""
+                SELECT incidents.*, organizations.name AS organization_name,
+                       users.display_name AS reporter_name,
+                       users.email AS reporter_email
+                FROM incidents
+                LEFT JOIN organizations
+                    ON organizations.id = incidents.organization_id
+                LEFT JOIN users
+                    ON users.id = incidents.reporter_user_id
+                WHERE {" AND ".join(conditions)}
+                """,
+                values,
+            ).fetchone()
+            if incident is None:
+                raise KeyError("Incident not found.")
+            message_condition = (
+                "AND incident_messages.visibility = 'customer'"
+                if customer_view
+                else ""
+            )
+            messages = connection.execute(
+                f"""
+                SELECT incident_messages.*, users.display_name AS author_name
+                FROM incident_messages
+                JOIN users ON users.id = incident_messages.author_user_id
+                WHERE incident_messages.incident_id = ?
+                {message_condition}
+                ORDER BY incident_messages.created_at
+                """,
+                (incident_id,),
+            ).fetchall()
+            activity = connection.execute(
+                """
+                SELECT incident_activity.*, users.display_name AS actor_name
+                FROM incident_activity
+                LEFT JOIN users
+                    ON users.id = incident_activity.actor_user_id
+                WHERE incident_activity.incident_id = ?
+                ORDER BY incident_activity.created_at
+                """,
+                (incident_id,),
+            ).fetchall()
+        return {
+            "incident": dict(incident),
+            "messages": [dict(row) for row in messages],
+            "activity": [dict(row) for row in activity],
+        }
+
+    def add_incident_message(
+        self,
+        incident_id: str,
+        *,
+        author_user_id: str,
+        visibility: str,
+        message: str,
+    ) -> dict:
+        message_id = str(uuid4())
+        created_at = datetime.now(timezone.utc).isoformat()
+        with self._connection() as connection:
+            exists = connection.execute(
+                "SELECT id FROM incidents WHERE id = ?",
+                (incident_id,),
+            ).fetchone()
+            if exists is None:
+                raise KeyError("Incident not found.")
+            connection.execute(
+                """
+                INSERT INTO incident_messages (
+                    id, incident_id, author_user_id, visibility,
+                    message, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message_id,
+                    incident_id,
+                    author_user_id,
+                    visibility,
+                    message.strip(),
+                    created_at,
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO incident_activity (
+                    id, incident_id, actor_user_id, event_type,
+                    details, created_at
+                ) VALUES (?, ?, ?, 'message_added', ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    incident_id,
+                    author_user_id,
+                    visibility,
+                    created_at,
+                ),
+            )
+        return {
+            "id": message_id,
+            "incident_id": incident_id,
+            "author_user_id": author_user_id,
+            "visibility": visibility,
+            "message": message.strip(),
+            "created_at": created_at,
+        }
 
 
 admin_store = AdminStore()

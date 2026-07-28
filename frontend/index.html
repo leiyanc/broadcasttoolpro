@@ -24,12 +24,12 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260728-6" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-7" />
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260728-3" defer></script>
-    <script src="/static/admin.js?v=20260728-5" defer></script>
+    <script src="/static/admin.js?v=20260728-6" defer></script>
     <script src="/static/billing.js?v=20260728-1" defer></script>
-    <script src="/static/help.js?v=20260728-2" defer></script>
+    <script src="/static/help.js?v=20260728-3" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -178,7 +178,7 @@
             id="open-admin-button"
             type="button"
           >
-            Control Plane
+            Control Panel
           </button>
           <button
             class="button button-secondary"
@@ -261,14 +261,14 @@
           id="suspended-admin-button"
           type="button"
         >
-          Open Control Plane
+          Open Control Panel
         </button>
       </section>
 
       <section class="admin-shell is-hidden" id="admin-control-plane">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">SUPER ADMIN CONTROL PLANE</p>
+            <p class="eyebrow">SUPER ADMIN CONTROL PANEL</p>
             <h2>Platform Operations</h2>
             <p class="section-copy">
               Manage organizations, plans, add-ons, capacity, and incidents.
@@ -279,7 +279,7 @@
             id="close-admin-button"
             type="button"
           >
-            Close Control Plane
+            Close Control Panel
           </button>
         </div>
         <div class="admin-metrics" id="admin-metrics"></div>
@@ -340,13 +340,117 @@
                   <th>Priority</th>
                   <th>Severity</th>
                   <th>Status</th>
+                  <th>Summary</th>
                   <th>Created</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="admin-incidents-body"></tbody>
             </table>
           </div>
         </div>
+        <section
+          class="admin-ticket-panel is-hidden"
+          id="admin-ticket-panel"
+          aria-label="Support ticket detail"
+        >
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SUPPORT TICKET DETAIL</p>
+              <h3 id="admin-ticket-title">Support Ticket</h3>
+              <p class="section-copy" id="admin-ticket-meta"></p>
+            </div>
+            <button
+              class="button button-secondary"
+              id="close-admin-ticket"
+              type="button"
+            >
+              Close Ticket
+            </button>
+          </div>
+          <div class="admin-ticket-details" id="admin-ticket-details"></div>
+          <div class="admin-ticket-columns">
+            <section>
+              <p class="eyebrow">CONVERSATION</p>
+              <div
+                class="ticket-thread"
+                id="admin-ticket-conversation"
+              ></div>
+              <form id="admin-customer-reply-form">
+                <label>
+                  <span>Reply to Customer</span>
+                  <textarea
+                    name="message"
+                    required
+                    minlength="2"
+                    maxlength="4000"
+                    rows="4"
+                  ></textarea>
+                </label>
+                <button class="button button-primary" type="submit">
+                  Send Reply
+                </button>
+              </form>
+            </section>
+            <section>
+              <p class="eyebrow">INTERNAL NOTES</p>
+              <div class="ticket-thread" id="admin-ticket-notes"></div>
+              <form id="admin-internal-note-form">
+                <label>
+                  <span>Add Internal Note</span>
+                  <textarea
+                    name="message"
+                    required
+                    minlength="2"
+                    maxlength="4000"
+                    rows="4"
+                  ></textarea>
+                </label>
+                <button class="button button-secondary" type="submit">
+                  Save Internal Note
+                </button>
+              </form>
+            </section>
+          </div>
+          <section class="ticket-resolution">
+            <p class="eyebrow">STATUS &amp; RESOLUTION</p>
+            <div class="ticket-resolution-controls">
+              <label>
+                <span>Status</span>
+                <select id="admin-ticket-status">
+                  <option value="open">Open</option>
+                  <option value="investigating">Investigating</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </label>
+              <label>
+                <span>Resolution</span>
+                <textarea
+                  id="admin-ticket-resolution"
+                  rows="3"
+                  maxlength="4000"
+                  placeholder="Required when resolving the ticket"
+                ></textarea>
+              </label>
+              <button
+                class="button button-primary"
+                id="save-ticket-status"
+                type="button"
+              >
+                Save Status
+              </button>
+            </div>
+          </section>
+          <section class="ticket-activity-section">
+            <p class="eyebrow">ACTIVITY HISTORY</p>
+            <div class="ticket-activity" id="admin-ticket-activity"></div>
+          </section>
+          <p
+            class="auth-message"
+            id="admin-ticket-message"
+            aria-live="polite"
+          ></p>
+        </section>
       </section>
 
       <div class="is-hidden" id="platform-content">
@@ -1794,6 +1898,46 @@
         </div>
         <p class="history-status" id="help-requests-status"></p>
         <div class="help-request-list" id="help-request-list"></div>
+        <section
+          class="help-request-detail is-hidden"
+          id="help-request-detail"
+        >
+          <div class="help-support-heading">
+            <h3 id="help-request-detail-title">Support Request</h3>
+            <button
+              class="help-back"
+              id="help-request-detail-back"
+              type="button"
+            >
+              Back to Requests
+            </button>
+          </div>
+          <div id="help-request-detail-body"></div>
+          <div class="ticket-thread" id="help-request-thread"></div>
+          <form id="help-request-reply-form">
+            <label>
+              <span>Reply</span>
+              <textarea
+                name="message"
+                required
+                minlength="2"
+                maxlength="4000"
+                rows="3"
+              ></textarea>
+            </label>
+            <button class="button button-primary" type="submit">
+              Send Reply
+            </button>
+          </form>
+          <button
+            class="button button-secondary is-hidden"
+            id="help-reopen-request"
+            type="button"
+          >
+            Reopen Request
+          </button>
+          <p class="auth-message" id="help-request-detail-message"></p>
+        </section>
       </section>
       <p class="help-footer" id="help-footer">
         Need more assistance? Contact your platform administrator and include
