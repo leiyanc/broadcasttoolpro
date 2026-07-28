@@ -97,7 +97,7 @@ const helpGuides = {
     section: "generator",
     en: {
       title: "XMLTV Generator",
-      summary: "Create a compliant XMLTV feed from the Broadcast Tool Pro Excel or CSV schedule template.",
+      summary: "Create a compliant XMLTV file from the Broadcast Tool Pro Excel or CSV schedule template.",
       steps: [
         "Download and complete the official schedule template.",
         "Select the channel settings and upload the completed file.",

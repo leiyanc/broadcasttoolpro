@@ -9,7 +9,7 @@
   --line: #d7dee8;
   --surface: #ffffff;
   --background: #f5f7f9;
-  --success: #0c8b74;
+  --success: #135dff;
   --danger: #bd352d;
   --signal: #16c9d4;
   --panel-muted: #edf2f6;
@@ -30,7 +30,7 @@
   --line: #24364d;
   --surface: #0b1729;
   --background: #050d1a;
-  --success: #25c59f;
+  --success: #20d6df;
   --danger: #ff7168;
   --signal: #20d6df;
   --panel-muted: #0f2036;
@@ -109,9 +109,14 @@ body {
 
 [data-theme="dark"] .brand-logo,
 [data-theme="dark"] .auth-brand-logo {
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 10px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  filter:
+    grayscale(1)
+    brightness(0)
+    invert(1)
+    drop-shadow(0 4px 12px rgba(32, 214, 223, 0.16));
 }
 
 .account-pill {
@@ -1155,8 +1160,8 @@ h1 {
 
 [data-theme="dark"] .result-panel:not(.is-error),
 [data-theme="dark"] .authorization {
-  background: #0c2a26;
-  border-color: #1f6f5c;
+  background: var(--panel-muted);
+  border-color: var(--line);
 }
 
 [data-theme="dark"] .result-panel.is-error,
@@ -1167,9 +1172,9 @@ h1 {
 }
 
 [data-theme="dark"] .module-badge {
-  color: #6ee7b7;
-  background: #0c2a26;
-  border-color: #1f6f5c;
+  color: var(--signal);
+  background: var(--panel-muted);
+  border-color: var(--line);
 }
 
 [data-theme="dark"] .admin-metrics > div,
@@ -1200,9 +1205,9 @@ h1 {
 
 .module-badge {
   padding: 6px 10px;
-  color: var(--success);
-  background: #e9fbf4;
-  border: 1px solid #a7e7d2;
+  color: var(--blue);
+  background: var(--blue-light);
+  border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
@@ -1652,8 +1657,8 @@ select:focus {
   align-items: flex-start;
   gap: 12px;
   padding: 16px;
-  background: #fff9e8;
-  border: 1px solid #f2d58b;
+  background: var(--blue-light);
+  border: 1px solid var(--line);
   border-radius: 12px;
 }
 
@@ -1688,8 +1693,8 @@ select:focus {
   gap: 18px;
   margin-top: 28px;
   padding: 22px;
-  background: #f0fdf8;
-  border: 1px solid #a7e7d2;
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
   border-radius: 14px;
 }
 
@@ -1749,7 +1754,7 @@ select:focus {
   display: grid;
   place-items: center;
   color: white;
-  background: var(--success);
+  background: var(--blue);
   border-radius: 50%;
   font-size: 22px;
   font-weight: 800;

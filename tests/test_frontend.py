@@ -26,8 +26,14 @@ def test_frontend_supports_persistent_light_and_dark_modes():
     assert html.count('class="module-icon"') == 6
     assert html.count('<svg viewBox="0 0 24 24">') == 6
     assert "Control every broadcast workflow." in html
+    assert "Create XMLTV File" in html
+    assert "Validate XMLTV File" in html
+    assert "Repair XMLTV File" in html
+    assert "XMLTV Feed" not in html
     assert "--signal: #16c9d4" in css
     assert ".preview-table tbody tr:nth-child(even) td" in css
+    assert "drop-shadow(0 4px 12px rgba(32, 214, 223, 0.16))" in css
+    assert "background: #0c2a26" not in css
     assert (
         FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
     ).is_file()

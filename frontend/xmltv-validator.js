@@ -187,7 +187,7 @@ function showValidatorResult(result) {
         `${countLabel(result.programmes, "programme")} ` +
         "passed validation."
       )
-    : "Review the reported issues before delivering this XMLTV feed.";
+    : "Review the reported issues before delivering this XMLTV file.";
 
   validatorResultMetrics.replaceChildren();
   addValidatorMetric(`Score ${validation.score ?? 0}/100`);
