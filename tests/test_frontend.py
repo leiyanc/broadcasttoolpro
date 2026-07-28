@@ -152,6 +152,8 @@ def test_billing_and_subscription_interface_is_present():
     assert 'id="billing-panel"' in html
     assert 'id="billing-summary"' in html
     assert 'id="billing-entitlements"' in html
+    assert 'id="billing-pricing-grid"' in html
+    assert 'id="billing-pricing-addons"' in html
     assert 'id="billing-invoice-body"' in html
     assert "/api/billing/organizations/" in javascript
     assert '["owner", "admin"]' in javascript
@@ -159,6 +161,7 @@ def test_billing_and_subscription_interface_is_present():
     assert "module.available !== false" in javascript
     assert "pricing.display_name" in javascript
     assert "pricing.billing_total_cents" in javascript
+    assert "Request Plan Change" in javascript
 
 
 def test_contextual_help_center_is_present():

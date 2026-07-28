@@ -421,6 +421,17 @@ helpLauncher.addEventListener("click", () => {
   if (helpPanel.classList.contains("is-hidden")) helpOpen();
   else helpDismiss();
 });
+window.addEventListener("btp:open-support", (event) => {
+  helpOpen();
+  helpCurrentGuide = "billing";
+  helpRenderGuide("billing");
+  helpReportButton.click();
+  const detail = event.detail || {};
+  document.querySelector("#help-category").value =
+    detail.category || "billing";
+  helpSupportForm.elements.summary.value = detail.summary || "";
+  helpSupportForm.elements.details.value = detail.details || "";
+});
 helpClose.addEventListener("click", helpDismiss);
 helpGuideSelect.addEventListener("change", () => {
   helpRenderGuide(helpGuideSelect.value);

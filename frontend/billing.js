@@ -6,6 +6,10 @@ const billingSummary = document.querySelector("#billing-summary");
 const billingEntitlements = document.querySelector(
   "#billing-entitlements",
 );
+const billingPricingGrid = document.querySelector("#billing-pricing-grid");
+const billingPricingAddons = document.querySelector(
+  "#billing-pricing-addons",
+);
 const billingInvoiceStatus = document.querySelector(
   "#billing-invoice-status",
 );
@@ -47,6 +51,94 @@ function billingCard(label, value, detail = "") {
   return card;
 }
 
+function pricingButton(plan, currentPlan) {
+  const button = document.createElement("button");
+  const isCurrent = plan.name === currentPlan;
+  button.className = (
+    `button ${isCurrent ? "button-secondary" : "button-primary"}`
+  );
+  button.type = "button";
+  button.textContent = isCurrent ? "Current Plan" : "Request Plan Change";
+  button.disabled = isCurrent;
+  if (!isCurrent) {
+    button.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("btp:open-support", {
+        detail: {
+          category: "billing",
+          summary: `Plan change request: ${plan.name}`,
+          details: (
+            `Please review changing our subscription to ${plan.name} `
+            + `at ${billingMoney(plan.monthly_cents, "USD")}/month.`
+          ),
+        },
+      }));
+    });
+  }
+  return button;
+}
+
+function renderPricing(pricing) {
+  billingPricingGrid.replaceChildren();
+  (pricing.available_plans || []).forEach((plan) => {
+    const card = document.createElement("article");
+    card.className = "pricing-card";
+    if (plan.featured) card.classList.add("is-featured");
+    if (plan.name === pricing.display_name) card.classList.add("is-current");
+
+    const eyebrow = document.createElement("small");
+    eyebrow.textContent = plan.featured ? "Most Popular" : "Plan";
+    const title = document.createElement("h4");
+    title.textContent = plan.name;
+    const price = document.createElement("p");
+    price.className = "pricing-price";
+    price.textContent = (
+      `${plan.starting_at ? "From " : ""}`
+      + `${billingMoney(plan.monthly_cents, "USD")}`
+    );
+    const period = document.createElement("span");
+    period.textContent = "/month";
+    price.appendChild(period);
+    const description = document.createElement("p");
+    description.className = "pricing-description";
+    description.textContent = plan.description;
+    const features = document.createElement("ul");
+    plan.features.forEach((feature) => {
+      const item = document.createElement("li");
+      item.textContent = feature;
+      features.appendChild(item);
+    });
+    card.append(
+      eyebrow,
+      title,
+      price,
+      description,
+      features,
+      pricingButton(plan, pricing.display_name),
+    );
+    billingPricingGrid.appendChild(card);
+  });
+
+  billingPricingAddons.replaceChildren();
+  (pricing.available_addons || []).forEach((addon) => {
+    const card = document.createElement("div");
+    const copy = document.createElement("div");
+    const label = document.createElement("small");
+    label.textContent = "Optional Add-on";
+    const title = document.createElement("strong");
+    title.textContent = addon.name;
+    const description = document.createElement("p");
+    description.textContent = addon.description;
+    copy.append(label, title, description);
+    const price = document.createElement("strong");
+    price.className = "pricing-addon-price";
+    price.textContent = (
+      `+${billingMoney(addon.monthly_cents, "USD")}/month`
+    );
+    card.append(copy, price);
+    billingPricingAddons.appendChild(card);
+  });
+}
+
 function renderBilling(payload) {
   const subscription = payload.subscription;
   const pricing = payload.pricing;
@@ -70,6 +162,7 @@ function renderBilling(payload) {
       )}/${pricing.billing_period}`,
     ),
   );
+  renderPricing(pricing);
 
   const modules = Object.values(payload.entitlements.modules || {});
   const addons = payload.entitlements.addons || [];

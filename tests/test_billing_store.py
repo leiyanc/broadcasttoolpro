@@ -82,6 +82,8 @@ def test_commercial_pricing_uses_plan_and_addons():
     )
     assert programming["display_name"] == "Programming Suite"
     assert programming["monthly_total_cents"] == 3900
+    assert len(programming["available_plans"]) == 3
+    assert programming["available_addons"][0]["monthly_cents"] == 5900
 
     professional = commercial_pricing(
         "professional",
