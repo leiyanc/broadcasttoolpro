@@ -71,6 +71,28 @@ def _decode_csv(content: bytes) -> str:
         raise ValueError("The playlist CSV must use UTF-8 encoding.") from exc
 
 
+def _decode_text(content: bytes) -> str:
+    if not content:
+        raise ValueError("The As-Run file is empty.")
+    if len(content) > MAX_PLAYLIST_SIZE:
+        raise ValueError("The As-Run file exceeds the 20 MB import limit.")
+    encodings = (
+        ("utf-16", content.startswith((b"\xff\xfe", b"\xfe\xff"))),
+        ("utf-16-le", content.count(b"\x00") > len(content) // 4),
+        ("utf-8-sig", True),
+    )
+    for encoding, applicable in encodings:
+        if not applicable:
+            continue
+        try:
+            return content.decode(encoding).lstrip("\ufeff")
+        except UnicodeDecodeError:
+            continue
+    raise ValueError(
+        "The TXT As-Run encoding could not be detected."
+    )
+
+
 def _header_score(row: list[str]) -> int:
     normalized = {_normalized(value) for value in row if value.strip()}
     return sum(
@@ -533,7 +555,10 @@ def parse_text_playlist_events(
     content: bytes,
     source_timezone: str | None = None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
-    text = _decode_csv(content)
+    text = _decode_text(content)
+    proteus_result = _parse_proteus_fixed_width(text, source_timezone)
+    if proteus_result is not None:
+        return proteus_result
     try:
         dialect = csv.Sniffer().sniff(text[:8192], delimiters=",\t|;")
     except csv.Error as exc:
@@ -554,6 +579,102 @@ def parse_text_playlist_events(
         if any(str(value or "").strip() for value in record.values())
     ]
     return _structured_events(headers, records, source_timezone)
+
+
+def _parse_proteus_fixed_width(
+    text: str,
+    source_timezone: str | None,
+) -> tuple[dict[str, Any], list[PlaylistEvent]] | None:
+    lines = [
+        line.rstrip("\r")
+        for line in text.splitlines()
+        if line.strip()
+    ]
+    if not lines:
+        return None
+
+    candidates = [
+        line
+        for line in lines
+        if len(line) >= 119
+        and line[66:71].strip().lower() in {
+            "aired",
+            "failed",
+            "skipp",
+        }
+        and _parse_date(line[79:87]) is not None
+        and match(r"^\d{2}:\d{2}:\d{2};\d{2}$", line[93:104])
+    ]
+    if len(candidates) < max(1, int(len(lines) * 0.8)):
+        return None
+
+    timezone_info = _timezone(source_timezone)
+    events: list[PlaylistEvent] = []
+    skipped_statuses = Counter()
+    for row_number, line in enumerate(lines, start=1):
+        if len(line) < 119:
+            continue
+        status = line[66:71].strip()
+        if status.lower() != "aired":
+            skipped_statuses[status or "(blank)"] += 1
+            continue
+        asset_id = line[0:38].strip()
+        air_date = line[79:87].strip()
+        timecode = line[93:104].strip()
+        duration = line[108:119].strip() or None
+        if not asset_id:
+            continue
+        try:
+            air_datetime = datetime.strptime(
+                f"{air_date} {timecode[:8]}",
+                "%m/%d/%y %H:%M:%S",
+            ).replace(tzinfo=timezone_info)
+        except ValueError:
+            continue
+        events.append(PlaylistEvent(
+            channel_name=None,
+            air_datetime=air_datetime,
+            duration=duration,
+            asset_id=asset_id,
+            source_row=row_number,
+        ))
+
+    structure = {
+        "format": "Proteus fixed-width As-Run",
+        "encoding": "UTF-16",
+        "header_row": None,
+        "headers": [
+            "Asset ID",
+            "Status",
+            "Air Date",
+            "Air Timecode",
+            "Duration Timecode",
+        ],
+        "detected_columns": {
+            "asset_id": "Asset ID",
+            "time": "Air Timecode",
+            "duration": "Duration Timecode",
+        },
+        "metadata": {
+            "date": (
+                min(event.air_datetime for event in events).date().isoformat()
+                if events
+                else None
+            ),
+            "start_time": (
+                min(event.air_datetime for event in events).time().isoformat()
+                if events
+                else None
+            ),
+            "channel_name": None,
+            "source_timezone": source_timezone,
+        },
+        "rows": len(lines),
+        "asset_occurrences": len(events),
+        "unique_assets": len({event.asset_id for event in events}),
+        "skipped_statuses": dict(skipped_statuses),
+    }
+    return structure, events
 
 
 def parse_xml_playlist_events(

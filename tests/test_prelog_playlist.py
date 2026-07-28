@@ -248,6 +248,55 @@ def test_selected_timezone_is_attached_to_events():
     assert events[0].air_datetime.isoformat().endswith("-04:00")
 
 
+def test_proteus_utf16_fixed_width_asrun_is_detected():
+    def proteus_row(
+        asset_id: str,
+        air_date: str,
+        timecode: str,
+        duration: str,
+    ) -> str:
+        return (
+            f"{asset_id:<38}"
+            f"{'PROMOCIONES/TEST':<28}"
+            f"{'Aired':<13}"
+            f"{air_date:<14}"
+            f"{timecode:<15}"
+            f"{duration:<11}"
+            f"{'':<20}"
+            f"{'PROMOCIONES/TEST':<19}"
+        )
+
+    content = "\r\n".join([
+        proteus_row(
+            "HPR9660US",
+            "10/28/24",
+            "06:11:23;27",
+            "00:00:33;15",
+        ),
+        proteus_row(
+            "HPR9893US",
+            "10/28/24",
+            "06:11:57;12",
+            "00:00:33;22",
+        ),
+    ]).encode("utf-16-le")
+
+    structure, events = parse_playlist_file(
+        "unrelated-name.txt",
+        content,
+        "America/New_York",
+    )
+
+    assert structure["format"] == "Proteus fixed-width As-Run"
+    assert structure["encoding"] == "UTF-16"
+    assert structure["asset_occurrences"] == 2
+    assert events[0].asset_id == "HPR9660US"
+    assert events[0].air_datetime.isoformat() == (
+        "2024-10-28T06:11:23-04:00"
+    )
+    assert events[0].duration == "00:00:33;15"
+
+
 def test_prelog_workbook_uses_requested_language_and_columns():
     _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
     content = generate_prelog_workbook(
