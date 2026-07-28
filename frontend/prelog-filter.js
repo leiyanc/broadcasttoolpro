@@ -90,12 +90,12 @@ function updatePrelogFiles() {
   if (!files.length) return;
 
   const invalid = files.some(
-    (file) => ![".csv", ".xml"].some(
+    (file) => ![".csv", ".xml", ".txt"].some(
       (extension) => file.name.toLowerCase().endsWith(extension),
     ),
   );
   prelogFiles.setCustomValidity(
-    invalid ? "Playlist files must use the .csv or .xml extension." : "",
+    invalid ? "Playlist files must use .csv, .xml, or .txt." : "",
   );
   prelogDropZone.classList.toggle("is-invalid", invalid);
   prelogFileTitle.textContent = (

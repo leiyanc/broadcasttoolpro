@@ -360,6 +360,34 @@ def test_xml_playlist_uses_common_item_fields_and_rolls_after_midnight():
     )
 
 
+def test_tab_delimited_spanish_playlist_headers_are_detected():
+    content = (
+        "N.Ord.	Hora	Tipo_Even.	ID_Cinta	Duracion\n"
+        "1	23:59:45:00	PROM	HPR100#16:9	00:00:15:00\n"
+        "2	00:00:00:00	PROM	HPR200#	00:00:30:00\n"
+    ).encode()
+
+    structure, events = parse_playlist_file(
+        "schedule-without-date.txt",
+        content,
+        "America/New_York",
+        operational_date="2026-07-27",
+    )
+
+    assert structure["detected_columns"] == {
+        "asset_id": "ID_Cinta",
+        "time": "Hora",
+        "duration": "Duracion",
+    }
+    assert [event.asset_id for event in events] == ["HPR100", "HPR200"]
+    assert events[0].air_datetime.isoformat() == (
+        "2026-07-27T23:59:45-04:00"
+    )
+    assert events[1].air_datetime.isoformat() == (
+        "2026-07-28T00:00:00-04:00"
+    )
+
+
 def test_prelog_workbook_uses_requested_language_and_columns():
     _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
     content = generate_prelog_workbook(

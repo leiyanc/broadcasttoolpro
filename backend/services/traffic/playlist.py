@@ -23,6 +23,8 @@ HEADER_ALIASES = {
         "clip id",
         "media id",
         "asset name",
+        "id cinta",
+        "id.path.",
     },
     "time": {
         "hour",
@@ -30,12 +32,14 @@ HEADER_ALIASES = {
         "start time",
         "air time",
         "headend start time",
+        "hora",
     },
     "duration": {
         "duration",
         "chrono",
         "length",
         "duration played",
+        "duracion",
     },
 }
 
@@ -450,6 +454,8 @@ def _structured_events(
     headers: list[str],
     records: list[dict[str, Any]],
     source_timezone: str | None,
+    operational_date: str | None = None,
+    filename: str = "",
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     detected = _detect_columns(headers)
     if not detected["asset_id"] or not detected["time"]:
@@ -467,9 +473,32 @@ def _structured_events(
         None,
     )
     events = []
+    base_date_text = (
+        _parse_date(operational_date)
+        if operational_date
+        else _date_from_filename(filename)
+    )
+    base_date = (
+        datetime.strptime(base_date_text, "%Y-%m-%d").date()
+        if base_date_text
+        else None
+    )
+    current_date = base_date
+    previous_time: time | None = None
+
     for row_number, record in enumerate(records, start=2):
         asset_id = str(record.get(detected["asset_id"]) or "").strip()
         air_datetime = _excel_datetime(record.get(detected["time"]))
+        if air_datetime is None and base_date is not None:
+            parsed_time = _parse_timecode(
+                str(record.get(detected["time"]) or "")
+            )
+            if parsed_time is not None:
+                if previous_time is not None and parsed_time < previous_time:
+                    current_date += timedelta(days=1)
+                previous_time = parsed_time
+                air_datetime = datetime.combine(current_date, parsed_time)
+        asset_id = _clean_playlist_asset_id(asset_id)
         if not asset_id or air_datetime is None:
             continue
         events.append(PlaylistEvent(
@@ -496,7 +525,7 @@ def _structured_events(
             "date": (
                 min(event.air_datetime for event in events).date().isoformat()
                 if events
-                else None
+                else base_date_text
             ),
             "start_time": None,
             "channel_name": next(
@@ -554,6 +583,8 @@ def parse_json_playlist_events(
 def parse_text_playlist_events(
     content: bytes,
     source_timezone: str | None = None,
+    filename: str = "",
+    operational_date: str | None = None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     text = _decode_text(content)
     fixed_width_result = _parse_fixed_width_asrun(text, source_timezone)
@@ -578,7 +609,13 @@ def parse_text_playlist_events(
         for record in reader
         if any(str(value or "").strip() for value in record.values())
     ]
-    return _structured_events(headers, records, source_timezone)
+    return _structured_events(
+        headers,
+        records,
+        source_timezone,
+        operational_date=operational_date,
+        filename=filename,
+    )
 
 
 FIXED_WIDTH_STATUS = compile(
@@ -877,6 +914,10 @@ def _parse_timecode(value: str) -> time | None:
         return None
 
 
+def _clean_playlist_asset_id(value: str) -> str:
+    return compile(r"#(?:16:9)?$", IGNORECASE).sub("", value).strip()
+
+
 def _xml_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1].lower()
 
@@ -910,6 +951,10 @@ def _xml_playlist_date(
             if parsed:
                 return parsed
 
+    return _date_from_filename(filename)
+
+
+def _date_from_filename(filename: str) -> str | None:
     compact_date = compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")
     filename_match = compact_date.search(Path(filename).stem)
     if filename_match:
@@ -1031,7 +1076,12 @@ def parse_playlist_file(
     if extension == ".json":
         return parse_json_playlist_events(content, source_timezone)
     if extension == ".txt":
-        return parse_text_playlist_events(content, source_timezone)
+        return parse_text_playlist_events(
+            content,
+            source_timezone,
+            filename=filename,
+            operational_date=operational_date,
+        )
     if extension == ".xml":
         return parse_xml_playlist_events(
             content,
