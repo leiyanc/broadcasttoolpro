@@ -52,9 +52,9 @@ Broadcast Tool Pro will launch with one primary commercial plan. A three-tier
 structure must not be marketed until the product has enough differentiated
 capabilities to make each tier valuable and easy to understand.
 
-### Professional — Initial Commercial Plan
+### Programming Suite — $39/month
 
-Professional includes the complete XMLTV Suite:
+Programming Suite includes the complete XMLTV Suite:
 
 - XMLTV Generator
 - XMLTV Validator
@@ -66,18 +66,24 @@ Professional includes the complete XMLTV Suite:
 The Excel and CSV templates may be offered as free acquisition resources. The
 processing tools require an active account.
 
+### Professional — $99/month
+
+Professional combines Programming Suite with Traffic Operations. Traffic
+Operations contributes $60/month to the $99/month package and includes Pre
+Logs and Post Logs.
+
 ### Add-ons
 
 The initial add-on structure is:
 
-- Traffic Operations: Pre Logs and Post Logs
-- Stream Monitoring: 5-, 10-, and 15-minute HLS monitoring, SCTE-35 cue
+- Traffic Operations: $60/month; Pre Logs and Post Logs
+- Stream Monitoring: $59/month; 5-, 10-, and 15-minute HLS monitoring, SCTE-35 cue
   monitoring, observed bandwidth timeline, and branded bilingual PDF reports
 
 Add-ons are organization-level entitlements and must be enforced by both the
 API and the user interface.
 
-### Enterprise — Future Plan
+### Enterprise — From $249/month
 
 Enterprise is architecturally supported but will not be actively marketed at
 launch. It will be introduced when the platform includes sufficient
@@ -107,8 +113,9 @@ Billing is organization-scoped and separated from product entitlements.
   responses.
 
 The initial billing foundation is provider-neutral and uses manual subscription
-management. No price or payment method is stored until a payment provider and
-commercial pricing are formally approved. A future provider integration must
+management. Commercial prices are calculated from the server-side pricing
+catalog; no payment method is stored until a payment provider is connected.
+A future provider integration must
 use webhooks as the authoritative source for payment status and must be
 idempotent, auditable, and isolated from broadcast-processing workflows.
 

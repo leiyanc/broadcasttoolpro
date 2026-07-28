@@ -157,6 +157,8 @@ def test_billing_and_subscription_interface_is_present():
     assert '["owner", "admin"]' in javascript
     assert 'module.source === "professional"' in javascript
     assert "module.available !== false" in javascript
+    assert "pricing.display_name" in javascript
+    assert "pricing.billing_total_cents" in javascript
 
 
 def test_contextual_help_center_is_present():

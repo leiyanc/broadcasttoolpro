@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 from backend.main import app
 from backend.services.billing_store import BillingStore
+from backend.services.commercial_pricing import commercial_pricing
 from backend.services.tenant_store import TenantStore
 
 
@@ -67,3 +68,48 @@ def test_billing_routes_are_registered():
         in paths
     )
 
+
+def test_commercial_pricing_uses_plan_and_addons():
+    base_entitlements = {
+        "addons": [
+            {"code": "traffic_operations", "enabled": False},
+            {"code": "stream_monitoring", "enabled": False},
+        ]
+    }
+    programming = commercial_pricing(
+        "professional",
+        base_entitlements,
+    )
+    assert programming["display_name"] == "Programming Suite"
+    assert programming["monthly_total_cents"] == 3900
+
+    professional = commercial_pricing(
+        "professional",
+        {
+            "addons": [
+                {"code": "traffic_operations", "enabled": True},
+                {"code": "stream_monitoring", "enabled": False},
+            ]
+        },
+    )
+    assert professional["display_name"] == "Professional"
+    assert professional["monthly_total_cents"] == 9900
+
+    monitored = commercial_pricing(
+        "professional",
+        {
+            "addons": [
+                {"code": "traffic_operations", "enabled": True},
+                {"code": "stream_monitoring", "enabled": True},
+            ]
+        },
+    )
+    assert monitored["monthly_total_cents"] == 15800
+
+    enterprise = commercial_pricing(
+        "enterprise",
+        base_entitlements,
+        "annual",
+    )
+    assert enterprise["monthly_total_cents"] == 24900
+    assert enterprise["billing_total_cents"] == 298800

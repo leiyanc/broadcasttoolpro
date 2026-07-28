@@ -49,10 +49,11 @@ function billingCard(label, value, detail = "") {
 
 function renderBilling(payload) {
   const subscription = payload.subscription;
+  const pricing = payload.pricing;
   billingSummary.replaceChildren(
     billingCard(
       "Plan",
-      subscription.plan[0].toUpperCase() + subscription.plan.slice(1),
+      pricing.display_name,
       subscription.organization_name,
     ),
     billingCard(
@@ -63,7 +64,10 @@ function renderBilling(payload) {
     billingCard(
       subscription.cancel_at_period_end ? "Access Until" : "Renews",
       billingDate(subscription.current_period_end),
-      billingMoney(subscription.amount_cents, subscription.currency),
+      `${billingMoney(
+        pricing.billing_total_cents,
+        pricing.currency,
+      )}/${pricing.billing_period}`,
     ),
   );
 
@@ -78,18 +82,32 @@ function renderBilling(payload) {
     ))
     .forEach((module) => {
       billingEntitlements.appendChild(
-        billingCard("Included", module.name, "Professional plan"),
+        billingCard(
+          "Included",
+          module.name,
+          subscription.plan === "enterprise"
+            ? "Enterprise plan"
+            : `${pricing.base.name} plan`,
+        ),
       );
     });
   addons
     .filter((addon) => addon.enabled)
     .forEach((addon) => {
       const enterprise = subscription.plan === "enterprise";
+      const addonPricing = (pricing.addons || []).find(
+        (item) => item.code === addon.code,
+      );
       billingEntitlements.appendChild(
         billingCard(
           enterprise ? "Included" : "Add-on",
           addon.name,
-          enterprise ? "Enterprise plan" : "Enabled",
+          enterprise
+            ? "Enterprise plan"
+            : `${billingMoney(
+                addonPricing?.monthly_cents,
+                pricing.currency,
+              )}/month`,
         ),
       );
     });
