@@ -1,14 +1,16 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
 from backend.services.report_history import get_report, list_reports
+from backend.api.auth import require_active_organization
 
 
 router = APIRouter(
     prefix="/api/history",
     tags=["Report History"],
+    dependencies=[Depends(require_active_organization)],
 )
 
 

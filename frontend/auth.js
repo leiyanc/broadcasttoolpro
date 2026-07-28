@@ -16,7 +16,29 @@ const accountPanelOrganization = document.querySelector(
 );
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
+const suspendedPanel = document.querySelector("#organization-suspended");
+const suspendedAdminButton = document.querySelector(
+  "#suspended-admin-button",
+);
 let currentIdentity = null;
+
+function applyOrganizationAccess(identity) {
+  const organization = identity?.organizations?.[0];
+  const suspended = organization?.status === "suspended";
+  const controlPlane = document.querySelector("#admin-control-plane");
+  const controlPlaneOpen = !controlPlane?.classList.contains("is-hidden");
+  suspendedPanel.classList.toggle(
+    "is-hidden",
+    !suspended || controlPlaneOpen,
+  );
+  suspendedAdminButton.classList.toggle(
+    "is-hidden",
+    !suspended || !identity?.user?.is_superuser,
+  );
+  if (!controlPlaneOpen) {
+    platformContent.classList.toggle("is-hidden", suspended);
+  }
+}
 
 function setModuleAvailability(element, enabled) {
   if (!element) return;
@@ -30,6 +52,7 @@ async function refreshOrganizationEntitlements() {
     if (!organization) return;
     accountPanelOrganization.textContent =
       `${organization.name} · ${organization.plan}`;
+    applyOrganizationAccess(currentIdentity);
     const entitlements = await authRequest(
       `/api/platform/organizations/${organization.id}/entitlements`,
     );
@@ -93,6 +116,7 @@ function showAuthentication(bootstrapRequired) {
   platformContent.classList.add("is-hidden");
   accountButton.classList.add("is-hidden");
   accountPanel.classList.add("is-hidden");
+  suspendedPanel.classList.add("is-hidden");
   bootstrapForm.classList.toggle("is-hidden", !bootstrapRequired);
   loginForm.classList.toggle("is-hidden", bootstrapRequired);
 }
@@ -115,6 +139,7 @@ function showPlatform(identity) {
   accountPanelOrganization.textContent = organization
     ? `${organization.name} · ${organization.plan}`
     : "No organization assigned";
+  applyOrganizationAccess(identity);
   refreshOrganizationEntitlements();
 }
 

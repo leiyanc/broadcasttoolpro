@@ -82,6 +82,8 @@ def require_module(module_code: str):
     def dependency(user: dict = Depends(current_user)) -> dict:
         organizations = identity_store.organizations_for_user(user["id"])
         for organization in organizations:
+            if organization["status"] != "active":
+                continue
             entitlements = entitlement_store.effective_entitlements(
                 organization["id"]
             )
@@ -96,6 +98,21 @@ def require_module(module_code: str):
         )
 
     return dependency
+
+
+def require_active_organization(
+    user: dict = Depends(current_user),
+) -> dict:
+    organizations = identity_store.organizations_for_user(user["id"])
+    if any(
+        organization["status"] == "active"
+        for organization in organizations
+    ):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="This organization is suspended.",
+    )
 
 
 @router.post("/bootstrap", status_code=status.HTTP_201_CREATED)

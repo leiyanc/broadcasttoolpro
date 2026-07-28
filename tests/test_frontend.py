@@ -110,12 +110,15 @@ def test_secure_account_interface_is_present():
     assert "/static/admin.js" in html
     assert 'id="admin-control-plane"' in html
     assert 'id="open-admin-button"' in html
+    assert 'id="organization-suspended"' in html
+    assert 'id="suspended-admin-button"' in html
     assert html.count(
         '/static/assets/broadcast-tool-pro-logo.png'
     ) >= 2
     auth_javascript = (FRONTEND_DIR / "auth.js").read_text()
     admin_javascript = (FRONTEND_DIR / "admin.js").read_text()
     assert "refreshOrganizationEntitlements" in auth_javascript
+    assert "applyOrganizationAccess" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
 

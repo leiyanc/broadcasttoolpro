@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Form, HTTPException
+from fastapi import APIRouter, Body, Depends, Form, HTTPException
 from fastapi.responses import Response
 
 from backend.services.hls.validator import (
@@ -6,11 +6,13 @@ from backend.services.hls.validator import (
     validate_hls,
 )
 from backend.services.hls.report import generate_hls_report
+from backend.api.auth import require_active_organization
 
 
 router = APIRouter(
     prefix="/api/hls",
     tags=["HLS"],
+    dependencies=[Depends(require_active_organization)],
 )
 
 

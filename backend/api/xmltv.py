@@ -1,7 +1,7 @@
 from pathlib import Path
 from collections import Counter
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from backend.models.validation import ValidationIssue, ValidationReport
@@ -20,11 +20,13 @@ from backend.services.xmltv.timezone import (
     build_utc_schedule,
 )
 from backend.services.xmltv.validator import ValidationEngine
+from backend.api.auth import require_active_organization
 
 
 router = APIRouter(
     prefix="/api/xmltv",
     tags=["XMLTV"],
+    dependencies=[Depends(require_active_organization)],
 )
 
 ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"

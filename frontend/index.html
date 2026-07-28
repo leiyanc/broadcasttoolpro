@@ -14,9 +14,9 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260728-2" />
-    <script src="/static/auth.js?v=20260728-2" defer></script>
-    <script src="/static/admin.js?v=20260728-2" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-3" />
+    <script src="/static/auth.js?v=20260728-3" defer></script>
+    <script src="/static/admin.js?v=20260728-3" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -158,6 +158,26 @@
             Sign Out
           </button>
         </div>
+      </section>
+
+      <section
+        class="suspended-shell is-hidden"
+        id="organization-suspended"
+        aria-live="polite"
+      >
+        <p class="eyebrow">ACCOUNT STATUS</p>
+        <h2>Organization Suspended</h2>
+        <p>
+          Product access is currently disabled for this organization.
+          Contact the platform administrator for assistance.
+        </p>
+        <button
+          class="button button-primary is-hidden"
+          id="suspended-admin-button"
+          type="button"
+        >
+          Open Control Plane
+        </button>
       </section>
 
       <section class="admin-shell is-hidden" id="admin-control-plane">

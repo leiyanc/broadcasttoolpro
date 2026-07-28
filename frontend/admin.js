@@ -10,6 +10,9 @@ const adminIncidentsBody = document.querySelector("#admin-incidents-body");
 const adminIncidentsTable = document.querySelector("#admin-incidents-table");
 const adminIncidentsStatus = document.querySelector("#admin-incidents-status");
 const adminMessage = document.querySelector("#admin-message");
+const suspendedAdminButton = document.querySelector(
+  "#suspended-admin-button",
+);
 
 async function adminRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -257,12 +260,19 @@ adminOpenButton.addEventListener("click", () => {
   adminControlPlane.classList.remove("is-hidden");
   accountPanel.classList.add("is-hidden");
   platformContent.classList.add("is-hidden");
+  suspendedPanel.classList.add("is-hidden");
   loadControlPlane();
 });
 
 closeAdminButton.addEventListener("click", () => {
   adminControlPlane.classList.add("is-hidden");
-  platformContent.classList.remove("is-hidden");
+  applyOrganizationAccess(currentIdentity);
 });
 
 refreshAdminButton.addEventListener("click", loadControlPlane);
+suspendedAdminButton.addEventListener("click", () => {
+  adminControlPlane.classList.remove("is-hidden");
+  suspendedPanel.classList.add("is-hidden");
+  platformContent.classList.add("is-hidden");
+  loadControlPlane();
+});
