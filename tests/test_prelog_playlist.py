@@ -327,6 +327,39 @@ def test_fixed_width_asrun_detection_does_not_require_vendor_offsets():
     )
 
 
+def test_xml_playlist_uses_common_item_fields_and_rolls_after_midnight():
+    content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<traffics>
+  <traffic channelid="TEST">
+    <item mediaid="PROMO-1">
+      <startat>23:59:45;00</startat>
+      <duration>00:00:15;00</duration>
+    </item>
+    <item mediaid="SPOT-2">
+      <startat>00:00:00;00</startat>
+      <duration>00:00:30;00</duration>
+    </item>
+  </traffic>
+</traffics>"""
+
+    structure, events = parse_playlist_file(
+        "name-without-a-date.xml",
+        content,
+        "America/New_York",
+        operational_date="2026-07-27",
+    )
+
+    assert structure["format"] == "XML playlist"
+    assert structure["metadata"]["channel_name"] == "TEST"
+    assert [event.asset_id for event in events] == ["PROMO-1", "SPOT-2"]
+    assert events[0].air_datetime.isoformat() == (
+        "2026-07-27T23:59:45-04:00"
+    )
+    assert events[1].air_datetime.isoformat() == (
+        "2026-07-28T00:00:00-04:00"
+    )
+
+
 def test_prelog_workbook_uses_requested_language_and_columns():
     _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
     content = generate_prelog_workbook(

@@ -718,6 +718,8 @@ def _parse_fixed_width_asrun(
 def parse_xml_playlist_events(
     content: bytes,
     source_timezone: str | None = None,
+    filename: str = "",
+    operational_date: str | None = None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     if not content:
         raise ValueError("The XML As-Run file is empty.")
@@ -728,22 +730,193 @@ def parse_xml_playlist_events(
     except ElementTree.ParseError as exc:
         raise ValueError("The XML As-Run file is invalid.") from exc
 
-    event_nodes = list(root.findall(".//event"))
-    if not event_nodes:
-        raise ValueError("The XML As-Run does not contain event records.")
-    records = [
-        {
-            child.tag: (child.text or "").strip()
-            for child in event
-        }
-        for event in event_nodes
+    event_nodes = [
+        element
+        for element in root.iter()
+        if _xml_name(element.tag) == "event"
     ]
-    headers = list(dict.fromkeys(
-        key
-        for record in records
-        for key in record
-    ))
-    return _structured_events(headers, records, source_timezone)
+    if event_nodes:
+        records = [
+            {
+                _xml_name(child.tag): (child.text or "").strip()
+                for child in event
+            }
+            for event in event_nodes
+        ]
+        headers = list(dict.fromkeys(
+            key
+            for record in records
+            for key in record
+        ))
+        return _structured_events(headers, records, source_timezone)
+
+    traffic_nodes = [
+        element
+        for element in root.iter()
+        if _xml_name(element.tag) == "traffic"
+    ]
+    item_records = [
+        (traffic, item)
+        for traffic in traffic_nodes
+        for item in traffic.iter()
+        if _xml_name(item.tag) == "item"
+    ]
+    if not item_records:
+        raise ValueError("The XML playlist does not contain event records.")
+
+    playlist_date = _xml_playlist_date(
+        root,
+        filename=filename,
+        operational_date=operational_date,
+    )
+    if playlist_date is None:
+        raise ValueError(
+            "This XML playlist does not declare its broadcast date. "
+            "Enter the Start Date before inspecting the playlist."
+        )
+
+    timezone_info = _timezone(source_timezone)
+    channels = {
+        traffic.attrib.get("channelid", "").strip()
+        for traffic in traffic_nodes
+        if traffic.attrib.get("channelid", "").strip()
+    }
+    channel_name = next(iter(channels)) if len(channels) == 1 else None
+    events: list[PlaylistEvent] = []
+    previous_times: dict[str | None, time] = {}
+    current_dates: dict[str | None, Any] = {}
+    base_date = datetime.strptime(playlist_date, "%Y-%m-%d").date()
+
+    for row_number, (traffic, item) in enumerate(item_records, start=1):
+        item_channel = traffic.attrib.get("channelid", "").strip() or None
+        fields = {
+            _xml_name(child.tag): (
+                child.text or ""
+            ).strip()
+            for child in item
+        }
+        asset_id = (
+            item.attrib.get("mediaid", "").strip()
+            or fields.get("mediaid", "")
+            or fields.get("assetid", "")
+            or fields.get("clipid", "")
+        )
+        start_text = (
+            fields.get("startat", "")
+            or fields.get("starttime", "")
+            or fields.get("airtime", "")
+        )
+        duration = (
+            fields.get("duration", "")
+            or fields.get("length", "")
+            or None
+        )
+        parsed_time = _parse_timecode(start_text)
+        if not asset_id or parsed_time is None:
+            continue
+
+        previous_time = previous_times.get(item_channel)
+        current_date = current_dates.get(item_channel, base_date)
+        if previous_time is not None and parsed_time < previous_time:
+            current_date += timedelta(days=1)
+        previous_times[item_channel] = parsed_time
+        current_dates[item_channel] = current_date
+        events.append(PlaylistEvent(
+            channel_name=item_channel,
+            air_datetime=datetime.combine(
+                current_date,
+                parsed_time,
+                tzinfo=timezone_info,
+            ),
+            duration=duration,
+            asset_id=asset_id,
+            source_row=row_number,
+        ))
+
+    if not events:
+        raise ValueError(
+            "The XML playlist does not contain usable Asset ID and Start Time "
+            "values."
+        )
+
+    structure = {
+        "format": "XML playlist",
+        "header_row": None,
+        "headers": [
+            "Asset ID",
+            "Start Time",
+            "Duration",
+            "Channel",
+        ],
+        "detected_columns": {
+            "asset_id": "Asset ID",
+            "time": "Start Time",
+            "duration": "Duration",
+        },
+        "metadata": {
+            "date": playlist_date,
+            "start_time": events[0].air_datetime.time().isoformat(),
+            "channel_name": channel_name,
+            "source_timezone": source_timezone,
+        },
+        "rows": len(item_records),
+        "asset_occurrences": len(events),
+        "unique_assets": len({event.asset_id for event in events}),
+    }
+    return structure, events
+
+
+def _parse_timecode(value: str) -> time | None:
+    value_without_frames = value.strip()[:8]
+    try:
+        return datetime.strptime(
+            value_without_frames,
+            "%H:%M:%S",
+        ).time()
+    except ValueError:
+        return None
+
+
+def _xml_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].lower()
+
+
+def _xml_playlist_date(
+    root: ElementTree.Element,
+    filename: str,
+    operational_date: str | None,
+) -> str | None:
+    if operational_date:
+        parsed = _parse_date(operational_date)
+        if parsed:
+            return parsed
+
+    date_names = {
+        "date",
+        "airdate",
+        "broadcastdate",
+        "playlistdate",
+        "scheduledate",
+    }
+    for element in root.iter():
+        for key, value in element.attrib.items():
+            if _xml_name(key) in date_names:
+                parsed = _parse_date(value)
+                if parsed:
+                    return parsed
+        tag = _xml_name(element.tag)
+        if tag in date_names and element.text:
+            parsed = _parse_date(element.text)
+            if parsed:
+                return parsed
+
+    compact_date = compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")
+    filename_match = compact_date.search(Path(filename).stem)
+    if filename_match:
+        month, day, year = filename_match.groups()
+        return _parse_date(f"{month}/{day}/{year}")
+
+    return None
 
 
 def parse_excel_playlist_events(
@@ -848,6 +1021,7 @@ def parse_playlist_file(
     filename: str,
     content: bytes,
     source_timezone: str | None = None,
+    operational_date: str | None = None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     extension = Path(filename).suffix.lower()
     if extension == ".csv":
@@ -859,7 +1033,12 @@ def parse_playlist_file(
     if extension == ".txt":
         return parse_text_playlist_events(content, source_timezone)
     if extension == ".xml":
-        return parse_xml_playlist_events(content, source_timezone)
+        return parse_xml_playlist_events(
+            content,
+            source_timezone,
+            filename=filename,
+            operational_date=operational_date,
+        )
     raise ValueError(
         "Only .csv, .xlsx, .json, .txt, and .xml As-Run files are supported."
     )

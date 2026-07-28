@@ -90,10 +90,12 @@ function updatePrelogFiles() {
   if (!files.length) return;
 
   const invalid = files.some(
-    (file) => !file.name.toLowerCase().endsWith(".csv"),
+    (file) => ![".csv", ".xml"].some(
+      (extension) => file.name.toLowerCase().endsWith(extension),
+    ),
   );
   prelogFiles.setCustomValidity(
-    invalid ? "All playlist files must use the .csv extension." : "",
+    invalid ? "Playlist files must use the .csv or .xml extension." : "",
   );
   prelogDropZone.classList.toggle("is-invalid", invalid);
   prelogFileTitle.textContent = (
@@ -187,6 +189,9 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     "source_timezone",
     prelogForm.elements.source_timezone.value,
   );
+  if (prelogStartDate.value) {
+    data.append("start_date", prelogStartDate.value);
+  }
   inspectPlaylistsButton.disabled = true;
   inspectPlaylistsButton.textContent = "Inspecting…";
 

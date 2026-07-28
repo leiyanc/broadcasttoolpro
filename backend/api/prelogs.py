@@ -44,6 +44,7 @@ async def _filtered_events(
             playlist_file.filename or "",
             await playlist_file.read(),
             source_timezone=source_timezone,
+            operational_date=start_date,
         )
         events.extend(parsed_events)
         files.append({
@@ -249,6 +250,7 @@ async def export_prelog(
 async def playlist_filter_options(
     playlist_files: list[UploadFile] = File(...),
     source_timezone: str | None = Form(None),
+    start_date: str | None = Form(None),
 ):
     events = []
     files = []
@@ -259,6 +261,7 @@ async def playlist_filter_options(
                 playlist_file.filename or "",
                 await playlist_file.read(),
                 source_timezone=source_timezone,
+                operational_date=start_date,
             )
             events.extend(parsed_events)
             files.append({
