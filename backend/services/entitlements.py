@@ -49,6 +49,7 @@ MODULE_CATALOG = {
         "name": "Media QC Engine",
         "suite": "Streaming QC",
         "source": "enterprise",
+        "available": False,
     },
 }
 
@@ -154,4 +155,3 @@ class EntitlementStore:
 
 entitlement_store = EntitlementStore()
 entitlement_store.initialize()
-

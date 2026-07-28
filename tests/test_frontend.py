@@ -149,6 +149,8 @@ def test_billing_and_subscription_interface_is_present():
     assert 'id="billing-invoice-body"' in html
     assert "/api/billing/organizations/" in javascript
     assert '["owner", "admin"]' in javascript
+    assert 'module.source === "professional"' in javascript
+    assert "module.available !== false" in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

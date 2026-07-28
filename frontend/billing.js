@@ -25,7 +25,7 @@ function billingDate(value) {
 }
 
 function billingMoney(cents, currency) {
-  if (cents === null || cents === undefined) return "Not configured";
+  if (cents === null || cents === undefined) return "Pricing pending";
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: currency || "USD",
@@ -71,17 +71,26 @@ function renderBilling(payload) {
   const addons = payload.entitlements.addons || [];
   billingEntitlements.replaceChildren();
   modules
-    .filter((module) => module.enabled)
+    .filter((module) => (
+      module.enabled
+      && module.available !== false
+      && module.source === "professional"
+    ))
     .forEach((module) => {
       billingEntitlements.appendChild(
-        billingCard("Included", module.name, module.source),
+        billingCard("Included", module.name, "Professional plan"),
       );
     });
   addons
     .filter((addon) => addon.enabled)
     .forEach((addon) => {
+      const enterprise = subscription.plan === "enterprise";
       billingEntitlements.appendChild(
-        billingCard("Add-on", addon.name, "Enabled"),
+        billingCard(
+          enterprise ? "Included" : "Add-on",
+          addon.name,
+          enterprise ? "Enterprise plan" : "Enabled",
+        ),
       );
     });
 
@@ -142,4 +151,3 @@ billingCloseButton.addEventListener("click", () => {
   billingPanel.classList.add("is-hidden");
   applyOrganizationAccess(currentIdentity);
 });
-

@@ -25,6 +25,7 @@ def test_professional_plan_and_addons_are_separated():
         assert result["modules"]["hls_validator"]["enabled"] is True
         assert result["modules"]["prelogs"]["enabled"] is False
         assert result["modules"]["hls_monitor"]["enabled"] is False
+        assert result["modules"]["media_qc"]["available"] is False
 
         entitlements.set_addon(
             organization["id"],
@@ -44,4 +45,3 @@ def test_entitlement_route_is_registered():
         "/api/platform/organizations/{organization_id}/entitlements"
         in paths
     )
-
