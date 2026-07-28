@@ -83,6 +83,30 @@ The initial add-on structure is:
 Add-ons are organization-level entitlements and must be enforced by both the
 API and the user interface.
 
+### HLS Cost-Control Policy
+
+The HLS Validator included in Programming Suite must remain a lightweight,
+request-based inspection service with negligible marginal infrastructure cost.
+It may inspect manifests, variants, declared codecs, resolutions, frame rates,
+segment availability, and manifest-level signaling.
+
+Compute-intensive analysis must never be silently included in the base plan.
+The following capabilities require a separately funded entitlement, explicit
+usage limits, concurrency controls, automatic timeouts, and measurable usage:
+
+- Downloading and demultiplexing transport-stream segments
+- Continuous SCTE-35 or closed-caption extraction
+- Audio decoding and CALM Act loudness measurement
+- Black-frame and freeze-frame detection
+- Long-running or continuous stream monitoring
+- Multi-region probes, archival, or retained media samples
+
+If an advanced HLS capability cannot be operated within the revenue assigned
+to its add-on, it must remain unavailable until pricing, quotas, and capacity
+controls are approved. Broadcast-processing workloads must run outside the web
+request path so they cannot reduce availability for XMLTV, Traffic Operations,
+Billing, or Administration.
+
 ### Enterprise — From $249/month
 
 Enterprise is architecturally supported but will not be actively marketed at
