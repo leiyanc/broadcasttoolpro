@@ -7,6 +7,9 @@ def test_frontend_files_exist():
     assert (FRONTEND_DIR / "index.html").is_file()
     assert (FRONTEND_DIR / "styles.css").is_file()
     assert (FRONTEND_DIR / "app.js").is_file()
+    assert (
+        FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
+    ).is_file()
 
 
 def test_home_returns_frontend():
@@ -107,6 +110,9 @@ def test_secure_account_interface_is_present():
     assert "/static/admin.js" in html
     assert 'id="admin-control-plane"' in html
     assert 'id="open-admin-button"' in html
+    assert html.count(
+        '/static/assets/broadcast-tool-pro-logo.png'
+    ) >= 2
 
 
 def test_epg_preview_is_available_after_schedule_validation():

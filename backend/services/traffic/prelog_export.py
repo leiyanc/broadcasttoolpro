@@ -1,5 +1,6 @@
 from datetime import timedelta
 from io import BytesIO
+from pathlib import Path
 from re import sub
 
 from openpyxl import Workbook
@@ -9,6 +10,11 @@ from openpyxl.utils import get_column_letter
 
 from backend.services.traffic.playlist import PlaylistEvent
 
+BRAND_LOGO = (
+    Path(__file__).resolve().parents[2]
+    / "assets"
+    / "broadcast-tool-pro-logo.png"
+)
 
 LABELS = {
     "en": {
@@ -127,6 +133,11 @@ def generate_prelog_workbook(
     )
     worksheet["A1"].alignment = Alignment(vertical="center")
     worksheet.row_dimensions[1].height = 34
+    brand_logo = Image(str(BRAND_LOGO))
+    brand_scale = min(190 / brand_logo.width, 42 / brand_logo.height)
+    brand_logo.width = round(brand_logo.width * brand_scale)
+    brand_logo.height = round(brand_logo.height * brand_scale)
+    worksheet.add_image(brand_logo, f"{last_column}1")
 
     worksheet.merge_cells(f"A2:{last_column}2")
     worksheet["A2"] = channel_name.strip()
@@ -244,7 +255,7 @@ def generate_prelog_workbook(
             scale = min(150 / logo.width, 58 / logo.height, 1)
             logo.width = round(logo.width * scale)
             logo.height = round(logo.height * scale)
-            worksheet.add_image(logo, f"{last_column}1")
+            worksheet.add_image(logo, f"{last_column}2")
         except Exception as exc:
             raise ValueError(
                 "The logo must be a valid PNG, JPG, or JPEG image."

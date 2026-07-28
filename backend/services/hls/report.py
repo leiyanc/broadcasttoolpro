@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, String
@@ -9,6 +10,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     KeepTogether,
+    Image,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -25,6 +27,11 @@ MUTED = colors.HexColor("#64748B")
 LINE = colors.HexColor("#D7E1EC")
 SUCCESS = colors.HexColor("#087F5B")
 DANGER = colors.HexColor("#B42318")
+BRAND_LOGO = (
+    Path(__file__).resolve().parents[2]
+    / "assets"
+    / "broadcast-tool-pro-logo.png"
+)
 
 RECOMMENDATIONS = {
     "HLS-001": "Verify that the URL returns an M3U8 playlist beginning with #EXTM3U.",
@@ -274,32 +281,20 @@ def generate_hls_report(payload: dict) -> bytes:
     )
 
     story = []
+    brand_logo = Image(
+        str(BRAND_LOGO),
+        width=3.25 * inch,
+        height=0.71 * inch,
+    )
     brand = Table(
-        [[
-            Paragraph(
-                '<font color="white"><b>B</b></font>',
-                ParagraphStyle(
-                    "BrandMark",
-                    alignment=TA_CENTER,
-                    fontSize=18,
-                    leading=22,
-                ),
-            ),
-            Paragraph(
-                "<b>Broadcast Tool Pro</b><br/>"
-                '<font size="8" color="#64748B">'
-                f'{translated("platform", "Broadcast Operations Platform")}'
-                "</font>",
-                body,
-            ),
-        ]],
-        colWidths=[0.48 * inch, 6.42 * inch],
+        [[brand_logo]],
+        colWidths=[6.9 * inch],
     )
     brand.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, 0), BLUE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BOX", (0, 0), (-1, -1), 0.7, LINE),
-        ("LEFTPADDING", (1, 0), (1, 0), 12),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
         ("TOPPADDING", (0, 0), (-1, -1), 8),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
     ]))

@@ -72,7 +72,7 @@ function downloadReportBlob(content, type, filename) {
   URL.revokeObjectURL(url);
 }
 
-function buildHtmlReport(report) {
+function buildHtmlReport(report, brandLogo) {
   const validation = report.validation;
   const issues = Array.isArray(validation.issues) ? validation.issues : [];
   const status = report.valid ? "Valid XMLTV" : "XMLTV Needs Attention";
@@ -107,13 +107,14 @@ function buildHtmlReport(report) {
       th, td { padding: 11px; border-bottom: 1px solid #dbe3ee; text-align: left; vertical-align: top; }
       th { color: #40526a; font-size: 12px; text-transform: uppercase; }
       .meta { color: #64748b; }
+      .brand-logo { display: block; width: 320px; max-width: 75%; height: auto; margin-bottom: 24px; }
       @media print { body { background: white; } main { width: 100%; margin: 0; } }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <p class="meta">Broadcast Tool Pro</p>
+        <img class="brand-logo" src="${brandLogo}" alt="Broadcast Tool Pro">
         <h1>XMLTV Validation Report</h1>
         <p class="status">${escapeHtml(status)}</p>
         <p class="meta">
@@ -233,13 +234,23 @@ downloadValidatorReport.addEventListener("click", () => {
   downloadValidatorReport.closest("details").removeAttribute("open");
 });
 
-downloadValidatorHtmlReport.addEventListener("click", () => {
+downloadValidatorHtmlReport.addEventListener("click", async () => {
   if (!latestValidatorReport) return;
 
   const sourceName = latestValidatorReport.filename || "xmltv";
   const reportName = sourceName.replace(/\.xml$/i, "");
+  const logoResponse = await fetch(
+    "/static/assets/broadcast-tool-pro-logo.png",
+  );
+  const logoBlob = await logoResponse.blob();
+  const brandLogo = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(logoBlob);
+  });
   downloadReportBlob(
-    buildHtmlReport(latestValidatorReport),
+    buildHtmlReport(latestValidatorReport, brandLogo),
     "text/html;charset=utf-8",
     `${reportName}-validation-report.html`,
   );

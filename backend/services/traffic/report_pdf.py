@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -16,6 +17,20 @@ from reportlab.platypus import (
 
 from backend.services.traffic.playlist import PlaylistEvent
 from backend.services.traffic.prelog_export import LABELS
+
+BRAND_LOGO = (
+    Path(__file__).resolve().parents[2]
+    / "assets"
+    / "broadcast-tool-pro-logo.png"
+)
+
+
+def _brand_logo() -> Image:
+    return Image(
+        str(BRAND_LOGO),
+        width=190,
+        height=42,
+    )
 
 
 def _logo(logo_content: bytes | None) -> Image | None:
@@ -120,12 +135,12 @@ def generate_report_pdf(
     ]
     logo = _logo(logo_content)
     header_table = Table(
-        [[heading, logo or ""]],
-        colWidths=[document.width - 130, 130],
+        [[_brand_logo(), heading, logo or ""]],
+        colWidths=[200, document.width - 330, 130],
     )
     header_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ("TOPPADDING", (0, 0), (-1, -1), 0),

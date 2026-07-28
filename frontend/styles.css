@@ -95,10 +95,24 @@ body {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   color: var(--navy);
   font-weight: 750;
   text-decoration: none;
+}
+
+.brand-logo {
+  display: block;
+  width: 238px;
+  height: auto;
+  max-height: 54px;
+  object-fit: contain;
+}
+
+.auth-brand-logo {
+  display: block;
+  width: min(360px, 88%);
+  height: auto;
+  margin-bottom: 24px;
 }
 
 .brand-mark {
@@ -110,6 +124,16 @@ body {
   background: var(--blue);
   border-radius: 11px;
   box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+}
+
+@media (max-width: 680px) {
+  .brand-logo {
+    width: 190px;
+  }
+
+  .status-pill {
+    display: none;
+  }
 }
 
 .status-pill {
