@@ -10,7 +10,7 @@ const adminIncidentsBody = document.querySelector("#admin-incidents-body");
 const adminIncidentsTable = document.querySelector("#admin-incidents-table");
 const adminIncidentsStatus = document.querySelector("#admin-incidents-status");
 const adminMessage = document.querySelector("#admin-message");
-const suspendedAdminButton = document.querySelector(
+const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
 
@@ -270,7 +270,7 @@ closeAdminButton.addEventListener("click", () => {
 });
 
 refreshAdminButton.addEventListener("click", loadControlPlane);
-suspendedAdminButton.addEventListener("click", () => {
+suspendedAdminControlButton.addEventListener("click", () => {
   adminControlPlane.classList.remove("is-hidden");
   suspendedPanel.classList.add("is-hidden");
   platformContent.classList.add("is-hidden");
