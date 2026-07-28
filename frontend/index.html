@@ -9,12 +9,23 @@
     />
 
     <title>Broadcast Tool Pro</title>
+    <script>
+      (() => {
+        const savedTheme = localStorage.getItem("broadcastToolPro.theme");
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        document.documentElement.dataset.theme =
+          savedTheme || (prefersDark ? "dark" : "light");
+      })();
+    </script>
 
     <link
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260728-4" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-5" />
+    <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260728-3" defer></script>
     <script src="/static/admin.js?v=20260728-4" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
@@ -40,6 +51,16 @@
       </a>
 
       <div class="header-actions">
+        <button
+          class="theme-toggle"
+          id="theme-toggle"
+          type="button"
+          aria-label="Switch to dark mode"
+          aria-pressed="false"
+        >
+          <span aria-hidden="true" id="theme-icon">☾</span>
+          <span id="theme-label">Dark Mode</span>
+        </button>
         <span class="status-pill">
           <span class="status-dot"></span>
           Platform Preview

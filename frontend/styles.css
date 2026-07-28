@@ -17,6 +17,22 @@
     sans-serif;
 }
 
+[data-theme="dark"] {
+  color-scheme: dark;
+  --navy: #e6eef8;
+  --blue: #60a5fa;
+  --blue-dark: #3b82f6;
+  --blue-light: #172a46;
+  --ink: #e8eef7;
+  --muted: #9fb0c5;
+  --line: #334155;
+  --surface: #111b2e;
+  --background: #08111f;
+  --success: #34d399;
+  --danger: #f87171;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+}
+
 .is-hidden {
   display: none !important;
 }
@@ -37,6 +53,12 @@ body {
     var(--background);
 }
 
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 80% 0%, #142b4a 0, transparent 30rem),
+    var(--background);
+}
+
 .site-header {
   width: min(1180px, calc(100% - 40px));
   height: 78px;
@@ -50,6 +72,45 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.theme-toggle {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  color: var(--navy);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.theme-toggle span:first-child {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  border-color: var(--blue);
+}
+
+[data-theme="dark"] .theme-toggle,
+[data-theme="dark"] .status-pill,
+[data-theme="dark"] .account-pill {
+  color: var(--ink);
+  background: rgba(17, 27, 46, 0.86);
+}
+
+[data-theme="dark"] .brand-logo,
+[data-theme="dark"] .auth-brand-logo {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 10px;
 }
 
 .account-pill {
@@ -481,6 +542,96 @@ h1 {
 .button-secondary {
   color: var(--navy);
   background: white;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .button-secondary,
+[data-theme="dark"] input,
+[data-theme="dark"] select {
+  color: var(--ink);
+  background: #0d1728;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .account-panel,
+[data-theme="dark"] .admin-shell,
+[data-theme="dark"] .programming-grid-export,
+[data-theme="dark"] .profile-manager,
+[data-theme="dark"] .download-menu-options,
+[data-theme="dark"] .download-menu-list {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .auth-card h2,
+[data-theme="dark"] .auth-card label,
+[data-theme="dark"] .auth-card label > span,
+[data-theme="dark"] .preview-table th,
+[data-theme="dark"] .epg-preview-stats span,
+[data-theme="dark"] .result-metrics span,
+[data-theme="dark"] .repair-list {
+  color: var(--ink);
+}
+
+[data-theme="dark"] .auth-card input,
+[data-theme="dark"] .hls-url-field input,
+[data-theme="dark"] .hls-monitor-controls select {
+  color: var(--ink);
+  background: #0d1728;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .drop-zone,
+[data-theme="dark"] .preview-table th,
+[data-theme="dark"] .result-metrics span {
+  background: #13213a;
+}
+
+[data-theme="dark"] .epg-preview-stats span,
+[data-theme="dark"] .upload-icon {
+  color: var(--ink);
+  background: #13213a;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .preview-table td {
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .preview-table tbody tr:nth-child(even) {
+  background: #0d1728;
+}
+
+[data-theme="dark"] .playlist-summary {
+  background: #13213a;
+  border-color: #294567;
+}
+
+[data-theme="dark"] .result-panel:not(.is-error),
+[data-theme="dark"] .authorization {
+  background: #0c2a26;
+  border-color: #1f6f5c;
+}
+
+[data-theme="dark"] .result-panel.is-error,
+[data-theme="dark"] .drop-zone.is-invalid,
+[data-theme="dark"] .suspended-shell {
+  background: #321817;
+  border-color: #7f1d1d;
+}
+
+[data-theme="dark"] .module-badge {
+  color: #6ee7b7;
+  background: #0c2a26;
+  border-color: #1f6f5c;
+}
+
+[data-theme="dark"] .admin-metrics > div,
+[data-theme="dark"] .export-panel,
+[data-theme="dark"] .epg-preview {
+  background: #0d1728;
   border-color: var(--line);
 }
 
@@ -1252,6 +1403,16 @@ footer {
   }
 
   .status-pill {
+    display: none;
+  }
+
+  .theme-toggle {
+    width: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .theme-toggle span:last-child {
     display: none;
   }
 

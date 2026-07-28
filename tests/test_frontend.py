@@ -7,6 +7,19 @@ def test_frontend_files_exist():
     assert (FRONTEND_DIR / "index.html").is_file()
     assert (FRONTEND_DIR / "styles.css").is_file()
     assert (FRONTEND_DIR / "app.js").is_file()
+    assert (FRONTEND_DIR / "theme.js").is_file()
+
+
+def test_frontend_supports_persistent_light_and_dark_modes():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    css = (FRONTEND_DIR / "styles.css").read_text()
+    javascript = (FRONTEND_DIR / "theme.js").read_text()
+
+    assert 'id="theme-toggle"' in html
+    assert "/static/theme.js" in html
+    assert '[data-theme="dark"]' in css
+    assert "broadcastToolPro.theme" in javascript
+    assert "localStorage.setItem" in javascript
     assert (
         FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
     ).is_file()
