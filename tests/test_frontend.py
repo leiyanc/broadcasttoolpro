@@ -23,8 +23,11 @@ def test_frontend_supports_persistent_light_and_dark_modes():
     assert 'class="operations-home"' in html
     assert 'class="operations-rail"' in html
     assert 'class="module-launcher"' in html
+    assert html.count('class="module-icon"') == 6
+    assert html.count('<svg viewBox="0 0 24 24">') == 6
     assert "Control every broadcast workflow." in html
     assert "--signal: #16c9d4" in css
+    assert ".preview-table tbody tr:nth-child(even) td" in css
     assert (
         FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
     ).is_file()

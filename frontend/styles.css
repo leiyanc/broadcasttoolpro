@@ -121,7 +121,7 @@ body {
   min-height: 48px;
   padding: 6px 12px 6px 7px;
   color: var(--navy);
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   font: inherit;
@@ -203,7 +203,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  color: #40526a;
+  color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -252,7 +252,7 @@ main {
   display: grid;
   gap: 17px;
   padding: clamp(26px, 5vw, 42px);
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: var(--shadow);
@@ -274,7 +274,7 @@ main {
 .auth-card label {
   display: grid;
   gap: 7px;
-  color: #40526a;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -289,8 +289,8 @@ main {
   min-height: 48px;
   padding: 0 14px;
   color: var(--ink);
-  background: white;
-  border: 1px solid #cad5e2;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   font: inherit;
 }
@@ -318,7 +318,7 @@ main {
   align-items: center;
   margin: 0 0 24px;
   padding: 22px 26px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: var(--shadow);
@@ -341,7 +341,7 @@ main {
 .admin-shell {
   margin: 24px 0 64px;
   padding: clamp(24px, 5vw, 46px);
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: var(--shadow);
@@ -960,15 +960,27 @@ main {
   box-shadow: inset 3px 0 0 var(--signal);
 }
 
-.module-number {
+.module-icon {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
   color: var(--signal);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+}
+
+.module-icon svg {
+  width: 25px;
+  height: 25px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .module-launcher strong {
-  margin-top: 20px;
+  margin-top: 15px;
   color: var(--navy);
   font-size: 17px;
 }
@@ -1067,7 +1079,7 @@ h1 {
 
 .button-secondary {
   color: var(--navy);
-  background: white;
+  background: var(--surface);
   border-color: var(--line);
 }
 
@@ -1123,11 +1135,17 @@ h1 {
 }
 
 [data-theme="dark"] .preview-table td {
+  color: var(--ink);
+  background: var(--surface);
   border-color: var(--line);
 }
 
 [data-theme="dark"] .preview-table tbody tr:nth-child(even) {
-  background: #0d1728;
+  background: var(--panel-muted);
+}
+
+[data-theme="dark"] .preview-table tbody tr:nth-child(even) td {
+  background: var(--panel-muted);
 }
 
 [data-theme="dark"] .playlist-summary {
@@ -1247,7 +1265,8 @@ h1 {
 .preview-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  color: var(--ink);
+  background: var(--surface);
   font-size: 13px;
 }
 
@@ -1255,15 +1274,17 @@ h1 {
   position: sticky;
   top: 0;
   padding: 10px 12px;
-  color: #40526a;
+  color: var(--muted);
   text-align: left;
-  background: #f6f8fb;
+  background: var(--panel-muted);
   border-bottom: 1px solid var(--line);
 }
 
 .preview-table td {
   padding: 9px 12px;
-  border-bottom: 1px solid #edf1f6;
+  color: var(--ink);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 
 .epg-preview {
@@ -1295,7 +1316,7 @@ h1 {
 }
 
 .epg-preview-filters label > span {
-  color: #40526a;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1308,8 +1329,8 @@ h1 {
 
 .epg-preview-stats span {
   padding: 6px 9px;
-  color: #40526a;
-  background: white;
+  color: var(--ink);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 7px;
   font-size: 12px;
@@ -1342,7 +1363,7 @@ h1 {
   gap: 24px;
   margin-top: 22px;
   padding: 20px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
@@ -1424,7 +1445,7 @@ h2 {
   right: 0;
   width: 310px;
   overflow: hidden;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(16, 42, 67, 0.16);
@@ -1458,7 +1479,7 @@ h2 {
 }
 
 .hls-url-field span {
-  color: #40526a;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1467,10 +1488,10 @@ h2 {
   min-height: 52px;
   width: 100%;
   padding: 0 16px;
-  border: 1px solid #cbd8e7;
+  border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
   font: inherit;
 }
 
@@ -1487,7 +1508,7 @@ h2 {
 }
 
 .hls-monitor-controls span {
-  color: #40526a;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1495,10 +1516,10 @@ h2 {
 .hls-monitor-controls select {
   min-height: 48px;
   padding: 0 14px;
-  border: 1px solid #cbd8e7;
+  border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
   font: inherit;
 }
 
@@ -1545,7 +1566,7 @@ h2 {
 label > span {
   display: block;
   margin-bottom: 8px;
-  color: #40526a;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1556,8 +1577,8 @@ select {
   min-height: 46px;
   padding: 0 13px;
   color: var(--ink);
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 9px;
   font: inherit;
   outline: none;
@@ -1605,7 +1626,7 @@ select:focus {
   place-items: center;
   margin-bottom: 14px;
   color: var(--blue);
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 13px;
   font-size: 24px;
@@ -1717,7 +1738,7 @@ select:focus {
   gap: 12px;
   margin: 20px 0 4px;
   padding: 18px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
@@ -1796,7 +1817,7 @@ select:focus {
   bottom: calc(100% + 8px);
   width: 270px;
   padding: 6px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 18px 45px rgba(16, 42, 67, 0.16);
@@ -1827,8 +1848,8 @@ select:focus {
 
 .result-metrics span {
   padding: 6px 9px;
-  color: #40526a;
-  background: white;
+  color: var(--ink);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 7px;
   font-size: 12px;
@@ -1871,7 +1892,7 @@ select:focus {
 }
 
 .repair-list {
-  color: #40526a;
+  color: var(--muted);
 }
 
 footer {
