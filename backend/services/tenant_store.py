@@ -1,0 +1,278 @@
+import re
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATABASE_PATH = DATA_DIR / "broadcast_tool_pro.db"
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+    if len(slug) < 2:
+        raise ValueError("A valid name or slug is required.")
+    return slug[:80]
+
+
+def _validate_timezone(value: str) -> str:
+    try:
+        ZoneInfo(value)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(f'Unknown time zone: "{value}".') from exc
+    return value
+
+
+class TenantStore:
+    def __init__(self, database_path: Path = DATABASE_PATH):
+        self.database_path = database_path
+
+    def _connection(self) -> sqlite3.Connection:
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(self.database_path)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        return connection
+
+    def initialize(self) -> None:
+        with self._connection() as connection:
+            connection.executescript("""
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    slug TEXT NOT NULL UNIQUE,
+                    plan TEXT NOT NULL CHECK (
+                        plan IN ('starter', 'professional', 'enterprise')
+                    ),
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS workspaces (
+                    id TEXT PRIMARY KEY,
+                    organization_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    slug TEXT NOT NULL,
+                    default_timezone TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (organization_id)
+                        REFERENCES organizations(id) ON DELETE CASCADE,
+                    UNIQUE (organization_id, slug)
+                );
+
+                CREATE TABLE IF NOT EXISTS channels (
+                    id TEXT PRIMARY KEY,
+                    workspace_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    slug TEXT NOT NULL,
+                    channel_code TEXT,
+                    timezone TEXT NOT NULL,
+                    primary_language TEXT NOT NULL,
+                    active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (workspace_id)
+                        REFERENCES workspaces(id) ON DELETE CASCADE,
+                    UNIQUE (workspace_id, slug)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_workspaces_organization
+                    ON workspaces(organization_id);
+                CREATE INDEX IF NOT EXISTS idx_channels_workspace
+                    ON channels(workspace_id);
+            """)
+
+    def create_organization(
+        self,
+        *,
+        name: str,
+        slug: str | None,
+        plan: str,
+    ) -> dict:
+        organization_id = str(uuid4())
+        timestamp = _utc_now()
+        organization_slug = slug or _slugify(name)
+        try:
+            with self._connection() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO organizations (
+                        id, name, slug, plan, status, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'active', ?, ?)
+                    """,
+                    (
+                        organization_id,
+                        name.strip(),
+                        organization_slug,
+                        plan,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                f'Organization slug "{organization_slug}" is already in use.'
+            ) from exc
+        return self.get_organization(organization_id)
+
+    def list_organizations(self) -> list[dict]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM organizations ORDER BY name"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_organization(self, organization_id: str) -> dict:
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM organizations WHERE id = ?",
+                (organization_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError("Organization not found.")
+        return dict(row)
+
+    def create_workspace(
+        self,
+        *,
+        organization_id: str,
+        name: str,
+        slug: str | None,
+        default_timezone: str,
+    ) -> dict:
+        self.get_organization(organization_id)
+        workspace_id = str(uuid4())
+        timestamp = _utc_now()
+        workspace_slug = slug or _slugify(name)
+        timezone_name = _validate_timezone(default_timezone)
+        try:
+            with self._connection() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO workspaces (
+                        id, organization_id, name, slug, default_timezone,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        workspace_id,
+                        organization_id,
+                        name.strip(),
+                        workspace_slug,
+                        timezone_name,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                f'Workspace slug "{workspace_slug}" is already in use.'
+            ) from exc
+        return self.get_workspace(workspace_id)
+
+    def list_workspaces(self, organization_id: str) -> list[dict]:
+        self.get_organization(organization_id)
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM workspaces
+                WHERE organization_id = ?
+                ORDER BY name
+                """,
+                (organization_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_workspace(self, workspace_id: str) -> dict:
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM workspaces WHERE id = ?",
+                (workspace_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError("Workspace not found.")
+        return dict(row)
+
+    def create_channel(
+        self,
+        *,
+        workspace_id: str,
+        name: str,
+        slug: str | None,
+        channel_code: str | None,
+        timezone: str,
+        primary_language: str,
+    ) -> dict:
+        self.get_workspace(workspace_id)
+        channel_id = str(uuid4())
+        timestamp = _utc_now()
+        channel_slug = slug or _slugify(name)
+        timezone_name = _validate_timezone(timezone)
+        try:
+            with self._connection() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO channels (
+                        id, workspace_id, name, slug, channel_code, timezone,
+                        primary_language, active, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        channel_id,
+                        workspace_id,
+                        name.strip(),
+                        channel_slug,
+                        channel_code.strip() if channel_code else None,
+                        timezone_name,
+                        primary_language,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                f'Channel slug "{channel_slug}" is already in use.'
+            ) from exc
+        return self.get_channel(channel_id)
+
+    def list_channels(self, workspace_id: str) -> list[dict]:
+        self.get_workspace(workspace_id)
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM channels
+                WHERE workspace_id = ?
+                ORDER BY name
+                """,
+                (workspace_id,),
+            ).fetchall()
+        return [self._channel(row) for row in rows]
+
+    def get_channel(self, channel_id: str) -> dict:
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM channels WHERE id = ?",
+                (channel_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError("Channel not found.")
+        return self._channel(row)
+
+    @staticmethod
+    def _channel(row: sqlite3.Row) -> dict:
+        result = dict(row)
+        result["active"] = bool(result["active"])
+        return result
+
+
+tenant_store = TenantStore()
+tenant_store.initialize()
+
