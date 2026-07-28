@@ -16,7 +16,7 @@ PRICING_CATALOG = {
     },
     "enterprise": {
         "name": "Enterprise",
-        "monthly_cents": 24900,
+        "monthly_cents": 19900,
     },
 }
 
@@ -51,15 +51,21 @@ COMMERCIAL_PLANS = [
     {
         "code": "enterprise",
         "name": "Enterprise",
-        "monthly_cents": 24900,
-        "description": "Advanced controls, scale, and prioritized support.",
-        "starting_at": True,
+        "monthly_cents": 19900,
+        "description": "Expanded scale, monitoring, and guided support.",
         "features": [
             "Everything in Professional",
             "Stream Monitoring included",
             "Higher channel and user limits",
             "Advanced auditability",
             "Priority onboarding and support",
+            {
+                "label": (
+                    "Media QC: loudness, captions, black frames, "
+                    "and freeze frames"
+                ),
+                "status": "Coming Soon",
+            },
         ],
     },
 ]

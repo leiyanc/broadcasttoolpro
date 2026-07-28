@@ -131,9 +131,12 @@ class EntitlementStore:
         for code, definition in MODULE_CATALOG.items():
             source = definition["source"]
             enabled = (
-                source == "professional"
-                or plan == "enterprise"
-                or source in enabled_addons
+                definition.get("available", True)
+                and (
+                    source == "professional"
+                    or plan == "enterprise"
+                    or source in enabled_addons
+                )
             )
             modules[code] = {
                 **definition,

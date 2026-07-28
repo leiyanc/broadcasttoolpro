@@ -107,21 +107,23 @@ controls are approved. Broadcast-processing workloads must run outside the web
 request path so they cannot reduce availability for XMLTV, Traffic Operations,
 Billing, or Administration.
 
-### Enterprise — From $249/month
+### Enterprise — $199/month
 
-Enterprise is architecturally supported but will not be actively marketed at
-launch. It will be introduced when the platform includes sufficient
-enterprise-specific value:
+Enterprise includes all Professional capabilities, Stream Monitoring, higher
+channel and user limits, advanced auditability, guided onboarding, and
+priority support.
 
-- Media QC capabilities
-- Loudness, captions, black frames, and freeze frames
-- Higher concurrency and retention
-- Advanced auditability
-- API access
-- SSO and enterprise identity controls
-- Contractual limits, support, and service levels
+Media QC is explicitly marked as Coming Soon and remains unavailable until
+resource governance, capacity limits, and operational costs have been
+validated. Its planned capabilities are:
 
-Enterprise will include all Professional capabilities and purchased add-ons.
+- ATSC A/85 and ITU-R BS.1770 loudness measurement
+- Closed-caption presence, continuity, and synchronization
+- Black-frame detection
+- Freeze-frame detection
+
+Future enterprise expansion may include higher concurrency and retention, API
+access, SSO, contractual service levels, and additional identity controls.
 
 ## Billing and Subscription Architecture
 

@@ -26,6 +26,7 @@ def test_professional_plan_and_addons_are_separated():
         assert result["modules"]["prelogs"]["enabled"] is False
         assert result["modules"]["hls_monitor"]["enabled"] is False
         assert result["modules"]["media_qc"]["available"] is False
+        assert result["modules"]["media_qc"]["enabled"] is False
 
         entitlements.set_addon(
             organization["id"],

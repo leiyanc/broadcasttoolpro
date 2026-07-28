@@ -514,6 +514,21 @@ main {
   font-weight: 800;
 }
 
+.pricing-feature-status {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 3px 6px;
+  color: var(--blue);
+  background: var(--blue-light);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .pricing-card .button {
   width: 100%;
 }

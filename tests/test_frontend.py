@@ -178,6 +178,7 @@ def test_billing_and_subscription_interface_is_present():
     assert "Request Plan Change" in javascript
     assert "Request Add-on" in javascript
     assert "Active Add-on" in javascript
+    assert "pricing-feature-status" in javascript
 
 
 def test_contextual_help_center_is_present():

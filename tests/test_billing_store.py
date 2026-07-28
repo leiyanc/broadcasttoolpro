@@ -113,5 +113,5 @@ def test_commercial_pricing_uses_plan_and_addons():
         base_entitlements,
         "annual",
     )
-    assert enterprise["monthly_total_cents"] == 24900
-    assert enterprise["billing_total_cents"] == 298800
+    assert enterprise["monthly_total_cents"] == 19900
+    assert enterprise["billing_total_cents"] == 238800

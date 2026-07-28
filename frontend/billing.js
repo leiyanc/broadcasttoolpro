@@ -104,7 +104,14 @@ function renderPricing(pricing) {
     const features = document.createElement("ul");
     plan.features.forEach((feature) => {
       const item = document.createElement("li");
-      item.textContent = feature;
+      const label = typeof feature === "string" ? feature : feature.label;
+      item.append(document.createTextNode(label));
+      if (typeof feature !== "string" && feature.status) {
+        const status = document.createElement("span");
+        status.className = "pricing-feature-status";
+        status.textContent = feature.status;
+        item.appendChild(status);
+      }
       features.appendChild(item);
     });
     card.append(
