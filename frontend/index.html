@@ -12,11 +12,8 @@
     <script>
       (() => {
         const savedTheme = localStorage.getItem("broadcastToolPro.theme");
-        const prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
         document.documentElement.dataset.theme =
-          savedTheme || (prefersDark ? "dark" : "light");
+          savedTheme || "dark";
       })();
     </script>
 
@@ -24,7 +21,7 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260728-9" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-10" />
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260728-3" defer></script>
     <script src="/static/admin.js?v=20260728-6" defer></script>
@@ -65,7 +62,7 @@
         </button>
         <span class="status-pill">
           <span class="status-dot"></span>
-          Platform Preview
+          All Systems Operational
         </span>
         <button
           class="account-pill is-hidden"
@@ -469,61 +466,76 @@
       <!-- HERO -->
       <!-- ========================================================= -->
 
-      <section class="hero">
+      <section class="operations-home" aria-labelledby="operations-title">
+        <aside class="operations-rail" aria-label="Platform areas">
+          <div>
+            <span class="rail-signal" aria-hidden="true"></span>
+            <p>OPERATIONS DESK</p>
+          </div>
+          <a href="#generator"><span>01</span>Programming</a>
+          <a href="#prelog"><span>02</span>Traffic</a>
+          <a href="#hls-validator"><span>03</span>Streaming QC</a>
+          <a href="#report-history"><span>04</span>Reports</a>
+        </aside>
 
-        <p class="eyebrow">
-          BROADCAST OPERATIONS PLATFORM
-        </p>
+        <div class="operations-canvas">
+          <div class="operations-intro">
+            <div>
+              <p class="eyebrow">BROADCAST OPERATIONS PLATFORM</p>
+              <h1 id="operations-title">
+                Control every broadcast workflow.
+              </h1>
+              <p class="hero-copy">
+                One accountable workspace for programming, traffic,
+                validation, monitoring, and operational reporting.
+              </p>
+            </div>
+            <div class="operations-assurance" aria-label="Platform assurance">
+              <span><i></i>Secure workspace</span>
+              <span><i></i>Role-based access</span>
+              <span><i></i>Audit-ready exports</span>
+            </div>
+          </div>
 
-        <h1>
-          Broadcast operations, simplified.
-        </h1>
-
-        <p class="hero-copy">
-          Automate programming, traffic, reporting, and stream quality control
-          from one secure broadcast operations platform.
-        </p>
-
-        <div class="hero-actions">
-
-          <a
-            class="button button-primary"
-            href="#generator"
-          >
-            XMLTV Generator
-          </a>
-
-          <a
-            class="button button-secondary"
-            href="#validator"
-          >
-            XMLTV Validator
-          </a>
-
-          <a
-            class="button button-secondary"
-            href="#repair"
-          >
-            XMLTV Repair
-          </a>
-
-          <a class="button button-secondary" href="#postlog">
-            Post-Logs
-          </a>
-
-          <a
-            class="button button-secondary"
-            href="#prelog"
-          >
-            Pre-Logs
-          </a>
-
-          <a class="button button-secondary" href="#hls-validator">
-            HLS Validator
-          </a>
-
+          <nav class="module-launcher" aria-label="Broadcast workflows">
+            <a href="#generator">
+              <span class="module-number">01</span>
+              <strong>XMLTV Generator</strong>
+              <small>Create compliant programme feeds</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="#validator">
+              <span class="module-number">02</span>
+              <strong>XMLTV Validator</strong>
+              <small>Inspect syntax and schedule integrity</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="#repair">
+              <span class="module-number">03</span>
+              <strong>XMLTV Repair</strong>
+              <small>Apply controlled, traceable corrections</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="#prelog">
+              <span class="module-number">04</span>
+              <strong>Pre-Logs</strong>
+              <small>Select and document planned airings</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="#postlog">
+              <span class="module-number">05</span>
+              <strong>Post-Logs</strong>
+              <small>Certify broadcast occurrences</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+            <a href="#hls-validator">
+              <span class="module-number">06</span>
+              <strong>HLS Validator</strong>
+              <small>Validate stream delivery and signals</small>
+              <span class="module-arrow" aria-hidden="true">→</span>
+            </a>
+          </nav>
         </div>
-
       </section>
 
       <!-- ========================================================= -->

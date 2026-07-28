@@ -20,6 +20,11 @@ def test_frontend_supports_persistent_light_and_dark_modes():
     assert '[data-theme="dark"]' in css
     assert "broadcastToolPro.theme" in javascript
     assert "localStorage.setItem" in javascript
+    assert 'class="operations-home"' in html
+    assert 'class="operations-rail"' in html
+    assert 'class="module-launcher"' in html
+    assert "Control every broadcast workflow." in html
+    assert "--signal: #16c9d4" in css
     assert (
         FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
     ).is_file()
