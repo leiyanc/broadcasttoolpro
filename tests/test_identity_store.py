@@ -96,6 +96,7 @@ def test_authentication_routes_are_registered():
     paths = set(app.openapi()["paths"])
 
     assert "/api/auth/bootstrap" in paths
+    assert "/api/auth/status" in paths
     assert "/api/auth/login" in paths
     assert "/api/auth/me" in paths
     assert "/api/auth/logout" in paths
@@ -103,4 +104,3 @@ def test_authentication_routes_are_registered():
         "/api/auth/organizations/{organization_id}/members"
         in paths
     )
-

@@ -23,6 +23,13 @@ router = APIRouter(
 )
 
 
+@router.get("/status")
+def authentication_status():
+    return {
+        "bootstrap_required": not identity_store.has_users(),
+    }
+
+
 def _set_session_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key=SESSION_COOKIE,
@@ -152,4 +159,3 @@ def list_members(
     return {
         "members": identity_store.list_members(organization_id),
     }
-

@@ -96,6 +96,16 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert "/api/hls/report/pdf" in javascript
 
 
+def test_secure_account_interface_is_present():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert 'id="bootstrap-form"' in html
+    assert 'id="login-form"' in html
+    assert 'id="platform-content"' in html
+    assert 'id="account-button"' in html
+    assert "/static/auth.js" in html
+
+
 def test_epg_preview_is_available_after_schedule_validation():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "app.js").read_text()

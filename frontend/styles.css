@@ -46,6 +46,52 @@ body {
   justify-content: space-between;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 6px 12px 6px 7px;
+  color: var(--navy);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-pill span:last-child {
+  display: grid;
+}
+
+.account-pill strong {
+  font-size: 13px;
+}
+
+.account-pill small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.account-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--blue);
+  border-radius: 10px;
+  font-weight: 800;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -88,6 +134,116 @@ body {
 main {
   width: min(1080px, calc(100% - 40px));
   margin: 0 auto;
+}
+
+.auth-shell {
+  min-height: calc(100vh - 150px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  gap: clamp(34px, 8vw, 90px);
+  align-items: center;
+  padding: 54px 0 74px;
+}
+
+.auth-intro h1 {
+  margin: 18px 0 20px;
+  font-size: clamp(40px, 6vw, 64px);
+  text-align: left;
+}
+
+.auth-intro > p:last-child {
+  max-width: 580px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.auth-brand-mark {
+  margin-bottom: 30px;
+}
+
+.auth-card {
+  display: grid;
+  gap: 17px;
+  padding: clamp(26px, 5vw, 42px);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.auth-card h2 {
+  margin: -4px 0 0;
+  color: var(--navy);
+  font-size: 30px;
+}
+
+.auth-copy {
+  margin: -7px 0 4px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 7px;
+  color: #40526a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-card label small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.auth-card input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid #cad5e2;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.auth-card .button {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.auth-message {
+  min-height: 18px;
+  margin: 0;
+  color: var(--success);
+  font-size: 13px;
+}
+
+.auth-message.is-error {
+  color: var(--danger);
+}
+
+.account-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  margin: 0 0 24px;
+  padding: 22px 26px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.account-panel h2,
+.account-panel p {
+  margin: 4px 0;
+}
+
+.account-panel p {
+  color: var(--muted);
 }
 
 .hero {
@@ -939,6 +1095,10 @@ footer {
 }
 
 @media (max-width: 800px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
   .workflow,
   .form-grid,
   .filter-grid,

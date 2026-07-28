@@ -14,7 +14,8 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260727-10" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-1" />
+    <script src="/static/auth.js?v=20260728-1" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -34,13 +35,111 @@
         <span>Broadcast Tool Pro</span>
       </a>
 
-      <span class="status-pill">
-        <span class="status-dot"></span>
-        Platform Preview
-      </span>
+      <div class="header-actions">
+        <span class="status-pill">
+          <span class="status-dot"></span>
+          Platform Preview
+        </span>
+        <button
+          class="account-pill is-hidden"
+          id="account-button"
+          type="button"
+        >
+          <span class="account-avatar" id="account-avatar">U</span>
+          <span>
+            <strong id="account-name">Account</strong>
+            <small id="account-role">Owner</small>
+          </span>
+        </button>
+      </div>
     </header>
 
     <main>
+      <section class="auth-shell" id="auth-gate" aria-live="polite">
+        <div class="auth-intro">
+          <span class="brand-mark auth-brand-mark">B</span>
+          <p class="eyebrow">SECURE PLATFORM ACCESS</p>
+          <h1>Welcome to Broadcast Tool Pro.</h1>
+          <p>
+            Sign in to access your organization's channels, workflows,
+            reports, and settings.
+          </p>
+        </div>
+
+        <form class="auth-card is-hidden" id="bootstrap-form">
+          <p class="eyebrow">INITIAL SETUP</p>
+          <h2>Create the Owner Account</h2>
+          <p class="auth-copy">
+            This one-time setup creates the first organization and its owner.
+          </p>
+          <label>
+            <span>Organization Name</span>
+            <input name="organization_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Your Name</span>
+            <input name="display_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Email Address</span>
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minlength="10"
+              autocomplete="new-password"
+            />
+            <small>Use at least 10 characters.</small>
+          </label>
+          <button class="button button-primary" type="submit">
+            Create Secure Workspace
+          </button>
+          <p class="auth-message" id="bootstrap-message"></p>
+        </form>
+
+        <form class="auth-card is-hidden" id="login-form">
+          <p class="eyebrow">ACCOUNT LOGIN</p>
+          <h2>Sign In</h2>
+          <p class="auth-copy">
+            Use the account assigned to your organization.
+          </p>
+          <label>
+            <span>Email Address</span>
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
+          </label>
+          <button class="button button-primary" type="submit">
+            Sign In
+          </button>
+          <p class="auth-message" id="login-message"></p>
+        </form>
+      </section>
+
+      <section class="account-panel is-hidden" id="account-panel">
+        <div>
+          <p class="eyebrow">ACTIVE ACCOUNT</p>
+          <h2 id="account-panel-name">Account</h2>
+          <p id="account-panel-email"></p>
+          <p id="account-panel-organization"></p>
+        </div>
+        <button class="button button-secondary" id="logout-button" type="button">
+          Sign Out
+        </button>
+      </section>
+
+      <div class="is-hidden" id="platform-content">
 
       <!-- ========================================================= -->
       <!-- HERO -->
@@ -1376,6 +1475,7 @@
           </table>
         </div>
       </section>
+      </div>
 
     </main>
 
