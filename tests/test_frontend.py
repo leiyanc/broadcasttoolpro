@@ -153,6 +153,23 @@ def test_billing_and_subscription_interface_is_present():
     assert "module.available !== false" in javascript
 
 
+def test_contextual_help_center_is_present():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "help.js").read_text()
+
+    assert (FRONTEND_DIR / "help.js").is_file()
+    assert "/static/help.js" in html
+    assert 'id="help-launcher"' in html
+    assert 'id="help-panel"' in html
+    assert 'id="help-guide-select"' in html
+    assert 'id="help-language-select"' in html
+    assert "helpGuideForViewport" in javascript
+    assert "broadcastToolPro.helpLanguage" in javascript
+    assert "XMLTV Generator" in javascript
+    assert "Post Logs" in javascript
+    assert "HLS Validator" in javascript
+
+
 def test_epg_preview_is_available_after_schedule_validation():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "app.js").read_text()

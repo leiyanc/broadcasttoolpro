@@ -29,6 +29,7 @@
     <script src="/static/auth.js?v=20260728-3" defer></script>
     <script src="/static/admin.js?v=20260728-4" defer></script>
     <script src="/static/billing.js?v=20260728-1" defer></script>
+    <script src="/static/help.js?v=20260728-1" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -1648,6 +1649,56 @@
       </div>
 
     </main>
+
+    <button
+      class="help-launcher"
+      id="help-launcher"
+      type="button"
+      aria-controls="help-panel"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true">?</span>
+      <span>Help &amp; Guides</span>
+    </button>
+
+    <aside
+      class="help-panel is-hidden"
+      id="help-panel"
+      aria-label="Help and guides"
+    >
+      <div class="help-header">
+        <div>
+          <p class="eyebrow">HELP CENTER</p>
+          <h2 id="help-title">Getting Started</h2>
+        </div>
+        <button
+          class="help-close"
+          id="help-close"
+          type="button"
+          aria-label="Close help"
+        >
+          ×
+        </button>
+      </div>
+      <div class="help-controls">
+        <label>
+          <span>All Guides</span>
+          <select id="help-guide-select"></select>
+        </label>
+        <label>
+          <span>Language</span>
+          <select id="help-language-select">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </label>
+      </div>
+      <div class="help-content" id="help-content"></div>
+      <p class="help-footer" id="help-footer">
+        Need more assistance? Contact your platform administrator and include
+        the module name and the exact error message.
+      </p>
+    </aside>
 
     <footer>
 
