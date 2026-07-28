@@ -3,10 +3,11 @@ from datetime import timedelta
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend.api.prelogs import _filtered_events
+from backend.api.auth import require_module
 from backend.services.traffic.playlist import parse_playlist_file
 from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
@@ -19,6 +20,7 @@ from backend.services.report_history import record_report
 router = APIRouter(
     prefix="/api/postlogs",
     tags=["Post Logs"],
+    dependencies=[Depends(require_module("postlogs"))],
 )
 
 

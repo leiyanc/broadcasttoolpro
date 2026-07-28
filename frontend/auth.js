@@ -16,6 +16,55 @@ const accountPanelOrganization = document.querySelector(
 );
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
+let currentIdentity = null;
+
+function setModuleAvailability(element, enabled) {
+  if (!element) return;
+  element.classList.toggle("is-hidden", !enabled);
+}
+
+async function refreshOrganizationEntitlements() {
+  try {
+    currentIdentity = await authRequest("/api/auth/me");
+    const organization = currentIdentity.organizations?.[0];
+    if (!organization) return;
+    accountPanelOrganization.textContent =
+      `${organization.name} · ${organization.plan}`;
+    const entitlements = await authRequest(
+      `/api/platform/organizations/${organization.id}/entitlements`,
+    );
+    const modules = entitlements.modules || {};
+    const trafficEnabled = Boolean(
+      modules.prelogs?.enabled && modules.postlogs?.enabled,
+    );
+    setModuleAvailability(
+      document.querySelector('a[href="#prelog"]'),
+      trafficEnabled,
+    );
+    setModuleAvailability(
+      document.querySelector('a[href="#postlog"]'),
+      trafficEnabled,
+    );
+    setModuleAvailability(
+      document.querySelector("#prelog"),
+      trafficEnabled,
+    );
+    setModuleAvailability(
+      document.querySelector("#postlog"),
+      trafficEnabled,
+    );
+    const monitorEnabled = Boolean(modules.hls_monitor?.enabled);
+    setModuleAvailability(
+      document.querySelector("#monitor-hls-button"),
+      monitorEnabled,
+    );
+    document.querySelector("#hls-monitor-duration")
+      ?.closest("label")
+      ?.classList.toggle("is-hidden", !monitorEnabled);
+  } catch {
+    // Keep core modules available if entitlement refresh is interrupted.
+  }
+}
 
 async function authRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -49,6 +98,7 @@ function showAuthentication(bootstrapRequired) {
 }
 
 function showPlatform(identity) {
+  currentIdentity = identity;
   const user = identity.user;
   const organization = identity.organizations?.[0];
   authGate.classList.add("is-hidden");
@@ -65,6 +115,7 @@ function showPlatform(identity) {
   accountPanelOrganization.textContent = organization
     ? `${organization.name} · ${organization.plan}`
     : "No organization assigned";
+  refreshOrganizationEntitlements();
 }
 
 async function initializeAuthentication() {

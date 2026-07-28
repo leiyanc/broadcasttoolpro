@@ -59,10 +59,21 @@ function addonToggle(enabled, label) {
 }
 
 async function saveOrganization(context) {
-  const { organization, plan, status, traffic, monitoring, button } = context;
+  const {
+    organization,
+    plan,
+    status,
+    traffic,
+    monitoring,
+    button,
+    rowStatus,
+  } = context;
   button.disabled = true;
+  button.textContent = "Saving…";
+  rowStatus.textContent = "Saving changes…";
+  rowStatus.classList.remove("is-error", "is-success");
   adminMessage.textContent = "";
-  adminMessage.classList.remove("is-error");
+  adminMessage.classList.remove("is-error", "is-success");
   try {
     await adminRequest(`/api/admin/organizations/${organization.id}`, {
       method: "PATCH",
@@ -90,11 +101,18 @@ async function saveOrganization(context) {
       ),
     ]);
     adminMessage.textContent = `${organization.name} was updated.`;
+    adminMessage.classList.add("is-success");
+    rowStatus.textContent = "Saved";
+    rowStatus.classList.add("is-success");
+    await refreshOrganizationEntitlements();
   } catch (error) {
     adminMessage.textContent = error.message;
     adminMessage.classList.add("is-error");
+    rowStatus.textContent = error.message;
+    rowStatus.classList.add("is-error");
   } finally {
     button.disabled = false;
+    button.textContent = "Save";
   }
 }
 
@@ -124,6 +142,11 @@ function renderOrganizations(organizations) {
       )?.enabled,
       "Enabled",
     );
+    const enterprise = organization.plan === "enterprise";
+    traffic.input.disabled = enterprise;
+    traffic.control.querySelector("span").textContent = enterprise
+      ? "Included"
+      : (traffic.input.checked ? "Enabled" : "Disabled");
     trafficCell.replaceChildren(traffic.control);
     const monitoringCell = adminCell(row, "");
     const monitoring = addonToggle(
@@ -132,12 +155,40 @@ function renderOrganizations(organizations) {
       )?.enabled,
       "Enabled",
     );
+    monitoring.input.disabled = enterprise;
+    monitoring.control.querySelector("span").textContent = enterprise
+      ? "Included"
+      : (monitoring.input.checked ? "Enabled" : "Disabled");
     monitoringCell.replaceChildren(monitoring.control);
     const actionCell = adminCell(row, "");
     const button = document.createElement("button");
     button.className = "button button-secondary admin-save";
     button.type = "button";
     button.textContent = "Save";
+    const rowStatus = document.createElement("small");
+    rowStatus.className = "admin-row-status";
+    const markDirty = () => {
+      rowStatus.textContent = "Unsaved changes";
+      rowStatus.classList.remove("is-error", "is-success");
+    };
+    [plan, status, traffic.input, monitoring.input].forEach((control) => {
+      control.addEventListener("change", () => {
+        if (control === plan) {
+          const included = plan.value === "enterprise";
+          for (const addon of [traffic, monitoring]) {
+            addon.input.disabled = included;
+            if (included) addon.input.checked = true;
+            addon.control.querySelector("span").textContent = included
+              ? "Included"
+              : (addon.input.checked ? "Enabled" : "Disabled");
+          }
+        } else if (control.type === "checkbox") {
+          control.closest("label").querySelector("span").textContent =
+            control.checked ? "Enabled" : "Disabled";
+        }
+        markDirty();
+      });
+    });
     button.addEventListener("click", () => saveOrganization({
       organization,
       plan,
@@ -145,8 +196,9 @@ function renderOrganizations(organizations) {
       traffic: traffic.input,
       monitoring: monitoring.input,
       button,
+      rowStatus,
     }));
-    actionCell.replaceChildren(button);
+    actionCell.replaceChildren(button, rowStatus);
     adminOrganizationsBody.appendChild(row);
   });
 }

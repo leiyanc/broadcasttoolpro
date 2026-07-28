@@ -12,11 +12,11 @@
 
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial,sans-serif' font-size='34' font-weight='700' fill='white'%3EB%3C/text%3E%3C/svg%3E"
+      href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260728-1" />
-    <script src="/static/auth.js?v=20260728-1" defer></script>
-    <script src="/static/admin.js?v=20260728-1" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260728-2" />
+    <script src="/static/auth.js?v=20260728-2" defer></script>
+    <script src="/static/admin.js?v=20260728-2" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -192,6 +192,11 @@
               Refresh
             </button>
           </div>
+          <p
+            class="auth-message admin-inline-message"
+            id="admin-message"
+            aria-live="polite"
+          ></p>
           <div class="table-scroll">
             <table class="preview-table">
               <thead>
@@ -232,7 +237,6 @@
             </table>
           </div>
         </div>
-        <p class="auth-message" id="admin-message"></p>
       </section>
 
       <div class="is-hidden" id="platform-content">

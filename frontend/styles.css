@@ -333,11 +333,44 @@ main {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.admin-toggle input[type="checkbox"] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--blue);
+}
+
+.admin-toggle > span {
+  display: inline;
+  margin: 0;
 }
 
 .admin-save {
   min-height: 38px;
   padding: 0 12px;
+}
+
+.admin-inline-message {
+  min-height: 22px;
+  margin: -4px 0 12px;
+}
+
+.admin-row-status {
+  display: block;
+  max-width: 110px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.is-success {
+  color: var(--success) !important;
 }
 
 .hero {

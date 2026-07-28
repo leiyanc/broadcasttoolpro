@@ -1,7 +1,7 @@
 from collections import Counter
 from datetime import timedelta
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend.services.traffic.prelog_export import (
@@ -15,11 +15,13 @@ from backend.services.traffic.playlist import (
     inspect_playlist,
     parse_playlist_file,
 )
+from backend.api.auth import require_module
 
 
 router = APIRouter(
     prefix="/api/prelogs",
     tags=["Pre Logs"],
+    dependencies=[Depends(require_module("prelogs"))],
 )
 
 

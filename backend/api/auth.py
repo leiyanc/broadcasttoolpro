@@ -13,6 +13,7 @@ from backend.models.identity import (
     MemberCreate,
 )
 from backend.services.identity_store import identity_store
+from backend.services.entitlements import entitlement_store
 
 
 SESSION_COOKIE = "btp_session"
@@ -75,6 +76,26 @@ def require_organization_role(
         )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+def require_module(module_code: str):
+    def dependency(user: dict = Depends(current_user)) -> dict:
+        organizations = identity_store.organizations_for_user(user["id"])
+        for organization in organizations:
+            entitlements = entitlement_store.effective_entitlements(
+                organization["id"]
+            )
+            if entitlements["modules"].get(module_code, {}).get("enabled"):
+                return user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f'Access to "{module_code}" is not enabled for '
+                "this organization."
+            ),
+        )
+
+    return dependency
 
 
 @router.post("/bootstrap", status_code=status.HTTP_201_CREATED)
