@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.auth import current_user
 from backend.models.admin import AddonAdminUpdate, OrganizationAdminUpdate
+from backend.models.billing import SubscriptionAdminUpdate
 from backend.services.admin_store import admin_store
+from backend.services.billing_store import billing_store
 from backend.services.entitlements import entitlement_store
 
 
@@ -36,10 +38,30 @@ def admin_organizations(_: dict = Depends(superuser)):
                 "entitlements": entitlement_store.effective_entitlements(
                     organization["id"]
                 ),
+                "subscription": billing_store.get_subscription(
+                    organization["id"]
+                ),
             }
             for organization in organizations
         ]
     }
+
+
+@router.patch("/organizations/{organization_id}/subscription")
+def update_subscription(
+    organization_id: str,
+    request: SubscriptionAdminUpdate,
+    _: dict = Depends(superuser),
+):
+    try:
+        return billing_store.update_subscription(
+            organization_id,
+            **request.model_dump(),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.patch("/organizations/{organization_id}")
@@ -87,4 +109,3 @@ def admin_incidents(
     return {
         "incidents": admin_store.list_incidents(limit),
     }
-

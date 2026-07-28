@@ -117,6 +117,9 @@ function showAuthentication(bootstrapRequired) {
   accountButton.classList.add("is-hidden");
   accountPanel.classList.add("is-hidden");
   suspendedPanel.classList.add("is-hidden");
+  window.dispatchEvent(new CustomEvent("btp:identity", {
+    detail: null,
+  }));
   bootstrapForm.classList.toggle("is-hidden", !bootstrapRequired);
   loginForm.classList.toggle("is-hidden", bootstrapRequired);
 }
@@ -140,6 +143,9 @@ function showPlatform(identity) {
     ? `${organization.name} · ${organization.plan}`
     : "No organization assigned";
   applyOrganizationAccess(identity);
+  window.dispatchEvent(new CustomEvent("btp:identity", {
+    detail: identity,
+  }));
   refreshOrganizationEntitlements();
 }
 

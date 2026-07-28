@@ -66,6 +66,8 @@ async function saveOrganization(context) {
     organization,
     plan,
     status,
+    subscriptionStatus,
+    billingCycle,
     traffic,
     monitoring,
     button,
@@ -85,6 +87,16 @@ async function saveOrganization(context) {
         status: status.value,
       }),
     });
+    await adminRequest(
+      `/api/admin/organizations/${organization.id}/subscription`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: subscriptionStatus.value,
+          billing_cycle: billingCycle.value,
+        }),
+      },
+    );
     await Promise.all([
       adminRequest(
         `/api/admin/organizations/${organization.id}`
@@ -136,6 +148,18 @@ function renderOrganizations(organizations) {
       organization.status,
     );
     statusCell.replaceChildren(status);
+    const subscriptionStatusCell = adminCell(row, "");
+    const subscriptionStatus = adminSelect(
+      ["trialing", "active", "past_due", "canceled"],
+      organization.subscription.status,
+    );
+    subscriptionStatusCell.replaceChildren(subscriptionStatus);
+    const billingCycleCell = adminCell(row, "");
+    const billingCycle = adminSelect(
+      ["monthly", "annual"],
+      organization.subscription.billing_cycle,
+    );
+    billingCycleCell.replaceChildren(billingCycle);
     adminCell(row, organization.member_count);
     adminCell(row, organization.channel_count);
     const trafficCell = adminCell(row, "");
@@ -174,7 +198,14 @@ function renderOrganizations(organizations) {
       rowStatus.textContent = "Unsaved changes";
       rowStatus.classList.remove("is-error", "is-success");
     };
-    [plan, status, traffic.input, monitoring.input].forEach((control) => {
+    [
+      plan,
+      status,
+      subscriptionStatus,
+      billingCycle,
+      traffic.input,
+      monitoring.input,
+    ].forEach((control) => {
       control.addEventListener("change", () => {
         if (control === plan) {
           const included = plan.value === "enterprise";
@@ -196,6 +227,8 @@ function renderOrganizations(organizations) {
       organization,
       plan,
       status,
+      subscriptionStatus,
+      billingCycle,
       traffic: traffic.input,
       monitoring: monitoring.input,
       button,

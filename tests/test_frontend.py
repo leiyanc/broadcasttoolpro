@@ -121,6 +121,7 @@ def test_secure_account_interface_is_present():
     assert 'id="account-button"' in html
     assert "/static/auth.js" in html
     assert "/static/admin.js" in html
+    assert "/static/billing.js" in html
     assert 'id="admin-control-plane"' in html
     assert 'id="open-admin-button"' in html
     assert 'id="organization-suspended"' in html
@@ -134,6 +135,20 @@ def test_secure_account_interface_is_present():
     assert "applyOrganizationAccess" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
+
+
+def test_billing_and_subscription_interface_is_present():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "billing.js").read_text()
+
+    assert (FRONTEND_DIR / "billing.js").is_file()
+    assert 'id="open-billing-button"' in html
+    assert 'id="billing-panel"' in html
+    assert 'id="billing-summary"' in html
+    assert 'id="billing-entitlements"' in html
+    assert 'id="billing-invoice-body"' in html
+    assert "/api/billing/organizations/" in javascript
+    assert '["owner", "admin"]' in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

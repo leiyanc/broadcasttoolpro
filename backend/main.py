@@ -12,6 +12,7 @@ from backend.api.hls import router as hls_router
 from backend.api.platform import router as platform_router
 from backend.api.auth import router as auth_router
 from backend.api.admin import router as admin_router
+from backend.api.billing import router as billing_router
 
 
 app = FastAPI(
@@ -28,6 +29,7 @@ app.include_router(hls_router)
 app.include_router(platform_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(billing_router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 app.mount(

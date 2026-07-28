@@ -93,6 +93,25 @@ enterprise-specific value:
 
 Enterprise will include all Professional capabilities and purchased add-ons.
 
+## Billing and Subscription Architecture
+
+Billing is organization-scoped and separated from product entitlements.
+
+- The organization plan defines the core product package.
+- Add-ons define optional product access.
+- The subscription records the commercial lifecycle: status, billing cycle,
+  renewal period, cancellation state, currency, and payment-provider
+  references.
+- Invoices are immutable billing records linked to the organization.
+- Product access must not depend directly on browser state or payment-provider
+  responses.
+
+The initial billing foundation is provider-neutral and uses manual subscription
+management. No price or payment method is stored until a payment provider and
+commercial pricing are formally approved. A future provider integration must
+use webhooks as the authoritative source for payment status and must be
+idempotent, auditable, and isolated from broadcast-processing workflows.
+
 ## Media QC Resource Governance
 
 Media QC must never execute inside the primary web application process.

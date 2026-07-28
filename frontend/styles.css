@@ -345,6 +345,80 @@ main {
   box-shadow: var(--shadow);
 }
 
+.billing-shell {
+  margin: 24px 0 64px;
+  padding: clamp(24px, 5vw, 46px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.billing-summary,
+.billing-entitlements {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.billing-summary > div,
+.billing-entitlements > div {
+  display: grid;
+  gap: 7px;
+  padding: 18px;
+  background: var(--background);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.billing-summary small,
+.billing-entitlements small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-summary strong,
+.billing-entitlements strong {
+  color: var(--navy);
+  font-size: 18px;
+  text-transform: capitalize;
+}
+
+.billing-summary p,
+.billing-entitlements p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.billing-section {
+  margin-top: 34px;
+}
+
+.billing-section h3 {
+  margin: 5px 0 0;
+  color: var(--navy);
+}
+
+.billing-note {
+  margin: 30px 0 0;
+  padding: 14px 16px;
+  color: var(--muted);
+  background: var(--blue-light);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .billing-summary > div,
+[data-theme="dark"] .billing-entitlements > div {
+  background: #0d1728;
+}
+
 .admin-metrics {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -1365,6 +1439,11 @@ footer {
 
   .admin-metrics {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .billing-summary,
+  .billing-entitlements {
+    grid-template-columns: 1fr;
   }
 
   .form-grid,

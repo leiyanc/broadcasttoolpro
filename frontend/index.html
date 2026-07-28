@@ -28,6 +28,7 @@
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260728-3" defer></script>
     <script src="/static/admin.js?v=20260728-4" defer></script>
+    <script src="/static/billing.js?v=20260728-1" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -166,6 +167,13 @@
         <div class="account-panel-actions">
           <button
             class="button button-secondary is-hidden"
+            id="open-billing-button"
+            type="button"
+          >
+            Billing
+          </button>
+          <button
+            class="button button-secondary is-hidden"
             id="open-admin-button"
             type="button"
           >
@@ -179,6 +187,61 @@
             Sign Out
           </button>
         </div>
+      </section>
+
+      <section class="billing-shell is-hidden" id="billing-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">BILLING &amp; SUBSCRIPTIONS</p>
+            <h2>Subscription Overview</h2>
+            <p class="section-copy">
+              Review your plan, enabled add-ons, renewal period, and invoices.
+            </p>
+          </div>
+          <button
+            class="button button-secondary"
+            id="close-billing-button"
+            type="button"
+          >
+            Close Billing
+          </button>
+        </div>
+        <p
+          class="auth-message"
+          id="billing-message"
+          aria-live="polite"
+        ></p>
+        <div class="billing-summary" id="billing-summary"></div>
+        <div class="billing-section">
+          <p class="eyebrow">ENABLED SERVICES</p>
+          <h3>Plan and Add-ons</h3>
+          <div class="billing-entitlements" id="billing-entitlements"></div>
+        </div>
+        <div class="billing-section">
+          <p class="eyebrow">PAYMENT HISTORY</p>
+          <h3>Invoices</h3>
+          <p class="history-status" id="billing-invoice-status">
+            No invoices have been issued.
+          </p>
+          <div class="table-scroll is-hidden" id="billing-invoice-table">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="billing-invoice-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="billing-note">
+          Online payment management will become available when the payment
+          provider is connected. No payment method is stored by Broadcast Tool
+          Pro at this stage.
+        </p>
       </section>
 
       <section
@@ -245,6 +308,8 @@
                   <th>Organization</th>
                   <th>Plan</th>
                   <th>Status</th>
+                  <th>Subscription</th>
+                  <th>Cycle</th>
                   <th>Users</th>
                   <th>Channels</th>
                   <th>Traffic</th>
