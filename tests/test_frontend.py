@@ -1,9 +1,12 @@
 from pathlib import Path
 
-from backend.main import FRONTEND_DIR, home
+from backend.main import FRONTEND_DIR, application, home
 
 
 def test_frontend_files_exist():
+    assert (FRONTEND_DIR / "landing.html").is_file()
+    assert (FRONTEND_DIR / "landing.css").is_file()
+    assert (FRONTEND_DIR / "landing.js").is_file()
     assert (FRONTEND_DIR / "index.html").is_file()
     assert (FRONTEND_DIR / "styles.css").is_file()
     assert (FRONTEND_DIR / "app.js").is_file()
@@ -40,9 +43,38 @@ def test_frontend_supports_persistent_light_and_dark_modes():
 
 
 def test_home_returns_frontend():
-    response = home()
+    landing_response = home()
+    application_response = application()
 
-    assert Path(response.path) == FRONTEND_DIR / "index.html"
+    assert Path(landing_response.path) == FRONTEND_DIR / "landing.html"
+    assert Path(application_response.path) == FRONTEND_DIR / "index.html"
+
+
+def test_public_landing_page_presents_the_platform():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+    css = (FRONTEND_DIR / "landing.css").read_text()
+    javascript = (FRONTEND_DIR / "landing.js").read_text()
+
+    assert "Every broadcast workflow. One operating layer." in html
+    assert "PROGRAMMING SUITE" in html
+    assert "TRAFFIC OPERATIONS" in html
+    assert "STREAMING QC" in html
+    assert "XMLTV Generator" in html
+    assert "Pre-Logs" in html
+    assert "Post-Logs" in html
+    assert "HLS Validator" in html
+    assert ">39<" in html
+    assert ">99<" in html
+    assert ">199<" in html
+    assert "+$59" in html
+    assert "Media QC Engine" in html
+    assert "COMING SOON" in html
+    assert 'href="/app"' in html
+    assert "broadcastcontrol.io" not in html.lower()
+    assert "Broadcast Control" not in html
+    assert "--landing-black: #02060c" in css
+    assert "@media (max-width: 760px)" in css
+    assert "landing-menu-toggle" in javascript
 
 
 def test_frontend_uses_xmltv_endpoints():
