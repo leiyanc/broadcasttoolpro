@@ -42,9 +42,30 @@ const helpPriorityLabel = document.querySelector("#help-priority-label");
 const helpSummaryLabel = document.querySelector("#help-summary-label");
 const helpDetailsLabel = document.querySelector("#help-details-label");
 const helpErrorLabel = document.querySelector("#help-error-label");
+const helpErrorField = document.querySelector("#help-error-field");
+const helpCategory = document.querySelector("#help-category");
 const helpPrivacy = document.querySelector("#help-privacy");
 const helpSubmitButton = document.querySelector("#help-submit-button");
 const helpPreferenceKey = "broadcastToolPro.helpLanguage";
+
+function updateHelpSupportFields() {
+  const spanish = helpLanguageSelect.value === "es";
+  const category = helpCategory.value;
+  const isBilling = category === "billing";
+  const isAccount = category === "account";
+  const showError = ["technical", "validation", "export"].includes(category);
+
+  helpFormTitle.textContent = isBilling
+    ? (spanish ? "Solicitud de facturación" : "Billing Request")
+    : (isAccount
+      ? (spanish ? "Solicitud de cuenta" : "Account Request")
+      : (spanish ? "Reportar un problema" : "Report a Problem"));
+  helpDetailsLabel.textContent = isBilling || isAccount
+    ? (spanish ? "Detalles de la solicitud" : "Request details")
+    : (spanish ? "¿Qué ocurrió?" : "What happened?");
+  helpErrorField.classList.toggle("is-hidden", !showError);
+  if (!showError) helpSupportForm.elements.error_message.value = "";
+}
 
 const helpGuides = {
   getting_started: {
@@ -427,8 +448,8 @@ window.addEventListener("btp:open-support", (event) => {
   helpRenderGuide("billing");
   helpReportButton.click();
   const detail = event.detail || {};
-  document.querySelector("#help-category").value =
-    detail.category || "billing";
+  helpCategory.value = detail.category || "billing";
+  updateHelpSupportFields();
   helpSupportForm.elements.summary.value = detail.summary || "";
   helpSupportForm.elements.details.value = detail.details || "";
 });
@@ -440,6 +461,7 @@ helpLanguageSelect.addEventListener("change", () => {
   localStorage.setItem(helpPreferenceKey, helpLanguageSelect.value);
   helpRenderGuide();
 });
+helpCategory.addEventListener("change", updateHelpSupportFields);
 
 helpReportButton.addEventListener("click", () => {
   helpContent.classList.add("is-hidden");
@@ -451,6 +473,7 @@ helpReportButton.addEventListener("click", () => {
     || "Platform";
   helpSupportMessage.textContent = "";
   helpSupportMessage.classList.remove("is-error");
+  updateHelpSupportFields();
 });
 
 helpFormBack.addEventListener("click", helpShowGuideView);

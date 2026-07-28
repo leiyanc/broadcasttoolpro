@@ -162,6 +162,8 @@ def test_billing_and_subscription_interface_is_present():
     assert "pricing.display_name" in javascript
     assert "pricing.billing_total_cents" in javascript
     assert "Request Plan Change" in javascript
+    assert "Request Add-on" in javascript
+    assert "Active Add-on" in javascript
 
 
 def test_contextual_help_center_is_present():
@@ -182,12 +184,14 @@ def test_contextual_help_center_is_present():
     assert 'id="help-report-button"' in html
     assert 'id="help-requests-button"' in html
     assert 'id="help-support-form"' in html
+    assert 'id="help-error-field"' in html
     assert "/api/support/requests" in javascript
     assert "Ticket:" in javascript
     assert 'id="help-request-detail"' in html
     assert 'id="help-request-reply-form"' in html
     assert 'id="help-reopen-request"' in html
     assert "helpOpenRequest" in javascript
+    assert "updateHelpSupportFields" in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

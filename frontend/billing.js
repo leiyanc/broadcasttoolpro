@@ -134,7 +134,39 @@ function renderPricing(pricing) {
     price.textContent = (
       `+${billingMoney(addon.monthly_cents, "USD")}/month`
     );
-    card.append(copy, price);
+    const actions = document.createElement("div");
+    actions.className = "pricing-addon-actions";
+    const button = document.createElement("button");
+    const isIncluded = pricing.display_name === "Enterprise";
+    const isActive = (pricing.addons || []).some(
+      (item) => item.code === addon.code,
+    );
+    button.className = (
+      `button ${isIncluded || isActive
+        ? "button-secondary"
+        : "button-primary"}`
+    );
+    button.type = "button";
+    button.textContent = isIncluded
+      ? "Included"
+      : (isActive ? "Active Add-on" : "Request Add-on");
+    button.disabled = isIncluded || isActive;
+    if (!button.disabled) {
+      button.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("btp:open-support", {
+          detail: {
+            category: "billing",
+            summary: `Add-on request: ${addon.name}`,
+            details: (
+              `Please review adding ${addon.name} to our subscription `
+              + `at ${billingMoney(addon.monthly_cents, "USD")}/month.`
+            ),
+          },
+        }));
+      });
+    }
+    actions.append(price, button);
+    card.append(copy, actions);
     billingPricingAddons.appendChild(card);
   });
 }

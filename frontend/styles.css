@@ -258,13 +258,14 @@ main {
 }
 
 .auth-card h2 {
-  margin: -4px 0 0;
+  margin: 0;
   color: var(--navy);
   font-size: 30px;
+  line-height: 1.25;
 }
 
 .auth-copy {
-  margin: -7px 0 4px;
+  margin: 2px 0 4px;
   color: var(--muted);
   line-height: 1.5;
 }
@@ -402,6 +403,12 @@ main {
 .billing-section h3 {
   margin: 5px 0 0;
   color: var(--navy);
+  line-height: 1.3;
+}
+
+.billing-section > .section-copy {
+  margin: 10px 0 0;
+  line-height: 1.6;
 }
 
 .billing-note {
@@ -458,6 +465,7 @@ main {
   margin: 12px 0 0;
   color: var(--navy);
   font-size: 22px;
+  line-height: 1.25;
 }
 
 .pricing-price {
@@ -537,6 +545,13 @@ main {
   flex: 0 0 auto;
   margin: 0;
   font-size: 17px;
+}
+
+.pricing-addon-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 14px;
 }
 
 [data-theme="dark"] .pricing-card,
@@ -981,7 +996,7 @@ h1 {
 
 .section-copy {
   max-width: 720px;
-  margin: -10px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -1974,6 +1989,11 @@ footer {
   .pricing-addons > div {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .pricing-addon-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .admin-ticket-columns,
