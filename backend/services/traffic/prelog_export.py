@@ -159,12 +159,13 @@ def generate_prelog_workbook(
     worksheet["C3"].font = Font(name="Aptos", size=10, color="64748B")
 
     header_row = 5
+    asset_column = 3 if include_product else 2
     for column, value in enumerate(columns, start=1):
         cell = worksheet.cell(header_row, column, value)
         cell.font = Font(name="Aptos", size=10, bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="1D4ED8")
         cell.alignment = Alignment(
-            horizontal="center",
+            horizontal="left" if column == asset_column else "center",
             vertical="center",
         )
 
@@ -192,7 +193,9 @@ def generate_prelog_workbook(
             cell.font = Font(name="Aptos", size=10, color="243B53")
             cell.border = thin_border
             cell.alignment = Alignment(
-                horizontal="center",
+                horizontal=(
+                    "left" if column == asset_column else "center"
+                ),
                 vertical="center",
             )
             if row_number % 2 == 0:

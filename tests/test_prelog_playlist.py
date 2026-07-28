@@ -409,6 +409,8 @@ def test_prelog_workbook_uses_requested_language_and_columns():
     assert worksheet["B6"].value == "Campaña institucional"
     assert worksheet["D6"].number_format == "mm/dd/yyyy"
     assert worksheet["E6"].number_format == "hh:mm:ss"
+    assert worksheet["C5"].alignment.horizontal == "left"
+    assert worksheet["C6"].alignment.horizontal == "left"
     assert "Pago" not in {
         cell.value
         for cell in worksheet[5]

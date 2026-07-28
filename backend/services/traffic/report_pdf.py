@@ -183,6 +183,7 @@ def generate_report_pdf(
         colWidths=widths[:column_count],
         repeatRows=1,
     )
+    asset_column = 2 if include_product else 1
     report_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1D4ED8")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -190,6 +191,7 @@ def generate_report_pdf(
         ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN", (asset_column, 0), (asset_column, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
             colors.white,
