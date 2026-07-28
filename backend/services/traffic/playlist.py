@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, time, timedelta
 from io import BytesIO, StringIO
 from pathlib import Path
-from re import match
+from re import IGNORECASE, compile, match
 from typing import Any
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -556,9 +556,9 @@ def parse_text_playlist_events(
     source_timezone: str | None = None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     text = _decode_text(content)
-    proteus_result = _parse_proteus_fixed_width(text, source_timezone)
-    if proteus_result is not None:
-        return proteus_result
+    fixed_width_result = _parse_fixed_width_asrun(text, source_timezone)
+    if fixed_width_result is not None:
+        return fixed_width_result
     try:
         dialect = csv.Sniffer().sniff(text[:8192], delimiters=",\t|;")
     except csv.Error as exc:
@@ -581,7 +581,48 @@ def parse_text_playlist_events(
     return _structured_events(headers, records, source_timezone)
 
 
-def _parse_proteus_fixed_width(
+FIXED_WIDTH_STATUS = compile(
+    r"\b(aired|played|completed|broadcast|tx\s+ok|failed|skipped)\b",
+    IGNORECASE,
+)
+FIXED_WIDTH_DATE = compile(
+    r"\b(\d{2}/\d{2}/\d{2,4}|\d{4}-\d{2}-\d{2})\b"
+)
+FIXED_WIDTH_TIMECODE = compile(
+    r"\b(\d{2}:\d{2}:\d{2}(?:[;:.]\d{2})?)\b"
+)
+SUCCESSFUL_ASRUN_STATUSES = {
+    "aired",
+    "played",
+    "completed",
+    "broadcast",
+    "tx ok",
+}
+
+
+def _fixed_width_record(line: str) -> dict[str, str] | None:
+    asset_match = match(r"^\s*(\S(?:.*?\S)?)\s{2,}", line)
+    status_match = FIXED_WIDTH_STATUS.search(line)
+    if not asset_match or not status_match:
+        return None
+    date_match = FIXED_WIDTH_DATE.search(line, status_match.end())
+    if not date_match:
+        return None
+    timecodes = list(
+        FIXED_WIDTH_TIMECODE.finditer(line, date_match.end())
+    )
+    if len(timecodes) < 2:
+        return None
+    return {
+        "asset_id": asset_match.group(1).strip(),
+        "status": status_match.group(1),
+        "date": date_match.group(1),
+        "air_timecode": timecodes[0].group(1),
+        "duration": timecodes[1].group(1),
+    }
+
+
+def _parse_fixed_width_asrun(
     text: str,
     source_timezone: str | None,
 ) -> tuple[dict[str, Any], list[PlaylistEvent]] | None:
@@ -593,43 +634,40 @@ def _parse_proteus_fixed_width(
     if not lines:
         return None
 
-    candidates = [
-        line
-        for line in lines
-        if len(line) >= 119
-        and line[66:71].strip().lower() in {
-            "aired",
-            "failed",
-            "skipp",
-        }
-        and _parse_date(line[79:87]) is not None
-        and match(r"^\d{2}:\d{2}:\d{2};\d{2}$", line[93:104])
+    records = [
+        (row_number, record)
+        for row_number, line in enumerate(lines, start=1)
+        if (record := _fixed_width_record(line)) is not None
     ]
-    if len(candidates) < max(1, int(len(lines) * 0.8)):
+    # Allow headers, page breaks, and summary rows while requiring enough
+    # evidence to avoid misclassifying ordinary delimited text.
+    minimum_records = 1 if len(lines) == 1 else 2
+    if (
+        len(records) < minimum_records
+        or len(records) / len(lines) < 0.6
+    ):
         return None
 
     timezone_info = _timezone(source_timezone)
     events: list[PlaylistEvent] = []
     skipped_statuses = Counter()
-    for row_number, line in enumerate(lines, start=1):
-        if len(line) < 119:
-            continue
-        status = line[66:71].strip()
-        if status.lower() != "aired":
+    for row_number, record in records:
+        status = " ".join(record["status"].lower().split())
+        if status not in SUCCESSFUL_ASRUN_STATUSES:
             skipped_statuses[status or "(blank)"] += 1
             continue
-        asset_id = line[0:38].strip()
-        air_date = line[79:87].strip()
-        timecode = line[93:104].strip()
-        duration = line[108:119].strip() or None
+        asset_id = record["asset_id"]
+        parsed_date = _parse_date(record["date"])
+        timecode = record["air_timecode"]
+        duration = record["duration"] or None
         if not asset_id:
             continue
         try:
             air_datetime = datetime.strptime(
-                f"{air_date} {timecode[:8]}",
-                "%m/%d/%y %H:%M:%S",
+                f"{parsed_date} {timecode[:8]}",
+                "%Y-%m-%d %H:%M:%S",
             ).replace(tzinfo=timezone_info)
-        except ValueError:
+        except (TypeError, ValueError):
             continue
         events.append(PlaylistEvent(
             channel_name=None,
@@ -640,8 +678,8 @@ def _parse_proteus_fixed_width(
         ))
 
     structure = {
-        "format": "Proteus fixed-width As-Run",
-        "encoding": "UTF-16",
+        "format": "Fixed-width As-Run",
+        "encoding": "Auto-detected",
         "header_row": None,
         "headers": [
             "Asset ID",
