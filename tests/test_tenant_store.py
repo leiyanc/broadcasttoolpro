@@ -18,7 +18,7 @@ def test_tenant_hierarchy_is_persisted_and_isolated():
         other_organization = store.create_organization(
             name="Other Network",
             slug=None,
-            plan="starter",
+            plan="professional",
         )
         workspace = store.create_workspace(
             organization_id=organization["id"],
@@ -57,12 +57,12 @@ def test_duplicate_slugs_are_scoped_to_the_parent():
         first = store.create_organization(
             name="First Network",
             slug=None,
-            plan="starter",
+            plan="professional",
         )
         second = store.create_organization(
             name="Second Network",
             slug=None,
-            plan="starter",
+            plan="professional",
         )
 
         store.create_workspace(
@@ -100,4 +100,3 @@ def test_platform_routes_are_registered():
         in paths
     )
     assert "/api/platform/workspaces/{workspace_id}/channels" in paths
-

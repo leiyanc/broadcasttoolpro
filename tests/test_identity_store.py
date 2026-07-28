@@ -53,7 +53,7 @@ def test_roles_are_scoped_to_each_organization():
         second_organization = tenants.create_organization(
             name="Second Network",
             slug=None,
-            plan="starter",
+            plan="professional",
         )
         identities.add_membership(
             organization_id=second_organization["id"],

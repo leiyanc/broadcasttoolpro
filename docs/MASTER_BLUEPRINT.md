@@ -48,30 +48,50 @@ configuration, templates, profiles, and entitlements whenever possible.
 
 ## Commercial Packaging
 
-### Starter
+Broadcast Tool Pro will launch with one primary commercial plan. A three-tier
+structure must not be marketed until the product has enough differentiated
+capabilities to make each tier valuable and easy to understand.
 
+### Professional — Initial Commercial Plan
+
+Professional includes the complete XMLTV Suite:
+
+- XMLTV Generator
+- XMLTV Validator
+- XMLTV Repair
+- Programming Grid
+- Branded Excel and CSV templates
 - Instant HLS validation
-- Core XMLTV capabilities
-- Limited channels, users, jobs, and report retention
 
-The Starter plan does not include time-based stream monitoring or Media QC.
+The Excel and CSV templates may be offered as free acquisition resources. The
+processing tools require an active account.
 
-### Professional
+### Add-ons
 
-- HLS Monitor Stream for 5- and 10-minute sessions
-- SCTE-35 cue monitoring
-- Observed bandwidth timeline
-- Branded PDF reports in English or Spanish
-- Higher operational limits and report retention
+The initial add-on structure is:
 
-### Enterprise
+- Traffic Operations: Pre Logs and Post Logs
+- Stream Monitoring: 5-, 10-, and 15-minute HLS monitoring, SCTE-35 cue
+  monitoring, observed bandwidth timeline, and branded bilingual PDF reports
 
-- HLS Monitor Stream for 5-, 10-, and 15-minute sessions
+Add-ons are organization-level entitlements and must be enforced by both the
+API and the user interface.
+
+### Enterprise — Future Plan
+
+Enterprise is architecturally supported but will not be actively marketed at
+launch. It will be introduced when the platform includes sufficient
+enterprise-specific value:
+
 - Media QC capabilities
 - Loudness, captions, black frames, and freeze frames
-- Higher concurrency
-- Extended retention, auditability, API access, and support
-- Organization-specific limits and contractual entitlements
+- Higher concurrency and retention
+- Advanced auditability
+- API access
+- SSO and enterprise identity controls
+- Contractual limits, support, and service levels
+
+Enterprise will include all Professional capabilities and purchased add-ons.
 
 ## Media QC Resource Governance
 
@@ -119,4 +139,3 @@ The report must identify:
 
 Reports must be available in English and Spanish and carry Broadcast Tool Pro
 branding.
-

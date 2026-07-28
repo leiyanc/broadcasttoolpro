@@ -88,6 +88,10 @@ class TenantStore:
                     ON workspaces(organization_id);
                 CREATE INDEX IF NOT EXISTS idx_channels_workspace
                     ON channels(workspace_id);
+
+                UPDATE organizations
+                SET plan = 'professional'
+                WHERE plan = 'starter';
             """)
 
     def create_organization(
@@ -275,4 +279,3 @@ class TenantStore:
 
 tenant_store = TenantStore()
 tenant_store.initialize()
-

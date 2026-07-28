@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-PlanCode = Literal["starter", "professional", "enterprise"]
+PlanCode = Literal["professional", "enterprise"]
 
 
 class OrganizationCreate(BaseModel):
@@ -14,7 +14,7 @@ class OrganizationCreate(BaseModel):
         max_length=80,
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
     )
-    plan: PlanCode = "starter"
+    plan: PlanCode = "professional"
 
 
 class WorkspaceCreate(BaseModel):
@@ -52,4 +52,3 @@ class ChannelCreate(BaseModel):
         max_length=12,
         pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
     )
-

@@ -7,6 +7,7 @@ from backend.models.tenancy import (
     WorkspaceCreate,
 )
 from backend.services.identity_store import identity_store
+from backend.services.entitlements import entitlement_store
 from backend.services.tenant_store import tenant_store
 
 
@@ -58,6 +59,18 @@ def get_organization(
     require_organization_role(user["id"], organization_id)
     try:
         return tenant_store.get_organization(organization_id)
+    except KeyError as exc:
+        raise _not_found(exc) from exc
+
+
+@router.get("/organizations/{organization_id}/entitlements")
+def organization_entitlements(
+    organization_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id)
+    try:
+        return entitlement_store.effective_entitlements(organization_id)
     except KeyError as exc:
         raise _not_found(exc) from exc
 

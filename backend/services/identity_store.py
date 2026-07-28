@@ -145,7 +145,7 @@ class IdentityStore:
                     """
                     INSERT INTO organizations (
                         id, name, slug, plan, status, created_at, updated_at
-                    ) VALUES (?, ?, ?, 'starter', 'active', ?, ?)
+                    ) VALUES (?, ?, ?, 'professional', 'active', ?, ?)
                     """,
                     (
                         organization_id,
