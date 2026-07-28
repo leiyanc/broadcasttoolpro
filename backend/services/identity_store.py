@@ -73,6 +73,7 @@ class IdentityStore:
                     display_name TEXT NOT NULL,
                     password_hash TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'active',
+                    is_superuser INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -106,6 +107,29 @@ class IdentityStore:
                     ON organization_memberships(user_id);
                 CREATE INDEX IF NOT EXISTS idx_sessions_token
                     ON user_sessions(token_hash);
+            """)
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(users)")
+            }
+            if "is_superuser" not in columns:
+                connection.execute(
+                    """
+                    ALTER TABLE users
+                    ADD COLUMN is_superuser INTEGER NOT NULL DEFAULT 0
+                    """
+                )
+            connection.execute("""
+                UPDATE users
+                SET is_superuser = 1
+                WHERE id = (
+                    SELECT id FROM users
+                    ORDER BY created_at
+                    LIMIT 1
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM users WHERE is_superuser = 1
+                )
             """)
 
     def has_users(self) -> bool:
@@ -159,8 +183,8 @@ class IdentityStore:
                     """
                     INSERT INTO users (
                         id, email, display_name, password_hash, status,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, 'active', ?, ?)
+                        is_superuser, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'active', 1, ?, ?)
                     """,
                     (
                         user_id,
@@ -446,6 +470,7 @@ class IdentityStore:
             "email": row["email"],
             "display_name": row["display_name"],
             "status": row["status"],
+            "is_superuser": bool(row["is_superuser"]),
             "created_at": row["created_at"],
         }
 

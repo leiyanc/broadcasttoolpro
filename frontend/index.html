@@ -16,6 +16,7 @@
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260728-1" />
     <script src="/static/auth.js?v=20260728-1" defer></script>
+    <script src="/static/admin.js?v=20260728-1" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260726-2" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
@@ -134,9 +135,97 @@
           <p id="account-panel-email"></p>
           <p id="account-panel-organization"></p>
         </div>
-        <button class="button button-secondary" id="logout-button" type="button">
-          Sign Out
-        </button>
+        <div class="account-panel-actions">
+          <button
+            class="button button-secondary is-hidden"
+            id="open-admin-button"
+            type="button"
+          >
+            Control Plane
+          </button>
+          <button
+            class="button button-secondary"
+            id="logout-button"
+            type="button"
+          >
+            Sign Out
+          </button>
+        </div>
+      </section>
+
+      <section class="admin-shell is-hidden" id="admin-control-plane">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SUPER ADMIN CONTROL PLANE</p>
+            <h2>Platform Operations</h2>
+            <p class="section-copy">
+              Manage organizations, plans, add-ons, capacity, and incidents.
+            </p>
+          </div>
+          <button
+            class="button button-secondary"
+            id="close-admin-button"
+            type="button"
+          >
+            Close Control Plane
+          </button>
+        </div>
+        <div class="admin-metrics" id="admin-metrics"></div>
+        <div class="admin-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CUSTOMERS</p>
+              <h3>Organizations</h3>
+            </div>
+            <button
+              class="button button-secondary"
+              id="refresh-admin-button"
+              type="button"
+            >
+              Refresh
+            </button>
+          </div>
+          <div class="table-scroll">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Organization</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th>Users</th>
+                  <th>Channels</th>
+                  <th>Traffic</th>
+                  <th>Monitoring</th>
+                  <th>Save</th>
+                </tr>
+              </thead>
+              <tbody id="admin-organizations-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="admin-section">
+          <p class="eyebrow">SUPPORT</p>
+          <h3>Recent Incidents</h3>
+          <p class="history-status" id="admin-incidents-status">
+            No incidents recorded.
+          </p>
+          <div class="table-scroll is-hidden" id="admin-incidents-table">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Incident</th>
+                  <th>Organization</th>
+                  <th>Module</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="admin-incidents-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="auth-message" id="admin-message"></p>
       </section>
 
       <div class="is-hidden" id="platform-content">

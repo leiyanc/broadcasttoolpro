@@ -15,6 +15,7 @@ const accountPanelOrganization = document.querySelector(
   "#account-panel-organization",
 );
 const logoutButton = document.querySelector("#logout-button");
+const openAdminButton = document.querySelector("#open-admin-button");
 
 async function authRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -58,6 +59,7 @@ function showPlatform(identity) {
   accountAvatar.textContent = user.display_name.slice(0, 1).toUpperCase();
   accountName.textContent = user.display_name;
   accountRole.textContent = organization?.role || "Member";
+  openAdminButton.classList.toggle("is-hidden", !user.is_superuser);
   accountPanelName.textContent = user.display_name;
   accountPanelEmail.textContent = user.email;
   accountPanelOrganization.textContent = organization
@@ -125,4 +127,3 @@ logoutButton.addEventListener("click", async () => {
 });
 
 initializeAuthentication();
-

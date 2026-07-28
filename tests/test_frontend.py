@@ -104,6 +104,9 @@ def test_secure_account_interface_is_present():
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
     assert "/static/auth.js" in html
+    assert "/static/admin.js" in html
+    assert 'id="admin-control-plane"' in html
+    assert 'id="open-admin-button"' in html
 
 
 def test_epg_preview_is_available_after_schedule_validation():
