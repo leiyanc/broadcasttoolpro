@@ -117,31 +117,32 @@ def generate_prelog_workbook(
         columns.append(labels["agency"])
 
     last_column = get_column_letter(len(columns))
-    worksheet.merge_cells(f"A1:{last_column}1")
+    title_end_column = get_column_letter(max(3, len(columns) - 1))
     if report_type not in {"prelog", "postlog"}:
         raise ValueError("Unsupported report type.")
-    worksheet["A1"] = (
+    worksheet.merge_cells(f"C1:{title_end_column}1")
+    worksheet["C1"] = (
         labels["postlog_title"]
         if report_type == "postlog"
         else labels["title"]
     )
-    worksheet["A1"].font = Font(
+    worksheet["C1"].font = Font(
         name="Aptos Display",
-        size=22,
+        size=20,
         bold=True,
         color="102A43",
     )
-    worksheet["A1"].alignment = Alignment(vertical="center")
+    worksheet["C1"].alignment = Alignment(vertical="center")
     worksheet.row_dimensions[1].height = 34
     brand_logo = Image(str(BRAND_LOGO))
-    brand_scale = min(190 / brand_logo.width, 42 / brand_logo.height)
+    brand_scale = min(175 / brand_logo.width, 38 / brand_logo.height)
     brand_logo.width = round(brand_logo.width * brand_scale)
     brand_logo.height = round(brand_logo.height * brand_scale)
-    worksheet.add_image(brand_logo, f"{last_column}1")
+    worksheet.add_image(brand_logo, "A1")
 
-    worksheet.merge_cells(f"A2:{last_column}2")
-    worksheet["A2"] = channel_name.strip()
-    worksheet["A2"].font = Font(
+    worksheet.merge_cells(f"C2:{title_end_column}2")
+    worksheet["C2"] = channel_name.strip()
+    worksheet["C2"].font = Font(
         name="Aptos",
         size=12,
         bold=True,
@@ -150,12 +151,12 @@ def generate_prelog_workbook(
 
     first_airing = min(event.air_datetime for event in events)
     last_airing = max(event.air_datetime for event in events)
-    worksheet.merge_cells(f"A3:{last_column}3")
-    worksheet["A3"] = (
+    worksheet.merge_cells(f"C3:{title_end_column}3")
+    worksheet["C3"] = (
         f"{first_airing:%B %d, %Y %H:%M} – "
         f"{last_airing:%B %d, %Y %H:%M}"
     )
-    worksheet["A3"].font = Font(name="Aptos", size=10, color="64748B")
+    worksheet["C3"].font = Font(name="Aptos", size=10, color="64748B")
 
     header_row = 5
     for column, value in enumerate(columns, start=1):
@@ -255,7 +256,7 @@ def generate_prelog_workbook(
             scale = min(150 / logo.width, 58 / logo.height, 1)
             logo.width = round(logo.width * scale)
             logo.height = round(logo.height * scale)
-            worksheet.add_image(logo, f"{last_column}2")
+            worksheet.add_image(logo, f"{last_column}1")
         except Exception as exc:
             raise ValueError(
                 "The logo must be a valid PNG, JPG, or JPEG image."

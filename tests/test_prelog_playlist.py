@@ -363,7 +363,7 @@ def test_postlog_export_is_a_broadcast_certification():
     workbook = load_workbook(BytesIO(response.body))
     worksheet = workbook["Pre Log"]
 
-    assert worksheet["A1"].value == "Post Log — Broadcast Certification"
+    assert worksheet["C1"].value == "Post Log — Broadcast Certification"
     assert worksheet["B5"].value == "Product"
     assert "Total Airings: 2" in worksheet["A9"].value
     assert "postlog-comercio-tv" in response.headers["content-disposition"]
