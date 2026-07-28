@@ -334,7 +334,10 @@
                 <tr>
                   <th>Incident</th>
                   <th>Organization</th>
+                  <th>Reporter</th>
                   <th>Module</th>
+                  <th>Category</th>
+                  <th>Priority</th>
                   <th>Severity</th>
                   <th>Status</th>
                   <th>Created</th>
@@ -1694,6 +1697,104 @@
         </label>
       </div>
       <div class="help-content" id="help-content"></div>
+      <div class="help-support-actions is-hidden" id="help-support-actions">
+        <button
+          class="button button-primary"
+          id="help-report-button"
+          type="button"
+        >
+          Report a Problem
+        </button>
+        <button
+          class="button button-secondary"
+          id="help-requests-button"
+          type="button"
+        >
+          My Support Requests
+        </button>
+      </div>
+      <form class="help-support-form is-hidden" id="help-support-form">
+        <div class="help-support-heading">
+          <h3 id="help-form-title">Report a Problem</h3>
+          <button
+            class="help-back"
+            id="help-form-back"
+            type="button"
+          >
+            Back
+          </button>
+        </div>
+        <input id="help-support-module" name="module" type="hidden" />
+        <div class="help-support-grid">
+          <label>
+            <span id="help-category-label">Category</span>
+            <select id="help-category" name="category" required>
+              <option value="technical">Technical issue</option>
+              <option value="validation">Validation result</option>
+              <option value="export">Export or report</option>
+              <option value="billing">Billing</option>
+              <option value="account">Account access</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>
+            <span id="help-priority-label">Priority</span>
+            <select id="help-priority" name="priority" required>
+              <option value="low">Low</option>
+              <option value="normal" selected>Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span id="help-summary-label">Short description</span>
+          <input name="summary" required minlength="5" maxlength="160" />
+        </label>
+        <label>
+          <span id="help-details-label">What happened?</span>
+          <textarea
+            name="details"
+            required
+            minlength="10"
+            maxlength="4000"
+            rows="5"
+          ></textarea>
+        </label>
+        <label>
+          <span id="help-error-label">Exact error message (Optional)</span>
+          <textarea
+            name="error_message"
+            maxlength="2000"
+            rows="3"
+          ></textarea>
+        </label>
+        <p class="help-privacy" id="help-privacy">
+          Operational files and source data are not attached automatically.
+        </p>
+        <button
+          class="button button-primary"
+          id="help-submit-button"
+          type="submit"
+        >
+          Submit Request
+        </button>
+        <p class="auth-message" id="help-support-message"></p>
+      </form>
+      <section class="help-requests is-hidden" id="help-requests">
+        <div class="help-support-heading">
+          <h3 id="help-requests-title">My Support Requests</h3>
+          <button
+            class="help-back"
+            id="help-requests-back"
+            type="button"
+          >
+            Back
+          </button>
+        </div>
+        <p class="history-status" id="help-requests-status"></p>
+        <div class="help-request-list" id="help-request-list"></div>
+      </section>
       <p class="help-footer" id="help-footer">
         Need more assistance? Contact your platform administrator and include
         the module name and the exact error message.

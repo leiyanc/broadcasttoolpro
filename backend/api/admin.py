@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.auth import current_user
-from backend.models.admin import AddonAdminUpdate, OrganizationAdminUpdate
+from backend.models.admin import (
+    AddonAdminUpdate,
+    IncidentStatusUpdate,
+    OrganizationAdminUpdate,
+)
 from backend.models.billing import SubscriptionAdminUpdate
 from backend.services.admin_store import admin_store
 from backend.services.billing_store import billing_store
@@ -109,3 +113,18 @@ def admin_incidents(
     return {
         "incidents": admin_store.list_incidents(limit),
     }
+
+
+@router.patch("/incidents/{incident_id}")
+def update_incident_status(
+    incident_id: str,
+    request: IncidentStatusUpdate,
+    _: dict = Depends(superuser),
+):
+    try:
+        return admin_store.update_incident_status(
+            incident_id,
+            request.status,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc

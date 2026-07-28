@@ -168,6 +168,11 @@ def test_contextual_help_center_is_present():
     assert "XMLTV Generator" in javascript
     assert "Post Logs" in javascript
     assert "HLS Validator" in javascript
+    assert 'id="help-report-button"' in html
+    assert 'id="help-requests-button"' in html
+    assert 'id="help-support-form"' in html
+    assert "/api/support/requests" in javascript
+    assert "Ticket:" in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

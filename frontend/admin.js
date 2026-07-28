@@ -249,9 +249,44 @@ function renderIncidents(incidents) {
     const row = document.createElement("tr");
     adminCell(row, incident.id);
     adminCell(row, incident.organization_name || "Platform");
+    adminCell(
+      row,
+      incident.reporter_name
+        ? `${incident.reporter_name} · ${incident.reporter_email}`
+        : "System",
+    );
     adminCell(row, incident.module);
+    adminCell(row, incident.category || "—");
+    adminCell(row, incident.priority || "—");
     adminCell(row, incident.severity);
-    adminCell(row, incident.status);
+    const incidentStatusCell = adminCell(row, "");
+    const incidentStatus = adminSelect(
+      ["open", "investigating", "resolved"],
+      incident.status,
+    );
+    incidentStatus.setAttribute(
+      "aria-label",
+      `Status for ${incident.id}`,
+    );
+    incidentStatus.addEventListener("change", async () => {
+      incidentStatus.disabled = true;
+      try {
+        await adminRequest(`/api/admin/incidents/${incident.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: incidentStatus.value }),
+        });
+        adminMessage.textContent = `${incident.id} was updated.`;
+        adminMessage.classList.remove("is-error");
+        adminMessage.classList.add("is-success");
+      } catch (error) {
+        adminMessage.textContent = error.message;
+        adminMessage.classList.add("is-error");
+        incidentStatus.value = incident.status;
+      } finally {
+        incidentStatus.disabled = false;
+      }
+    });
+    incidentStatusCell.replaceChildren(incidentStatus);
     adminCell(row, new Date(incident.created_at).toLocaleString());
     adminIncidentsBody.appendChild(row);
   });

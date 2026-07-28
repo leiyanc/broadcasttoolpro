@@ -40,6 +40,24 @@ class AdminStore:
                 CREATE INDEX IF NOT EXISTS idx_incidents_status
                     ON incidents(status, created_at);
             """)
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(incidents)"
+                ).fetchall()
+            }
+            migrations = {
+                "reporter_user_id": "TEXT",
+                "category": "TEXT",
+                "priority": "TEXT",
+                "error_message": "TEXT",
+            }
+            for column, definition in migrations.items():
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE incidents "
+                        f"ADD COLUMN {column} {definition}"
+                    )
 
     def overview(self) -> dict:
         with self._connection() as connection:
@@ -134,27 +152,36 @@ class AdminStore:
         self,
         *,
         organization_id: str | None,
+        reporter_user_id: str | None = None,
         module: str,
+        category: str | None = None,
         severity: str,
+        priority: str | None = None,
         summary: str,
         details: str | None = None,
+        error_message: str | None = None,
     ) -> str:
         incident_id = f"INC-{datetime.now():%Y%m%d}-{uuid4().hex[:8].upper()}"
         with self._connection() as connection:
             connection.execute(
                 """
                 INSERT INTO incidents (
-                    id, organization_id, module, severity, status,
-                    summary, details, created_at
-                ) VALUES (?, ?, ?, ?, 'open', ?, ?, ?)
+                    id, organization_id, reporter_user_id, module, category,
+                    severity, priority, status, summary, details,
+                    error_message, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
                 """,
                 (
                     incident_id,
                     organization_id,
+                    reporter_user_id,
                     module,
+                    category,
                     severity,
+                    priority,
                     summary,
                     details,
+                    error_message,
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
@@ -165,10 +192,14 @@ class AdminStore:
         with self._connection() as connection:
             rows = connection.execute(
                 """
-                SELECT incidents.*, organizations.name AS organization_name
+                SELECT incidents.*, organizations.name AS organization_name,
+                       users.display_name AS reporter_name,
+                       users.email AS reporter_email
                 FROM incidents
                 LEFT JOIN organizations
                     ON organizations.id = incidents.organization_id
+                LEFT JOIN users
+                    ON users.id = incidents.reporter_user_id
                 ORDER BY incidents.created_at DESC
                 LIMIT ?
                 """,
@@ -176,7 +207,53 @@ class AdminStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def list_user_incidents(
+        self,
+        user_id: str,
+        limit: int = 100,
+    ) -> list[dict]:
+        safe_limit = min(max(limit, 1), 500)
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, module, category, priority, severity, status,
+                       summary, created_at, resolved_at
+                FROM incidents
+                WHERE reporter_user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (user_id, safe_limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def update_incident_status(
+        self,
+        incident_id: str,
+        status: str,
+    ) -> dict:
+        resolved_at = (
+            datetime.now(timezone.utc).isoformat()
+            if status == "resolved"
+            else None
+        )
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE incidents
+                SET status = ?, resolved_at = ?
+                WHERE id = ?
+                """,
+                (status, resolved_at, incident_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError("Incident not found.")
+            row = connection.execute(
+                "SELECT * FROM incidents WHERE id = ?",
+                (incident_id,),
+            ).fetchone()
+        return dict(row)
+
 
 admin_store = AdminStore()
 admin_store.initialize()
-

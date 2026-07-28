@@ -112,6 +112,23 @@ commercial pricing are formally approved. A future provider integration must
 use webhooks as the authoritative source for payment status and must be
 idempotent, auditable, and isolated from broadcast-processing workflows.
 
+## Customer Support Workflow
+
+Authenticated users can create support requests from the contextual Help
+Center. Each request records the organization, reporting user, active module,
+category, priority, summary, details, optional exact error message, status, and
+timestamps.
+
+- Users can review the status of requests they submitted.
+- Super Admins manage all requests from the Control Plane.
+- Supported states are Open, Investigating, and Resolved.
+- Support remains available to authenticated users whose organization is
+  suspended.
+- Operational files, schedules, XMLTV files, playlists, and As-Run data are
+  never attached automatically.
+- Future attachment support must require explicit user action, file validation,
+  access controls, retention limits, and secure storage.
+
 ## Media QC Resource Governance
 
 Media QC must never execute inside the primary web application process.

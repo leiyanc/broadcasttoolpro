@@ -11,3 +11,6 @@ class OrganizationAdminUpdate(BaseModel):
 class AddonAdminUpdate(BaseModel):
     enabled: bool
 
+
+class IncidentStatusUpdate(BaseModel):
+    status: Literal["open", "investigating", "resolved"]

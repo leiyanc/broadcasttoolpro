@@ -1560,6 +1560,118 @@ footer {
   line-height: 1.5;
 }
 
+.help-support-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.help-support-actions .button {
+  width: 100%;
+  padding-inline: 10px;
+}
+
+.help-support-form,
+.help-requests {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.help-support-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.help-support-heading h3 {
+  margin: 0;
+  color: var(--navy);
+}
+
+.help-back {
+  padding: 7px 10px;
+  color: var(--blue);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.help-support-form > label,
+.help-support-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.help-support-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.help-support-form textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 11px 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+}
+
+[data-theme="dark"] .help-support-form textarea {
+  background: #0d1728;
+}
+
+.help-privacy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.help-request-list {
+  display: grid;
+  gap: 10px;
+}
+
+.help-request-list article {
+  padding: 12px;
+  background: var(--background);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.help-request-list article > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.help-request-list article span {
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.help-request-list article p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 [data-theme="dark"] .help-panel {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
 }
@@ -1663,6 +1775,11 @@ footer {
   }
 
   .help-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .help-support-actions,
+  .help-support-grid {
     grid-template-columns: 1fr;
   }
 }

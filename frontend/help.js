@@ -6,6 +6,26 @@ const helpContent = document.querySelector("#help-content");
 const helpGuideSelect = document.querySelector("#help-guide-select");
 const helpLanguageSelect = document.querySelector("#help-language-select");
 const helpFooter = document.querySelector("#help-footer");
+const helpSupportActions = document.querySelector("#help-support-actions");
+const helpReportButton = document.querySelector("#help-report-button");
+const helpRequestsButton = document.querySelector("#help-requests-button");
+const helpSupportForm = document.querySelector("#help-support-form");
+const helpSupportModule = document.querySelector("#help-support-module");
+const helpSupportMessage = document.querySelector("#help-support-message");
+const helpFormBack = document.querySelector("#help-form-back");
+const helpRequests = document.querySelector("#help-requests");
+const helpRequestsBack = document.querySelector("#help-requests-back");
+const helpRequestsStatus = document.querySelector("#help-requests-status");
+const helpRequestList = document.querySelector("#help-request-list");
+const helpFormTitle = document.querySelector("#help-form-title");
+const helpRequestsTitle = document.querySelector("#help-requests-title");
+const helpCategoryLabel = document.querySelector("#help-category-label");
+const helpPriorityLabel = document.querySelector("#help-priority-label");
+const helpSummaryLabel = document.querySelector("#help-summary-label");
+const helpDetailsLabel = document.querySelector("#help-details-label");
+const helpErrorLabel = document.querySelector("#help-error-label");
+const helpPrivacy = document.querySelector("#help-privacy");
+const helpSubmitButton = document.querySelector("#help-submit-button");
 const helpPreferenceKey = "broadcastToolPro.helpLanguage";
 
 const helpGuides = {
@@ -241,6 +261,77 @@ const helpGuides = {
 };
 
 let helpCurrentGuide = "getting_started";
+let helpSupportAvailable = false;
+
+function helpTranslateSupportUi(language) {
+  const spanish = language === "es";
+  helpReportButton.textContent = spanish
+    ? "Reportar un problema"
+    : "Report a Problem";
+  helpRequestsButton.textContent = spanish
+    ? "Mis solicitudes"
+    : "My Support Requests";
+  helpFormTitle.textContent = helpReportButton.textContent;
+  helpRequestsTitle.textContent = helpRequestsButton.textContent;
+  helpFormBack.textContent = spanish ? "Volver" : "Back";
+  helpRequestsBack.textContent = spanish ? "Volver" : "Back";
+  helpCategoryLabel.textContent = spanish ? "Categoría" : "Category";
+  helpPriorityLabel.textContent = spanish ? "Prioridad" : "Priority";
+  helpSummaryLabel.textContent = spanish
+    ? "Descripción breve"
+    : "Short description";
+  helpDetailsLabel.textContent = spanish
+    ? "¿Qué ocurrió?"
+    : "What happened?";
+  helpErrorLabel.textContent = spanish
+    ? "Mensaje de error exacto (Opcional)"
+    : "Exact error message (Optional)";
+  helpPrivacy.textContent = spanish
+    ? "Los archivos operativos y datos originales no se adjuntan automáticamente."
+    : "Operational files and source data are not attached automatically.";
+  helpSubmitButton.textContent = spanish
+    ? "Enviar solicitud"
+    : "Submit Request";
+  const categoryLabels = spanish
+    ? {
+        technical: "Problema técnico",
+        validation: "Resultado de validación",
+        export: "Exportación o reporte",
+        billing: "Facturación",
+        account: "Acceso a la cuenta",
+        other: "Otro",
+      }
+    : {
+        technical: "Technical issue",
+        validation: "Validation result",
+        export: "Export or report",
+        billing: "Billing",
+        account: "Account access",
+        other: "Other",
+      };
+  const priorityLabels = spanish
+    ? { low: "Baja", normal: "Normal", high: "Alta", urgent: "Urgente" }
+    : { low: "Low", normal: "Normal", high: "High", urgent: "Urgent" };
+  document.querySelectorAll("#help-category option").forEach((option) => {
+    option.textContent = categoryLabels[option.value];
+  });
+  document.querySelectorAll("#help-priority option").forEach((option) => {
+    option.textContent = priorityLabels[option.value];
+  });
+}
+
+function helpShowGuideView() {
+  helpSupportForm.classList.add("is-hidden");
+  helpRequests.classList.add("is-hidden");
+  helpContent.classList.remove("is-hidden");
+  helpControlsVisible(true);
+  helpSupportActions.classList.toggle("is-hidden", !helpSupportAvailable);
+}
+
+function helpControlsVisible(visible) {
+  document.querySelector(".help-controls")
+    .classList.toggle("is-hidden", !visible);
+}
 
 function helpRenderGuide(guideKey = helpCurrentGuide) {
   const guide = helpGuides[guideKey] || helpGuides.getting_started;
@@ -252,6 +343,7 @@ function helpRenderGuide(guideKey = helpCurrentGuide) {
   helpFooter.textContent = language === "es"
     ? "¿Necesitas más ayuda? Contacta al administrador e incluye el módulo y el mensaje de error exacto."
     : "Need more assistance? Contact your platform administrator and include the module name and the exact error message.";
+  helpTranslateSupportUi(language);
   const summary = document.createElement("p");
   summary.className = "help-summary";
   summary.textContent = content.summary;
@@ -265,6 +357,7 @@ function helpRenderGuide(guideKey = helpCurrentGuide) {
   tip.className = "help-tip";
   tip.textContent = `${language === "es" ? "Importante" : "Important"}: ${content.tip}`;
   helpContent.replaceChildren(summary, list, tip);
+  helpShowGuideView();
 }
 
 function helpGuideForViewport() {
@@ -316,6 +409,89 @@ helpGuideSelect.addEventListener("change", () => {
 helpLanguageSelect.addEventListener("change", () => {
   localStorage.setItem(helpPreferenceKey, helpLanguageSelect.value);
   helpRenderGuide();
+});
+
+helpReportButton.addEventListener("click", () => {
+  helpContent.classList.add("is-hidden");
+  helpSupportActions.classList.add("is-hidden");
+  helpRequests.classList.add("is-hidden");
+  helpControlsVisible(false);
+  helpSupportForm.classList.remove("is-hidden");
+  helpSupportModule.value = helpGuides[helpCurrentGuide]?.en.title
+    || "Platform";
+  helpSupportMessage.textContent = "";
+  helpSupportMessage.classList.remove("is-error");
+});
+
+helpFormBack.addEventListener("click", helpShowGuideView);
+helpRequestsBack.addEventListener("click", helpShowGuideView);
+
+helpSupportForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = helpSupportForm.querySelector("button[type='submit']");
+  const payload = Object.fromEntries(new FormData(helpSupportForm).entries());
+  helpSupportMessage.textContent = "";
+  helpSupportMessage.classList.remove("is-error");
+  button.disabled = true;
+  try {
+    const result = await authRequest("/api/support/requests", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    helpSupportForm.reset();
+    helpSupportModule.value = helpGuides[helpCurrentGuide]?.en.title
+      || "Platform";
+    helpSupportMessage.textContent =
+      `${result.message} Ticket: ${result.id}`;
+  } catch (error) {
+    helpSupportMessage.textContent = error.message;
+    helpSupportMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+async function helpLoadRequests() {
+  helpContent.classList.add("is-hidden");
+  helpSupportActions.classList.add("is-hidden");
+  helpSupportForm.classList.add("is-hidden");
+  helpControlsVisible(false);
+  helpRequests.classList.remove("is-hidden");
+  helpRequestsStatus.textContent = "Loading requests…";
+  helpRequestList.replaceChildren();
+  try {
+    const payload = await authRequest("/api/support/requests");
+    const requests = payload.requests || [];
+    helpRequestsStatus.textContent = requests.length
+      ? `${requests.length} support request(s).`
+      : "No support requests have been submitted.";
+    requests.forEach((request) => {
+      const card = document.createElement("article");
+      const heading = document.createElement("div");
+      const title = document.createElement("strong");
+      const status = document.createElement("span");
+      const detail = document.createElement("p");
+      title.textContent = request.summary;
+      status.textContent = request.status;
+      detail.textContent = `${request.id} · ${request.module} · ${
+        new Date(request.created_at).toLocaleDateString()
+      }`;
+      heading.append(title, status);
+      card.append(heading, detail);
+      helpRequestList.appendChild(card);
+    });
+  } catch (error) {
+    helpRequestsStatus.textContent = error.message;
+  }
+}
+
+helpRequestsButton.addEventListener("click", helpLoadRequests);
+window.addEventListener("btp:identity", (event) => {
+  helpSupportAvailable = Boolean(event.detail?.user);
+  helpSupportActions.classList.toggle(
+    "is-hidden",
+    !helpSupportAvailable || helpContent.classList.contains("is-hidden"),
+  );
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") helpDismiss();
