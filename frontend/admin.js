@@ -275,6 +275,8 @@ function renderIncidents(incidents) {
           method: "PATCH",
           body: JSON.stringify({ status: incidentStatus.value }),
         });
+        incident.status = incidentStatus.value;
+        await loadControlPlane();
         adminMessage.textContent = `${incident.id} was updated.`;
         adminMessage.classList.remove("is-error");
         adminMessage.classList.add("is-success");

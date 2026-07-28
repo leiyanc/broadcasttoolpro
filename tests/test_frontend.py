@@ -135,6 +135,8 @@ def test_secure_account_interface_is_present():
     assert "applyOrganizationAccess" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
+    assert "/api/admin/incidents/" in admin_javascript
+    assert "incident.status = incidentStatus.value" in admin_javascript
 
 
 def test_billing_and_subscription_interface_is_present():
