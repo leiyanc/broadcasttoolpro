@@ -10,6 +10,8 @@ from fastapi import (
 )
 
 from backend.models.identity import (
+    AccessRequestCreate,
+    AccountActivationConfirm,
     BootstrapRequest,
     LoginRequest,
     MemberCreate,
@@ -17,6 +19,7 @@ from backend.models.identity import (
     PasswordResetRequest,
     TrialRegistrationRequest,
 )
+from backend.services.access_request_store import access_request_store
 from backend.services.billing_store import billing_store
 from backend.services.identity_store import (
     AuthenticationLockedError,
@@ -264,6 +267,43 @@ def register_trial(
             "ends_at": subscription["current_period_end"],
             "communications_scheduled": len(communications),
         },
+    }
+
+
+@router.post("/access-requests", status_code=status.HTTP_201_CREATED)
+def create_access_request(request: AccessRequestCreate):
+    try:
+        access_request = access_request_store.create(
+            **request.model_dump()
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "request_id": access_request["id"],
+        "status": access_request["status"],
+        "message": (
+            "Your access request was received. Broadcast Tool Pro will "
+            "review the appropriate account and plan."
+        ),
+    }
+
+
+@router.post("/activate-account")
+def activate_account(
+    request: AccountActivationConfirm,
+    response: Response,
+):
+    try:
+        user, token = identity_store.activate_account(
+            request.token,
+            request.password,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _set_session_cookie(response, token)
+    return {
+        "user": user,
+        "organizations": identity_store.organizations_for_user(user["id"]),
     }
 
 

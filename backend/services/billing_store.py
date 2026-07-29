@@ -149,6 +149,53 @@ class BillingStore:
             )
         return self.get_subscription(organization_id)
 
+    def create_manual_paid_subscription(
+        self,
+        organization_id: str,
+        *,
+        amount_cents: int,
+        billing_cycle: str = "monthly",
+    ) -> dict:
+        if amount_cents < 0:
+            raise ValueError("Subscription amount cannot be negative.")
+        if billing_cycle not in {"monthly", "annual"}:
+            raise ValueError("A valid billing cycle is required.")
+        now = datetime.now(timezone.utc)
+        period_days = 365 if billing_cycle == "annual" else 30
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO subscriptions (
+                    id, organization_id, status, billing_cycle, currency,
+                    amount_cents, provider, current_period_start,
+                    current_period_end, cancel_at_period_end,
+                    created_at, updated_at
+                ) VALUES (?, ?, 'active', ?, 'USD', ?, 'manual',
+                          ?, ?, 0, ?, ?)
+                ON CONFLICT (organization_id)
+                DO UPDATE SET
+                    status = 'active',
+                    billing_cycle = excluded.billing_cycle,
+                    amount_cents = excluded.amount_cents,
+                    provider = 'manual',
+                    current_period_start = excluded.current_period_start,
+                    current_period_end = excluded.current_period_end,
+                    cancel_at_period_end = 0,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    billing_cycle,
+                    amount_cents,
+                    now.isoformat(),
+                    (now + timedelta(days=period_days)).isoformat(),
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+        return self.get_subscription(organization_id)
+
     def get_subscription(self, organization_id: str) -> dict:
         with self._connection() as connection:
             row = connection.execute(

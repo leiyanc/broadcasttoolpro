@@ -1,19 +1,24 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.auth import current_user
 from backend.models.admin import (
     AddonAdminUpdate,
+    AccessRequestApproval,
     IncidentMessageCreate,
     IncidentStatusUpdate,
     OrganizationAdminUpdate,
 )
 from backend.models.billing import SubscriptionAdminUpdate
 from backend.services.admin_store import admin_store
+from backend.services.access_request_store import access_request_store
 from backend.services.billing_store import billing_store
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
 from backend.services.identity_store import identity_store
 from backend.services.entitlements import entitlement_store
+from backend.services.email_outbox import email_outbox_store
 
 
 router = APIRouter(
@@ -46,6 +51,94 @@ def security_events(
             min(max(limit, 1), 500)
         ),
     }
+
+
+@router.get("/access-requests")
+def access_requests(
+    limit: int = 100,
+    _: dict = Depends(superuser),
+):
+    return {
+        "requests": access_request_store.list(limit),
+    }
+
+
+@router.post("/access-requests/{request_id}/approve")
+def approve_access_request(
+    request_id: str,
+    request: AccessRequestApproval,
+    _: dict = Depends(superuser),
+):
+    try:
+        access_request = access_request_store.get(request_id)
+        if access_request["status"] != "pending":
+            raise ValueError("Only a pending request can be approved.")
+        user, organization, activation_token = (
+            identity_store.provision_customer(
+                organization_name=access_request["organization_name"],
+                display_name=access_request["contact_name"],
+                email=access_request["email"],
+                plan=request.plan,
+            )
+        )
+        amount_cents = 9900 if request.plan == "professional" else 19900
+        subscription = billing_store.create_manual_paid_subscription(
+            organization["id"],
+            amount_cents=amount_cents,
+        )
+        if request.plan == "professional":
+            entitlement_store.set_addon(
+                organization["id"],
+                "traffic_operations",
+                True,
+            )
+        approved = access_request_store.approve(
+            request_id,
+            plan=request.plan,
+            organization_id=organization["id"],
+            user_id=user["id"],
+        )
+        application_url = os.getenv(
+            "BTP_APPLICATION_URL",
+            "http://127.0.0.1:8000/app",
+        ).rstrip("/")
+        activation_url = (
+            f"{application_url}?mode=activate&token={activation_token}"
+        )
+        email_outbox_store.schedule_account_activation(
+            organization_id=organization["id"],
+            recipient_email=user["email"],
+            organization_name=organization["name"],
+            plan=request.plan,
+            activation_url=activation_url,
+        )
+        return {
+            "request": approved,
+            "organization": organization,
+            "subscription": subscription,
+            "activation_url": activation_url,
+            "message": (
+                f"{request.plan.title()} account created. The activation "
+                "message is queued."
+            ),
+        }
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/access-requests/{request_id}/reject")
+def reject_access_request(
+    request_id: str,
+    _: dict = Depends(superuser),
+):
+    try:
+        return access_request_store.reject(request_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/backups")

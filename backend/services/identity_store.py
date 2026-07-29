@@ -153,6 +153,17 @@ class IdentityStore:
                     FOREIGN KEY (user_id)
                         REFERENCES users(id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS account_activation_tokens (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id)
+                        REFERENCES users(id) ON DELETE CASCADE
+                );
             """)
             columns = {
                 row["name"]
@@ -751,6 +762,157 @@ class IdentityStore:
                 success=True,
             )
         return self.get_user(row["user_id"])
+
+    def provision_customer(
+        self,
+        *,
+        organization_name: str,
+        display_name: str,
+        email: str,
+        plan: str,
+    ) -> tuple[dict, dict, str]:
+        if plan not in {"professional", "enterprise"}:
+            raise ValueError("A valid paid plan is required.")
+        now = datetime.now(timezone.utc)
+        organization_id = str(uuid4())
+        user_id = str(uuid4())
+        activation_token = secrets.token_urlsafe(32)
+        organization_slug = (
+            f"{_slugify(organization_name)}-{secrets.token_hex(3)}"
+        )
+        try:
+            with self._connection() as connection:
+                if connection.execute(
+                    "SELECT 1 FROM users WHERE email = ?",
+                    (email.strip().lower(),),
+                ).fetchone():
+                    raise ValueError(
+                        "An account with this email address already exists."
+                    )
+                connection.execute(
+                    """
+                    INSERT INTO organizations (
+                        id, name, slug, plan, status, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'active', ?, ?)
+                    """,
+                    (
+                        organization_id,
+                        organization_name.strip(),
+                        organization_slug,
+                        plan,
+                        now.isoformat(),
+                        now.isoformat(),
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO users (
+                        id, email, display_name, password_hash, status,
+                        is_superuser, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'invited', 0, ?, ?)
+                    """,
+                    (
+                        user_id,
+                        email.strip().lower(),
+                        display_name.strip(),
+                        _password_hash(secrets.token_urlsafe(48)),
+                        now.isoformat(),
+                        now.isoformat(),
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO organization_memberships (
+                        id, organization_id, user_id, role, created_at
+                    ) VALUES (?, ?, ?, 'owner', ?)
+                    """,
+                    (
+                        str(uuid4()),
+                        organization_id,
+                        user_id,
+                        now.isoformat(),
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO account_activation_tokens (
+                        id, user_id, token_hash, expires_at, created_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(uuid4()),
+                        user_id,
+                        _token_hash(activation_token),
+                        (now + timedelta(days=7)).isoformat(),
+                        now.isoformat(),
+                    ),
+                )
+                self._record_security_event(
+                    connection,
+                    event_type="paid_account_provisioned",
+                    user_id=user_id,
+                    email=email.strip().lower(),
+                    success=True,
+                    details=f"{plan} account awaiting activation.",
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                "The paid customer account could not be provisioned."
+            ) from exc
+        return (
+            self.get_user(user_id),
+            self._organization_for_user(user_id, organization_id),
+            activation_token,
+        )
+
+    def activate_account(
+        self,
+        token: str,
+        password: str,
+    ) -> tuple[dict, str]:
+        now = datetime.now(timezone.utc)
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT account_activation_tokens.*, users.email
+                FROM account_activation_tokens
+                JOIN users ON users.id = account_activation_tokens.user_id
+                WHERE account_activation_tokens.token_hash = ?
+                  AND account_activation_tokens.used_at IS NULL
+                  AND account_activation_tokens.expires_at > ?
+                  AND users.status = 'invited'
+                """,
+                (_token_hash(token), now.isoformat()),
+            ).fetchone()
+            if row is None:
+                raise ValueError(
+                    "The account activation link is invalid or has expired."
+                )
+            connection.execute(
+                """
+                UPDATE users
+                SET password_hash = ?, status = 'active', updated_at = ?
+                WHERE id = ?
+                """,
+                (_password_hash(password), now.isoformat(), row["user_id"]),
+            )
+            connection.execute(
+                """
+                UPDATE account_activation_tokens
+                SET used_at = ?
+                WHERE user_id = ? AND used_at IS NULL
+                """,
+                (now.isoformat(), row["user_id"]),
+            )
+            self._record_security_event(
+                connection,
+                event_type="paid_account_activated",
+                user_id=row["user_id"],
+                email=row["email"],
+                success=True,
+            )
+        session = self.create_session(row["user_id"])
+        return self.get_user(row["user_id"]), session
 
     def get_user(self, user_id: str) -> dict:
         with self._connection() as connection:

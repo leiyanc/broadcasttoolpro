@@ -146,7 +146,15 @@
               role="tab"
               aria-selected="false"
             >
-              Create Account
+              Request Access
+            </button>
+            <button
+              id="show-free-trial-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >
+              Free Trial
             </button>
           </div>
 
@@ -248,6 +256,47 @@
           <p class="auth-message" id="password-reset-confirm-message"></p>
         </form>
 
+        <form class="auth-card is-hidden" id="access-request-form">
+          <p class="eyebrow">PAID ACCOUNT ACCESS</p>
+          <h2>Request Access</h2>
+          <p class="auth-copy">
+            Tell us who you are. We will review your workflow and assign a
+            Professional or Enterprise account separately from the free trial.
+          </p>
+          <label>
+            <span>Organization Name</span>
+            <input name="organization_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Your Name</span>
+            <input name="contact_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Email Address</span>
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <label>
+            <span>What would you like to accomplish? (Optional)</span>
+            <textarea
+              name="message"
+              rows="4"
+              maxlength="2000"
+              placeholder="Channels, workflows, formats, or operational needs"
+            ></textarea>
+          </label>
+          <button class="button button-primary" type="submit">
+            Submit Access Request
+          </button>
+          <button
+            class="text-link auth-text-button"
+            id="show-free-trial-link"
+            type="button"
+          >
+            Prefer to evaluate first? Start a 7-Day Free Trial
+          </button>
+          <p class="auth-message" id="access-request-message"></p>
+        </form>
+
         <form class="auth-card is-hidden" id="trial-form">
           <p class="eyebrow">7-DAY FREE TRIAL</p>
           <h2>Create Account</h2>
@@ -290,6 +339,30 @@
             No payment method required. Access ends automatically after 7 days.
           </p>
           <p class="auth-message" id="trial-message"></p>
+        </form>
+
+        <form class="auth-card is-hidden" id="account-activation-form">
+          <p class="eyebrow">ACCOUNT APPROVED</p>
+          <h2>Activate Your Account</h2>
+          <p class="auth-copy">
+            Create your password to activate the Professional or Enterprise
+            account assigned by Broadcast Tool Pro.
+          </p>
+          <label>
+            <span>Create Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minlength="10"
+              autocomplete="new-password"
+            />
+            <small>Use at least 10 characters.</small>
+          </label>
+          <button class="button button-primary" type="submit">
+            Activate Account
+          </button>
+          <p class="auth-message" id="account-activation-message"></p>
         </form>
         </div>
       </section>
@@ -491,6 +564,38 @@
                 </tr>
               </thead>
               <tbody id="admin-security-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="admin-section">
+          <p class="eyebrow">CUSTOMER ONBOARDING</p>
+          <h3>Access Requests</h3>
+          <p class="section-copy">
+            Approve a customer directly as Professional or Enterprise.
+            These accounts are independent of the free trial.
+          </p>
+          <p
+            class="auth-message admin-inline-message"
+            id="admin-access-message"
+            aria-live="polite"
+          ></p>
+          <p class="history-status" id="admin-access-status">
+            No access requests received.
+          </p>
+          <div class="table-scroll is-hidden" id="admin-access-table">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Request</th>
+                  <th>Organization</th>
+                  <th>Contact</th>
+                  <th>Received</th>
+                  <th>Status</th>
+                  <th>Assign Plan</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-access-body"></tbody>
             </table>
           </div>
         </div>

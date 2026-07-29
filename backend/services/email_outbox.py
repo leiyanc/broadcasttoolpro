@@ -166,6 +166,46 @@ class EmailOutboxStore:
             ).fetchone()
         return dict(row)
 
+    def schedule_account_activation(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        organization_name: str,
+        plan: str,
+        activation_url: str,
+    ) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid4())
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO email_outbox (
+                    id, organization_id, recipient_email, template_code,
+                    subject, body_text, scheduled_for, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                """,
+                (
+                    message_id,
+                    organization_id,
+                    recipient_email.strip().lower(),
+                    f"account_activation_{message_id}",
+                    "Activate your Broadcast Tool Pro account",
+                    (
+                        f"{organization_name} has been approved for the "
+                        f"{plan.title()} plan. Create your password within "
+                        f"seven days: {activation_url}"
+                    ),
+                    now,
+                    now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+        return dict(row)
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

@@ -3,6 +3,10 @@ const platformContent = document.querySelector("#platform-content");
 const bootstrapForm = document.querySelector("#bootstrap-form");
 const loginForm = document.querySelector("#login-form");
 const trialForm = document.querySelector("#trial-form");
+const accessRequestForm = document.querySelector("#access-request-form");
+const accountActivationForm = document.querySelector(
+  "#account-activation-form",
+);
 const passwordResetRequestForm = document.querySelector(
   "#password-reset-request-form",
 );
@@ -12,6 +16,12 @@ const passwordResetConfirmForm = document.querySelector(
 const bootstrapMessage = document.querySelector("#bootstrap-message");
 const loginMessage = document.querySelector("#login-message");
 const trialMessage = document.querySelector("#trial-message");
+const accessRequestMessage = document.querySelector(
+  "#access-request-message",
+);
+const accountActivationMessage = document.querySelector(
+  "#account-activation-message",
+);
 const passwordResetRequestMessage = document.querySelector(
   "#password-reset-request-message",
 );
@@ -19,8 +29,10 @@ const passwordResetConfirmMessage = document.querySelector(
   "#password-reset-confirm-message",
 );
 const showPasswordReset = document.querySelector("#show-password-reset");
+const showFreeTrialLink = document.querySelector("#show-free-trial-link");
 const showLoginTab = document.querySelector("#show-login-tab");
 const showTrialTab = document.querySelector("#show-trial-tab");
+const showFreeTrialTab = document.querySelector("#show-free-trial-tab");
 const accountButton = document.querySelector("#account-button");
 const accountAvatar = document.querySelector("#account-avatar");
 const accountName = document.querySelector("#account-name");
@@ -155,34 +167,59 @@ function formPayload(form) {
 }
 
 function selectAuthenticationMode(mode) {
-  const trial = mode === "trial" || mode === "create";
+  const trial = mode === "trial";
+  const accessRequest = mode === "create" || mode === "request";
+  const activation = mode === "activate";
   const resetRequest = mode === "forgot";
   const resetConfirm = mode === "reset";
   loginForm.classList.toggle(
     "is-hidden",
-    trial || resetRequest || resetConfirm,
+    trial || accessRequest || activation || resetRequest || resetConfirm,
   );
   trialForm.classList.toggle(
-    "is-hidden",
-    !trial || resetRequest || resetConfirm,
+    "is-hidden", !trial,
   );
+  accessRequestForm.classList.toggle("is-hidden", !accessRequest);
+  accountActivationForm.classList.toggle("is-hidden", !activation);
   passwordResetRequestForm.classList.toggle("is-hidden", !resetRequest);
   passwordResetConfirmForm.classList.toggle("is-hidden", !resetConfirm);
   showLoginTab.classList.toggle(
     "is-active",
-    !trial && !resetRequest && !resetConfirm,
+    !trial
+      && !accessRequest
+      && !activation
+      && !resetRequest
+      && !resetConfirm,
   );
-  showTrialTab.classList.toggle("is-active", trial);
+  showTrialTab.classList.toggle("is-active", accessRequest);
+  showFreeTrialTab.classList.toggle("is-active", trial);
   showLoginTab.setAttribute(
     "aria-selected",
-    String(!trial && !resetRequest && !resetConfirm),
+    String(
+      !trial
+        && !accessRequest
+        && !activation
+        && !resetRequest
+        && !resetConfirm,
+    ),
   );
-  showTrialTab.setAttribute("aria-selected", String(trial));
+  showTrialTab.setAttribute(
+    "aria-selected",
+    String(accessRequest),
+  );
+  showFreeTrialTab.setAttribute("aria-selected", String(trial));
 }
 
 function requestedAuthenticationMode() {
   const mode = new URLSearchParams(window.location.search).get("mode");
-  return ["trial", "create", "forgot", "reset"].includes(mode)
+  return [
+    "trial",
+    "create",
+    "request",
+    "activate",
+    "forgot",
+    "reset",
+  ].includes(mode)
     ? mode
     : "signin";
 }
@@ -215,6 +252,8 @@ function showPlatform(identity) {
   bootstrapForm.classList.add("is-hidden");
   loginForm.classList.add("is-hidden");
   trialForm.classList.add("is-hidden");
+  accessRequestForm.classList.add("is-hidden");
+  accountActivationForm.classList.add("is-hidden");
   passwordResetRequestForm.classList.add("is-hidden");
   passwordResetConfirmForm.classList.add("is-hidden");
   platformContent.classList.remove("is-hidden");
@@ -240,6 +279,8 @@ async function initializeAuthentication() {
   if (
     requestedMode === "trial"
     || requestedMode === "create"
+    || requestedMode === "request"
+    || requestedMode === "activate"
     || requestedMode === "forgot"
     || requestedMode === "reset"
   ) {
@@ -297,6 +338,54 @@ trialForm.addEventListener("submit", (event) => {
     "/api/auth/trial",
     trialMessage,
   );
+});
+
+accessRequestForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = accessRequestForm.querySelector("button[type='submit']");
+  button.disabled = true;
+  accessRequestMessage.classList.remove("is-error");
+  try {
+    const result = await authRequest("/api/auth/access-requests", {
+      method: "POST",
+      body: JSON.stringify(formPayload(accessRequestForm)),
+    });
+    accessRequestForm.reset();
+    accessRequestMessage.textContent =
+      `${result.message} Reference: ${result.request_id}`;
+  } catch (error) {
+    accessRequestMessage.textContent = error.message;
+    accessRequestMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+accountActivationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = accountActivationForm.querySelector(
+    "button[type='submit']",
+  );
+  button.disabled = true;
+  accountActivationMessage.classList.remove("is-error");
+  try {
+    const token = new URLSearchParams(window.location.search).get("token");
+    const identity = await authRequest("/api/auth/activate-account", {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        password: new FormData(accountActivationForm).get("password"),
+      }),
+    });
+    accountActivationForm.reset();
+    history.replaceState(null, "", "/app");
+    showPlatform(identity);
+  } catch (error) {
+    accountActivationMessage.textContent = error.message;
+    accountActivationMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
 });
 
 loginForm.addEventListener("submit", (event) => {
@@ -377,6 +466,14 @@ showTrialTab.addEventListener("click", () => {
   history.replaceState(null, "", "/app?mode=create");
   selectAuthenticationMode("create");
 });
+
+function openFreeTrial() {
+  history.replaceState(null, "", "/app?mode=trial");
+  selectAuthenticationMode("trial");
+}
+
+showFreeTrialTab.addEventListener("click", openFreeTrial);
+showFreeTrialLink.addEventListener("click", openFreeTrial);
 
 accountButton.addEventListener("click", () => {
   accountPanel.classList.toggle("is-hidden");

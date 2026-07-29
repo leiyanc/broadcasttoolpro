@@ -263,7 +263,7 @@ main {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin: 0 0 8px;
   padding: 4px;
@@ -362,15 +362,23 @@ main {
   font-size: 13px;
 }
 
-.auth-card input {
+.auth-card input,
+.auth-card textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
+  padding: 13px 14px;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   font: inherit;
+}
+
+.auth-card input {
+  min-height: 48px;
+}
+
+.auth-card textarea {
+  resize: vertical;
 }
 
 .auth-card .button {

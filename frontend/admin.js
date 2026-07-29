@@ -17,6 +17,10 @@ const runBackupButton = document.querySelector("#run-backup-button");
 const adminSecurityBody = document.querySelector("#admin-security-body");
 const adminSecurityTable = document.querySelector("#admin-security-table");
 const adminSecurityStatus = document.querySelector("#admin-security-status");
+const adminAccessBody = document.querySelector("#admin-access-body");
+const adminAccessTable = document.querySelector("#admin-access-table");
+const adminAccessStatus = document.querySelector("#admin-access-status");
+const adminAccessMessage = document.querySelector("#admin-access-message");
 const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
@@ -144,6 +148,80 @@ function renderSecurityEvents(events) {
     adminCell(row, event.success ? "Successful" : "Rejected");
     adminCell(row, event.details || "—");
     adminSecurityBody.appendChild(row);
+  });
+}
+
+function renderAccessRequests(requests) {
+  adminAccessBody.replaceChildren();
+  const pending = requests.filter((request) => request.status === "pending");
+  adminAccessStatus.textContent = requests.length
+    ? `${pending.length} pending · ${requests.length} total requests.`
+    : "No access requests received.";
+  adminAccessTable.classList.toggle("is-hidden", requests.length === 0);
+  requests.forEach((request) => {
+    const row = document.createElement("tr");
+    adminCell(row, request.id);
+    adminCell(row, request.organization_name);
+    adminCell(row, `${request.contact_name}\n${request.email}`);
+    adminCell(row, new Date(request.created_at).toLocaleString());
+    adminCell(row, request.status);
+    const planCell = document.createElement("td");
+    const plan = adminSelect(["professional", "enterprise"], "professional");
+    plan.disabled = request.status !== "pending";
+    planCell.appendChild(plan);
+    row.appendChild(planCell);
+    const actionCell = document.createElement("td");
+    if (request.status === "pending") {
+      const approve = document.createElement("button");
+      approve.className = "button button-small button-primary";
+      approve.type = "button";
+      approve.textContent = "Approve";
+      approve.addEventListener("click", async () => {
+        approve.disabled = true;
+        adminAccessMessage.textContent = "Creating customer account…";
+        adminAccessMessage.classList.remove("is-error");
+        try {
+          const result = await adminRequest(
+            `/api/admin/access-requests/${request.id}/approve`,
+            {
+              method: "POST",
+              body: JSON.stringify({ plan: plan.value }),
+            },
+          );
+          adminAccessMessage.textContent = (
+            `${result.message} Activation link: ${result.activation_url}`
+          );
+          await loadControlPlane();
+        } catch (error) {
+          adminAccessMessage.textContent = error.message;
+          adminAccessMessage.classList.add("is-error");
+          approve.disabled = false;
+        }
+      });
+      const reject = document.createElement("button");
+      reject.className = "button button-small button-secondary";
+      reject.type = "button";
+      reject.textContent = "Reject";
+      reject.addEventListener("click", async () => {
+        reject.disabled = true;
+        try {
+          await adminRequest(
+            `/api/admin/access-requests/${request.id}/reject`,
+            { method: "POST" },
+          );
+          await loadControlPlane();
+        } catch (error) {
+          adminAccessMessage.textContent = error.message;
+          adminAccessMessage.classList.add("is-error");
+          reject.disabled = false;
+        }
+      });
+      actionCell.append(approve, reject);
+    } else {
+      actionCell.textContent = request.assigned_plan || "—";
+    }
+    row.appendChild(actionCell);
+    adminAccessBody.appendChild(row);
   });
 }
 
@@ -524,12 +602,14 @@ async function loadControlPlane() {
       incidents,
       backups,
       security,
+      accessRequests,
     ] = await Promise.all([
       adminRequest("/api/admin/overview"),
       adminRequest("/api/admin/organizations"),
       adminRequest("/api/admin/incidents"),
       adminRequest("/api/admin/backups"),
       adminRequest("/api/admin/security-events"),
+      adminRequest("/api/admin/access-requests"),
     ]);
     adminMetrics.replaceChildren();
     Object.entries({
@@ -551,6 +631,7 @@ async function loadControlPlane() {
     renderIncidents(incidents.incidents);
     renderBackupStatus(backups);
     renderSecurityEvents(security.events);
+    renderAccessRequests(accessRequests.requests);
   } catch (error) {
     adminMessage.textContent = error.message;
     adminMessage.classList.add("is-error");

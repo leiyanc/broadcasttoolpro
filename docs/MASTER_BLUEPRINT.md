@@ -150,14 +150,25 @@ idempotent, auditable, and isolated from broadcast-processing workflows.
 Account creation supports two distinct commercial paths:
 
 - Start an optional 7-day free trial.
-- Choose and purchase a commercial plan directly.
+- Submit a Request Access form for a paid account without starting a trial.
 
-The trial must never be mandatory. A future account that has not selected
-either path may remain in a Pending Plan state without access to paid modules.
+The trial must never be mandatory. A Request Access submission creates only a
+pending commercial request and grants no product access. A Super Admin reviews
+the request, assigns Professional or Enterprise, and creates a separate paid
+organization account. The customer then uses a single-use activation link to
+create a password. Activation links expire after seven days.
+
+Professional approval creates an active manual subscription at the published
+Professional price and enables Programming plus Traffic Operations.
+Enterprise approval creates an active manual subscription at the published
+Enterprise price and enables the complete currently available Enterprise
+entitlement set. Payment-provider integration may replace manual subscription
+activation later without changing the onboarding domain model.
 
 Authentication requirements:
 
-- Sign In, Create Account, and Free Trial entry points must preserve their
+- Sign In, Request Access, Free Trial, and Account Activation entry points
+  must preserve their
   requested mode.
 - Sessions are temporary by default.
 - An explicit Remember Me option may extend the authenticated session for 30

@@ -20,3 +20,7 @@ class IncidentStatusUpdate(BaseModel):
 class IncidentMessageCreate(BaseModel):
     visibility: Literal["customer", "internal"]
     message: str = Field(min_length=2, max_length=4000)
+
+
+class AccessRequestApproval(BaseModel):
+    plan: Literal["professional", "enterprise"]
