@@ -190,6 +190,89 @@ sending domain, retry policy, delivery-status tracking, and unsubscribe or
 preference handling where legally required. Provider credentials must never be
 stored in source code.
 
+## Cost-Conscious Infrastructure Strategy
+
+Broadcast Tool Pro must scale from revenue, measured demand, and operational
+risk. Infrastructure must not be introduced merely because it may become
+useful in the future.
+
+> No infrastructure component will be introduced before customer demand,
+> operational risk, or measured usage justifies its cost.
+
+### Stage 1 — Validation and First Customers
+
+Target: 0–10 paying customers.
+
+- Keep the current FastAPI modular monolith.
+- Keep SQLite while concurrency and reliability remain acceptable.
+- Run one economical application service.
+- Store only temporary processing files on local disk.
+- Delete temporary uploads and generated working files according to a defined
+  retention policy.
+- Maintain automatic off-server backups of the database and essential records.
+- Use a free or low-cost transactional email tier when email delivery is
+  connected.
+- Limit HLS monitoring duration and allow only controlled concurrency.
+- Do not introduce Redis, Celery, Kubernetes, dedicated media storage, or
+  multiple application services at this stage.
+
+Commercial launch still requires:
+
+- HTTPS
+- Secure password hashing and HTTP-only session cookies
+- Backend-enforced organization isolation and permissions
+- Upload size, type, and processing limits
+- Error logging and operational alerts
+- Automated backups and a tested restoration procedure
+- Temporary-file cleanup
+- Dependency and security update procedures
+
+The operating-cost target for this stage is approximately USD 10–30 per month,
+excluding variable payment-provider and email-delivery fees.
+
+### Stage 2 — Early Growth
+
+Target: approximately 10–50 customers, or earlier if measured risk requires it.
+
+Introduce components independently rather than performing a full replatform:
+
+- Migrate SQLite to managed PostgreSQL when concurrent writes, backup
+  requirements, tenant volume, or availability risk justify the change.
+- Introduce object storage when local retention, report history, or disk
+  durability becomes a customer requirement.
+- Isolate Media QC or other CPU-intensive processing in one worker when it
+  begins competing with interactive application requests.
+- Keep the primary application as a modular monolith.
+
+### Stage 3 — Measured Scale
+
+Target: sustained usage beyond the safe capacity of Stage 2.
+
+Only then consider:
+
+- A durable job queue
+- Multiple background workers
+- Redis, SQS, or an equivalent queue dependency
+- Replicated API instances
+- Expanded object-storage retention
+- Centralized metrics, tracing, and higher availability
+
+### Infrastructure Upgrade Triggers
+
+An upgrade must be justified by one or more recorded signals:
+
+- Database lock contention or unacceptable write latency
+- Backup or restoration objectives that SQLite cannot satisfy
+- Local disk growth or customer retention requirements
+- Application response degradation during report or monitoring jobs
+- Repeated queueing or rejected Media QC requests
+- CPU, memory, bandwidth, or storage thresholds
+- Customer contractual requirements
+- Security, compliance, or availability risk
+
+Architecture decisions must preserve migration paths without requiring the
+business to pay for unused capacity.
+
 ## Customer Support Workflow
 
 Authenticated users can create support requests from the contextual Help
