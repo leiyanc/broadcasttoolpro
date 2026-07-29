@@ -823,6 +823,34 @@ main {
   font-size: 23px;
 }
 
+.admin-backup-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-backup-details > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  background: var(--background);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.admin-backup-details strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.admin-backup-details small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .admin-section select {
   min-height: 38px;
   padding: 0 8px;

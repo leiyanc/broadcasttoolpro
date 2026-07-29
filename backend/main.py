@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,11 +16,34 @@ from backend.api.auth import router as auth_router
 from backend.api.admin import router as admin_router
 from backend.api.billing import router as billing_router
 from backend.api.support import router as support_router
+from backend.services.backup_manager import backup_manager
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    stop_event = asyncio.Event()
+
+    async def backup_loop():
+        while not stop_event.is_set():
+            try:
+                await asyncio.to_thread(backup_manager.create_if_due)
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=60 * 60)
+            except TimeoutError:
+                continue
+
+    backup_task = asyncio.create_task(backup_loop())
+    yield
+    stop_event.set()
+    await backup_task
 
 
 app = FastAPI(
     title="Broadcast Tool Pro",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
@@ -55,4 +80,5 @@ def application():
 def health():
     return {
         "status": "healthy",
+        "backup": backup_manager.status()["status"],
     }

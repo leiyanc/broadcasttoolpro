@@ -10,6 +10,7 @@ from backend.models.admin import (
 from backend.models.billing import SubscriptionAdminUpdate
 from backend.services.admin_store import admin_store
 from backend.services.billing_store import billing_store
+from backend.services.backup_manager import backup_manager
 from backend.services.entitlements import entitlement_store
 
 
@@ -31,6 +32,29 @@ def superuser(user: dict = Depends(current_user)) -> dict:
 @router.get("/overview")
 def admin_overview(_: dict = Depends(superuser)):
     return admin_store.overview()
+
+
+@router.get("/backups")
+def backup_status(_: dict = Depends(superuser)):
+    return backup_manager.status()
+
+
+@router.post("/backups")
+def create_backup(_: dict = Depends(superuser)):
+    try:
+        backup = backup_manager.create_backup()
+        if backup is None:
+            raise HTTPException(
+                status_code=409,
+                detail="A backup is already running or unavailable.",
+            )
+        return {
+            "backup": backup,
+            "verification": backup_manager.verify_latest(),
+            "status": backup_manager.status(),
+        }
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/organizations")

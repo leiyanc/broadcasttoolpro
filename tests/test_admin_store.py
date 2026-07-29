@@ -92,3 +92,4 @@ def test_super_admin_routes_are_registered():
     assert "/api/admin/organizations" in paths
     assert "/api/admin/incidents" in paths
     assert "/api/admin/incidents/{incident_id}" in paths
+    assert "/api/admin/backups" in paths

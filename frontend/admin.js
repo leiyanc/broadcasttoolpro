@@ -10,6 +10,10 @@ const adminIncidentsBody = document.querySelector("#admin-incidents-body");
 const adminIncidentsTable = document.querySelector("#admin-incidents-table");
 const adminIncidentsStatus = document.querySelector("#admin-incidents-status");
 const adminMessage = document.querySelector("#admin-message");
+const adminBackupStatus = document.querySelector("#admin-backup-status");
+const adminBackupDetails = document.querySelector("#admin-backup-details");
+const adminBackupMessage = document.querySelector("#admin-backup-message");
+const runBackupButton = document.querySelector("#run-backup-button");
 const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
@@ -86,6 +90,31 @@ function adminTicketItem(author, message, createdAt, visibility = "") {
   heading.append(strong, small);
   item.append(heading, paragraph);
   return item;
+}
+
+function renderBackupStatus(backup) {
+  const latest = backup.latest_backup;
+  adminBackupStatus.textContent = latest
+    ? `Last verified backup: ${new Date(latest.created_at).toLocaleString()}`
+    : "No verified backup has been created yet.";
+  adminBackupDetails.replaceChildren();
+  const details = {
+    Status: backup.status,
+    Retention: `${backup.retention_days} days`,
+    Schedule: `Every ${backup.automatic_interval_hours} hours`,
+    Storage: backup.external_storage_configured
+      ? "External backup location configured"
+      : "Local development location — configure external storage before launch",
+  };
+  Object.entries(details).forEach(([label, value]) => {
+    const item = document.createElement("div");
+    const strong = document.createElement("strong");
+    const small = document.createElement("small");
+    strong.textContent = value;
+    small.textContent = label;
+    item.append(strong, small);
+    adminBackupDetails.appendChild(item);
+  });
 }
 
 async function openAdminTicket(incidentId) {
@@ -459,10 +488,11 @@ adminCloseTicket.addEventListener("click", () => {
 async function loadControlPlane() {
   adminMessage.textContent = "";
   try {
-    const [overview, organizations, incidents] = await Promise.all([
+    const [overview, organizations, incidents, backups] = await Promise.all([
       adminRequest("/api/admin/overview"),
       adminRequest("/api/admin/organizations"),
       adminRequest("/api/admin/incidents"),
+      adminRequest("/api/admin/backups"),
     ]);
     adminMetrics.replaceChildren();
     Object.entries({
@@ -482,11 +512,31 @@ async function loadControlPlane() {
     });
     renderOrganizations(organizations.organizations);
     renderIncidents(incidents.incidents);
+    renderBackupStatus(backups);
   } catch (error) {
     adminMessage.textContent = error.message;
     adminMessage.classList.add("is-error");
   }
 }
+
+runBackupButton.addEventListener("click", async () => {
+  runBackupButton.disabled = true;
+  adminBackupMessage.textContent = "Creating and verifying backup…";
+  adminBackupMessage.classList.remove("is-error", "is-success");
+  try {
+    const result = await adminRequest("/api/admin/backups", {
+      method: "POST",
+    });
+    renderBackupStatus(result.status);
+    adminBackupMessage.textContent = "Verified backup completed.";
+    adminBackupMessage.classList.add("is-success");
+  } catch (error) {
+    adminBackupMessage.textContent = error.message;
+    adminBackupMessage.classList.add("is-error");
+  } finally {
+    runBackupButton.disabled = false;
+  }
+});
 
 adminOpenButton.addEventListener("click", () => {
   adminControlPlane.classList.remove("is-hidden");

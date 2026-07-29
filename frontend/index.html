@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="/static/styles.css?v=20260728-14" />
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260728-4" defer></script>
-    <script src="/static/admin.js?v=20260728-6" defer></script>
+    <script src="/static/admin.js?v=20260729-1" defer></script>
     <script src="/static/billing.js?v=20260728-5" defer></script>
     <script src="/static/help.js?v=20260728-6" defer></script>
     <script src="/static/app.js?v=20260727-8" defer></script>
@@ -383,6 +383,30 @@
           </button>
         </div>
         <div class="admin-metrics" id="admin-metrics"></div>
+        <div class="admin-section admin-backup-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BACKUP &amp; RECOVERY</p>
+              <h3>Database Protection</h3>
+              <p class="section-copy" id="admin-backup-status">
+                Checking backup status…
+              </p>
+            </div>
+            <button
+              class="button button-secondary"
+              id="run-backup-button"
+              type="button"
+            >
+              Run Verified Backup
+            </button>
+          </div>
+          <div class="admin-backup-details" id="admin-backup-details"></div>
+          <p
+            class="auth-message admin-inline-message"
+            id="admin-backup-message"
+            aria-live="polite"
+          ></p>
+        </div>
         <div class="admin-section">
           <div class="section-heading">
             <div>

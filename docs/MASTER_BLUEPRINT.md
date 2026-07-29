@@ -227,6 +227,20 @@ Commercial launch still requires:
 - Temporary-file cleanup
 - Dependency and security update procedures
 
+The Stage 1 implementation includes a cost-free SQLite backup foundation:
+
+- Automatic verified backups every 24 hours
+- Manual verified backup from the Super Admin Control Panel
+- SQLite integrity validation and SHA-256 manifests
+- Configurable retention
+- A protected offline restoration tool that preserves a pre-restore copy
+- Backup health visibility through the application health endpoint and Control
+  Panel
+
+Production launch still requires configuring the backup directory on a
+persistent location independent of the application filesystem and completing
+a documented restoration test.
+
 The operating-cost target for this stage is approximately USD 10–30 per month,
 excluding variable payment-provider and email-delivery fees.
 
