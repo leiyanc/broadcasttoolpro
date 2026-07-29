@@ -20,7 +20,15 @@ from backend.services.xmltv.timezone import (
     build_utc_schedule,
 )
 from backend.services.xmltv.validator import ValidationEngine
-from backend.api.auth import require_active_organization
+from backend.services.xmltv.validation_report import (
+    generate_xmltv_validation_report,
+)
+from backend.api.auth import (
+    current_user,
+    is_trial_user,
+    require_active_organization,
+    require_module,
+)
 
 
 router = APIRouter(
@@ -52,7 +60,9 @@ def fix_category(fix: dict) -> str:
 
 
 @router.get("/template/excel", response_class=FileResponse)
-def download_excel_template():
+def download_excel_template(
+    _user: dict = Depends(require_module("xmltv_generator")),
+):
     return FileResponse(
         EXCEL_TEMPLATE,
         media_type=(
@@ -64,7 +74,9 @@ def download_excel_template():
 
 
 @router.get("/template/csv", response_class=Response)
-def download_csv_template():
+def download_csv_template(
+    _user: dict = Depends(require_module("xmltv_generator")),
+):
     content = ",".join(EXPECTED_COLUMNS) + "\n"
     return Response(
         content=content,
@@ -240,6 +252,7 @@ async def process_schedule(
 async def import_schedule(
     schedule_file: UploadFile = File(...),
     channel_timezone: str = Form(...),
+    _user: dict = Depends(require_module("xmltv_generator")),
 ):
     return await process_schedule(
         schedule_file,
@@ -251,6 +264,7 @@ async def import_schedule(
 @router.post("/validate")
 async def validate_xmltv_file(
     xmltv_file: UploadFile = File(...),
+    _user: dict = Depends(require_module("xmltv_validator")),
 ):
     filename = xmltv_file.filename or ""
 
@@ -266,6 +280,27 @@ async def validate_xmltv_file(
         **result,
         "filename": filename,
     }
+
+
+@router.post("/validate/report/pdf", response_class=Response)
+def download_xmltv_validation_report(
+    report: dict,
+    user: dict = Depends(current_user),
+    _module_user: dict = Depends(require_module("xmltv_validator")),
+):
+    content = generate_xmltv_validation_report(
+        report,
+        trial_watermark=is_trial_user(user),
+    )
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="xmltv-validation-report.pdf"'
+            ),
+        },
+    )
 
 
 async def process_xmltv_repair(xmltv_file: UploadFile) -> tuple[str, dict]:
@@ -291,6 +326,7 @@ async def process_xmltv_repair(xmltv_file: UploadFile) -> tuple[str, dict]:
 @router.post("/repair/preview")
 async def preview_xmltv_repair(
     xmltv_file: UploadFile = File(...),
+    _user: dict = Depends(require_module("xmltv_repair")),
 ):
     filename, result = await process_xmltv_repair(xmltv_file)
 
@@ -307,6 +343,7 @@ async def preview_xmltv_repair(
 async def download_repaired_xmltv(
     xmltv_file: UploadFile = File(...),
     accept_repairs: bool = Form(False),
+    _user: dict = Depends(require_module("xmltv_repair")),
 ):
     filename, result = await process_xmltv_repair(xmltv_file)
 
@@ -347,6 +384,7 @@ async def generate_schedule(
     rating_system: str = Form("VCHIP"),
     accept_auto_fixes: bool = Form(False),
     timestamp_format: str = Form("xmltv"),
+    _user: dict = Depends(require_module("xmltv_generator")),
 ):
     if not isinstance(timestamp_format, str):
         timestamp_format = "xmltv"
@@ -417,6 +455,7 @@ async def download_programming_grid(
     channel_name: str = Form(...),
     accept_auto_fixes: bool = Form(False),
     channel_logo: UploadFile | None = File(None),
+    _user: dict = Depends(require_module("programming_grid")),
 ):
     result = await process_schedule(
         schedule_file,

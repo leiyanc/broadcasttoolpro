@@ -253,6 +253,41 @@ main {
   margin-bottom: 30px;
 }
 
+.auth-access-panel {
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 4px;
+  background: var(--background);
+  border-radius: 14px;
+}
+
+.auth-tabs button {
+  min-height: 50px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-tabs button.is-active {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 5px 16px rgba(16, 42, 67, 0.1);
+}
+
 .auth-card {
   display: grid;
   gap: 17px;
@@ -261,6 +296,19 @@ main {
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: var(--shadow);
+}
+
+.auth-access-panel .auth-card {
+  border: 0;
+  box-shadow: none;
+}
+
+.trial-terms {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .auth-card h2 {
@@ -1112,6 +1160,7 @@ h1 {
 }
 
 [data-theme="dark"] .auth-card,
+[data-theme="dark"] .auth-access-panel,
 [data-theme="dark"] .account-panel,
 [data-theme="dark"] .admin-shell,
 [data-theme="dark"] .programming-grid-export,
@@ -1121,6 +1170,14 @@ h1 {
   color: var(--ink);
   background: var(--surface);
   border-color: var(--line);
+}
+
+[data-theme="dark"] .auth-tabs {
+  background: #09111f;
+}
+
+[data-theme="dark"] .auth-tabs button.is-active {
+  background: #162033;
 }
 
 [data-theme="dark"] .auth-card h2,

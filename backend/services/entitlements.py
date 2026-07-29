@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.services.tenant_store import DATABASE_PATH
@@ -124,26 +125,74 @@ class EntitlementStore:
                 """,
                 (organization_id,),
             ).fetchall()
+            try:
+                subscription = connection.execute(
+                    """
+                    SELECT status, current_period_end, provider
+                    FROM subscriptions
+                    WHERE organization_id = ?
+                    """,
+                    (organization_id,),
+                ).fetchone()
+            except sqlite3.OperationalError:
+                subscription = None
 
         plan = organization["plan"]
+        trial_active = False
+        trial_ends_at = None
+        if subscription and subscription["status"] == "trialing":
+            trial_ends_at = subscription["current_period_end"]
+            trial_active = (
+                datetime.fromisoformat(trial_ends_at)
+                > datetime.now(timezone.utc)
+            )
         enabled_addons = {row["addon_code"] for row in rows}
+        trial_modules = {
+            "xmltv_validator",
+            "prelogs",
+            "hls_validator",
+        }
         modules = {}
         for code, definition in MODULE_CATALOG.items():
             source = definition["source"]
-            enabled = (
-                definition.get("available", True)
-                and (
-                    source == "professional"
-                    or plan == "enterprise"
-                    or source in enabled_addons
+            if subscription and subscription["status"] == "trialing":
+                enabled = (
+                    trial_active
+                    and definition.get("available", True)
+                    and code in trial_modules
                 )
-            )
+            else:
+                enabled = (
+                    definition.get("available", True)
+                    and (
+                        source == "professional"
+                        or plan == "enterprise"
+                        or source in enabled_addons
+                    )
+                )
             modules[code] = {
                 **definition,
                 "enabled": enabled,
             }
         return {
             "plan": plan,
+            "access": {
+                "type": "trial" if subscription and subscription[
+                    "status"
+                ] == "trialing" else "paid",
+                "active": trial_active if subscription and subscription[
+                    "status"
+                ] == "trialing" else True,
+                "ends_at": trial_ends_at,
+                "download_formats": (
+                    ["pdf"] if subscription and subscription[
+                        "status"
+                    ] == "trialing" else ["xlsx", "pdf", "json", "html"]
+                ),
+                "watermark": bool(
+                    subscription and subscription["status"] == "trialing"
+                ),
+            },
             "addons": [
                 {
                     "code": code,

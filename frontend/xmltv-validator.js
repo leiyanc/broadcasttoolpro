@@ -12,6 +12,9 @@ const validatorResultMetrics = document.querySelector("#validator-result-metrics
 const validatorIssueList = document.querySelector("#validator-issue-list");
 const validatorResultActions = document.querySelector("#validator-result-actions");
 const downloadValidatorReport = document.querySelector("#download-validator-report");
+const downloadValidatorPdfReport = document.querySelector(
+  "#download-validator-pdf-report",
+);
 const downloadValidatorHtmlReport = document.querySelector(
   "#download-validator-html-report",
 );
@@ -232,6 +235,25 @@ downloadValidatorReport.addEventListener("click", () => {
     `${reportName}-validation-report.json`,
   );
   downloadValidatorReport.closest("details").removeAttribute("open");
+});
+
+downloadValidatorPdfReport.addEventListener("click", async () => {
+  if (!latestValidatorReport) return;
+  const response = await fetch("/api/xmltv/validate/report/pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(latestValidatorReport),
+  });
+  if (!response.ok) return;
+  const blob = await response.blob();
+  const sourceName = latestValidatorReport.filename || "xmltv";
+  const reportName = sourceName.replace(/\.xml$/i, "");
+  downloadReportBlob(
+    blob,
+    "application/pdf",
+    `${reportName}-validation-report.pdf`,
+  );
+  downloadValidatorPdfReport.closest("details").removeAttribute("open");
 });
 
 downloadValidatorHtmlReport.addEventListener("click", async () => {

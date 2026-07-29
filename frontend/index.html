@@ -129,6 +129,27 @@
           <p class="auth-message" id="bootstrap-message"></p>
         </form>
 
+        <div class="auth-access-panel">
+          <div class="auth-tabs" role="tablist" aria-label="Account access">
+            <button
+              class="is-active"
+              id="show-login-tab"
+              type="button"
+              role="tab"
+              aria-selected="true"
+            >
+              Sign In
+            </button>
+            <button
+              id="show-trial-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >
+              Create Account
+            </button>
+          </div>
+
         <form class="auth-card is-hidden" id="login-form">
           <p class="eyebrow">ACCOUNT LOGIN</p>
           <h2>Sign In</h2>
@@ -153,6 +174,46 @@
           </button>
           <p class="auth-message" id="login-message"></p>
         </form>
+
+        <form class="auth-card is-hidden" id="trial-form">
+          <p class="eyebrow">7-DAY FREE TRIAL</p>
+          <h2>Create Account</h2>
+          <p class="auth-copy">
+            Includes XMLTV Validator, Pre-Logs, and HLS Validator.
+            Trial reports are branded PDF files.
+          </p>
+          <label>
+            <span>Organization Name</span>
+            <input name="organization_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Your Name</span>
+            <input name="display_name" required minlength="2" />
+          </label>
+          <label>
+            <span>Email Address</span>
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minlength="10"
+              autocomplete="new-password"
+            />
+            <small>Use at least 10 characters.</small>
+          </label>
+          <button class="button button-primary" type="submit">
+            Start 7-Day Free Trial
+          </button>
+          <p class="trial-terms">
+            No payment method required. Access ends automatically after 7 days.
+          </p>
+          <p class="auth-message" id="trial-message"></p>
+        </form>
+        </div>
       </section>
 
       <section class="account-panel is-hidden" id="account-panel">
@@ -250,6 +311,22 @@
           provider is connected. No payment method is stored by Broadcast Tool
           Pro at this stage.
         </p>
+      </section>
+
+      <section
+        class="suspended-shell is-hidden"
+        id="trial-expired"
+        aria-live="polite"
+      >
+        <p class="eyebrow">FREE TRIAL</p>
+        <h2>Your 7-Day Trial Has Ended</h2>
+        <p>
+          Trial modules and downloads are now disabled. Contact Broadcast Tool
+          Pro to activate the appropriate operating package.
+        </p>
+        <a class="button button-primary" href="/#pricing">
+          View Plans
+        </a>
       </section>
 
       <section
@@ -1038,7 +1115,15 @@
                 </summary>
                 <div class="download-menu-list">
                   <button
+                    id="download-validator-pdf-report"
+                    type="button"
+                  >
+                    <strong>PDF Report</strong>
+                    <small>Branded, presentation-ready report</small>
+                  </button>
+                  <button
                     id="download-validator-html-report"
+                    class="paid-download-option"
                     type="button"
                   >
                     <strong>HTML Report</strong>
@@ -1046,6 +1131,7 @@
                   </button>
                   <button
                     id="download-validator-report"
+                    class="paid-download-option"
                     type="button"
                   >
                     <strong>JSON Report</strong>

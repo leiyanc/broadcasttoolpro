@@ -114,6 +114,17 @@ a {
   font-size: 12px;
 }
 
+.landing-button-outline {
+  color: var(--landing-ink);
+  background: transparent;
+  border-color: var(--landing-line);
+}
+
+.landing-button-outline:hover {
+  background: var(--landing-panel);
+  border-color: var(--landing-cyan);
+}
+
 .landing-menu-toggle {
   display: none;
 }
@@ -242,6 +253,53 @@ a {
   min-height: 430px;
   display: grid;
   grid-template-columns: 130px 1fr;
+}
+
+.platform-map {
+  min-height: 430px;
+}
+
+.platform-map-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  padding: 1px;
+  background: var(--landing-line);
+}
+
+.platform-map-body article {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 26px;
+  background: var(--landing-panel);
+}
+
+.platform-map-body small {
+  color: var(--landing-cyan);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.platform-map-body strong {
+  font-size: 19px;
+}
+
+.platform-map-body span,
+.platform-map-note {
+  color: var(--landing-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.platform-map-note {
+  margin: 0;
+  padding: 18px 24px;
+  border-top: 1px solid var(--landing-line);
 }
 
 .console-body aside {
@@ -1127,6 +1185,10 @@ a {
   }
 
   .roadmap-list {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-map-body {
     grid-template-columns: 1fr;
   }
 

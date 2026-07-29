@@ -2,8 +2,12 @@ const authGate = document.querySelector("#auth-gate");
 const platformContent = document.querySelector("#platform-content");
 const bootstrapForm = document.querySelector("#bootstrap-form");
 const loginForm = document.querySelector("#login-form");
+const trialForm = document.querySelector("#trial-form");
 const bootstrapMessage = document.querySelector("#bootstrap-message");
 const loginMessage = document.querySelector("#login-message");
+const trialMessage = document.querySelector("#trial-message");
+const showLoginTab = document.querySelector("#show-login-tab");
+const showTrialTab = document.querySelector("#show-trial-tab");
 const accountButton = document.querySelector("#account-button");
 const accountAvatar = document.querySelector("#account-avatar");
 const accountName = document.querySelector("#account-name");
@@ -17,10 +21,21 @@ const accountPanelOrganization = document.querySelector(
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
 const suspendedPanel = document.querySelector("#organization-suspended");
+const trialExpiredPanel = document.querySelector("#trial-expired");
 const suspendedAdminButton = document.querySelector(
   "#suspended-admin-button",
 );
 let currentIdentity = null;
+let currentEntitlements = null;
+
+const moduleSurfaces = {
+  xmltv_generator: ['a[href="#generator"]', "#generator"],
+  xmltv_validator: ['a[href="#validator"]', "#validator"],
+  xmltv_repair: ['a[href="#repair"]', "#repair"],
+  prelogs: ['a[href="#prelog"]', "#prelog"],
+  postlogs: ['a[href="#postlog"]', "#postlog"],
+  hls_validator: ['a[href="#hls-validator"]', "#hls-validator"],
+};
 
 function applyOrganizationAccess(identity) {
   const organization = identity?.organizations?.[0];
@@ -57,25 +72,37 @@ async function refreshOrganizationEntitlements() {
       `/api/platform/organizations/${organization.id}/entitlements`,
     );
     const modules = entitlements.modules || {};
-    const trafficEnabled = Boolean(
-      modules.prelogs?.enabled && modules.postlogs?.enabled,
+    currentEntitlements = entitlements;
+    document.body.dataset.accessType = entitlements.access?.type || "paid";
+    const trialExpired = (
+      entitlements.access?.type === "trial"
+      && !entitlements.access?.active
     );
-    setModuleAvailability(
-      document.querySelector('a[href="#prelog"]'),
-      trafficEnabled,
-    );
-    setModuleAvailability(
-      document.querySelector('a[href="#postlog"]'),
-      trafficEnabled,
-    );
-    setModuleAvailability(
-      document.querySelector("#prelog"),
-      trafficEnabled,
-    );
-    setModuleAvailability(
-      document.querySelector("#postlog"),
-      trafficEnabled,
-    );
+    trialExpiredPanel.classList.toggle("is-hidden", !trialExpired);
+    if (trialExpired) {
+      platformContent.classList.add("is-hidden");
+    }
+    for (const [moduleCode, selectors] of Object.entries(moduleSurfaces)) {
+      for (const selector of selectors) {
+        document.querySelectorAll(selector).forEach((element) => {
+          setModuleAvailability(element, Boolean(modules[moduleCode]?.enabled));
+        });
+      }
+    }
+    document.querySelectorAll(".paid-download-option").forEach((element) => {
+      element.classList.toggle(
+        "is-hidden",
+        entitlements.access?.type === "trial",
+      );
+    });
+    const prelogFormat = document.querySelector("#prelog-output-format");
+    const prelogExcel = prelogFormat?.querySelector('option[value="xlsx"]');
+    if (prelogExcel) {
+      prelogExcel.disabled = entitlements.access?.type === "trial";
+      if (entitlements.access?.type === "trial") {
+        prelogFormat.value = "pdf";
+      }
+    }
     const monitorEnabled = Boolean(modules.hls_monitor?.enabled);
     setModuleAvailability(
       document.querySelector("#monitor-hls-button"),
@@ -84,6 +111,9 @@ async function refreshOrganizationEntitlements() {
     document.querySelector("#hls-monitor-duration")
       ?.closest("label")
       ?.classList.toggle("is-hidden", !monitorEnabled);
+    window.dispatchEvent(new CustomEvent("btp:entitlements", {
+      detail: entitlements,
+    }));
   } catch {
     // Keep core modules available if entitlement refresh is interrupted.
   }
@@ -111,17 +141,39 @@ function formPayload(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function selectAuthenticationMode(mode) {
+  const trial = mode === "trial" || mode === "create";
+  loginForm.classList.toggle("is-hidden", trial);
+  trialForm.classList.toggle("is-hidden", !trial);
+  showLoginTab.classList.toggle("is-active", !trial);
+  showTrialTab.classList.toggle("is-active", trial);
+  showLoginTab.setAttribute("aria-selected", String(!trial));
+  showTrialTab.setAttribute("aria-selected", String(trial));
+}
+
+function requestedAuthenticationMode() {
+  const mode = new URLSearchParams(window.location.search).get("mode");
+  return mode === "trial" || mode === "create" ? mode : "signin";
+}
+
 function showAuthentication(bootstrapRequired) {
   authGate.classList.remove("is-hidden");
   platformContent.classList.add("is-hidden");
   accountButton.classList.add("is-hidden");
   accountPanel.classList.add("is-hidden");
   suspendedPanel.classList.add("is-hidden");
+  trialExpiredPanel.classList.add("is-hidden");
   window.dispatchEvent(new CustomEvent("btp:identity", {
     detail: null,
   }));
   bootstrapForm.classList.toggle("is-hidden", !bootstrapRequired);
-  loginForm.classList.toggle("is-hidden", bootstrapRequired);
+  document.querySelector(".auth-access-panel").classList.toggle(
+    "is-hidden",
+    bootstrapRequired,
+  );
+  if (!bootstrapRequired) {
+    selectAuthenticationMode(requestedAuthenticationMode());
+  }
 }
 
 function showPlatform(identity) {
@@ -131,6 +183,7 @@ function showPlatform(identity) {
   authGate.classList.add("is-hidden");
   bootstrapForm.classList.add("is-hidden");
   loginForm.classList.add("is-hidden");
+  trialForm.classList.add("is-hidden");
   platformContent.classList.remove("is-hidden");
   accountButton.classList.remove("is-hidden");
   accountAvatar.textContent = user.display_name.slice(0, 1).toUpperCase();
@@ -193,9 +246,28 @@ bootstrapForm.addEventListener("submit", (event) => {
   );
 });
 
+trialForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitAuthentication(
+    trialForm,
+    "/api/auth/trial",
+    trialMessage,
+  );
+});
+
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
   submitAuthentication(loginForm, "/api/auth/login", loginMessage);
+});
+
+showLoginTab.addEventListener("click", () => {
+  history.replaceState(null, "", "/app?mode=signin");
+  selectAuthenticationMode("signin");
+});
+
+showTrialTab.addEventListener("click", () => {
+  history.replaceState(null, "", "/app?mode=create");
+  selectAuthenticationMode("create");
 });
 
 accountButton.addEventListener("click", () => {

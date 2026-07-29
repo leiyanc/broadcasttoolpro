@@ -247,6 +247,84 @@ class IdentityStore:
         token = self.create_session(row["id"])
         return self.get_user(row["id"]), token
 
+    def register_trial(
+        self,
+        *,
+        organization_name: str,
+        display_name: str,
+        email: str,
+        password: str,
+    ) -> tuple[dict, dict, str]:
+        timestamp = _utc_now()
+        organization_id = str(uuid4())
+        user_id = str(uuid4())
+        organization_slug = (
+            f"{_slugify(organization_name)}-{secrets.token_hex(3)}"
+        )
+        try:
+            with self._connection() as connection:
+                if connection.execute(
+                    "SELECT 1 FROM users WHERE email = ?",
+                    (email,),
+                ).fetchone():
+                    raise ValueError(
+                        "An account with this email address already exists."
+                    )
+                connection.execute(
+                    """
+                    INSERT INTO organizations (
+                        id, name, slug, plan, status, created_at, updated_at
+                    ) VALUES (?, ?, ?, 'professional', 'active', ?, ?)
+                    """,
+                    (
+                        organization_id,
+                        organization_name.strip(),
+                        organization_slug,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO users (
+                        id, email, display_name, password_hash, status,
+                        is_superuser, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'active', 0, ?, ?)
+                    """,
+                    (
+                        user_id,
+                        email,
+                        display_name.strip(),
+                        _password_hash(password),
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO organization_memberships (
+                        id, organization_id, user_id, role, created_at
+                    ) VALUES (?, ?, ?, 'owner', ?)
+                    """,
+                    (
+                        str(uuid4()),
+                        organization_id,
+                        user_id,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                "The trial account could not be created."
+            ) from exc
+
+        token = self.create_session(user_id)
+        return (
+            self.get_user(user_id),
+            self._organization_for_user(user_id, organization_id),
+            token,
+        )
+
     def create_session(self, user_id: str) -> str:
         token = secrets.token_urlsafe(32)
         timestamp = _utc_now()

@@ -40,6 +40,18 @@ class LoginRequest(BaseModel):
         return _normalized_email(value)
 
 
+class TrialRegistrationRequest(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
+    display_name: str = Field(min_length=2, max_length=120)
+    email: str
+    password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return _normalized_email(value)
+
+
 class MemberCreate(BaseModel):
     display_name: str = Field(min_length=2, max_length=120)
     email: str
@@ -50,4 +62,3 @@ class MemberCreate(BaseModel):
     @classmethod
     def normalize_email(cls, value: str) -> str:
         return _normalized_email(value)
-

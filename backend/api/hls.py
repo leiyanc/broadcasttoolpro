@@ -6,7 +6,12 @@ from backend.services.hls.validator import (
     validate_hls,
 )
 from backend.services.hls.report import generate_hls_report
-from backend.api.auth import require_active_organization
+from backend.api.auth import (
+    current_user,
+    is_trial_user,
+    require_active_organization,
+    require_module,
+)
 
 
 router = APIRouter(
@@ -20,6 +25,7 @@ router = APIRouter(
 def validate_hls_url(
     playlist_url: str = Form(...),
     inspect_segments: bool = Form(True),
+    _user: dict = Depends(require_module("hls_validator")),
 ):
     try:
         return validate_hls(
@@ -36,8 +42,13 @@ def validate_hls_url(
 @router.post("/report/pdf", response_class=Response)
 def download_hls_report(
     report: dict = Body(...),
+    user: dict = Depends(current_user),
+    _module_user: dict = Depends(require_module("hls_validator")),
 ):
-    content = generate_hls_report(report)
+    content = generate_hls_report(
+        report,
+        trial_watermark=is_trial_user(user),
+    )
     return Response(
         content=content,
         media_type="application/pdf",

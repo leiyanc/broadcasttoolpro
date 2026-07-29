@@ -1,7 +1,10 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from datetime import datetime, timedelta, timezone
 
 from backend.main import app
+from backend.services.billing_store import BillingStore
+from backend.services.entitlements import EntitlementStore
 from backend.services.identity_store import IdentityStore
 from backend.services.tenant_store import TenantStore
 
@@ -98,9 +101,65 @@ def test_authentication_routes_are_registered():
     assert "/api/auth/bootstrap" in paths
     assert "/api/auth/status" in paths
     assert "/api/auth/login" in paths
+    assert "/api/auth/trial" in paths
     assert "/api/auth/me" in paths
     assert "/api/auth/logout" in paths
     assert (
         "/api/auth/organizations/{organization_id}/members"
         in paths
     )
+
+
+def test_trial_registration_is_limited_to_three_modules():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "trial.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        identities = IdentityStore(database_path)
+        identities.initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        entitlements = EntitlementStore(database_path)
+        entitlements.initialize()
+
+        user, organization, token = identities.register_trial(
+            organization_name="Trial Network",
+            display_name="Trial Owner",
+            email="trial@example.com",
+            password="a-secure-password",
+        )
+        subscription = billing.create_trial_subscription(
+            organization["id"],
+            days=7,
+        )
+        access = entitlements.effective_entitlements(organization["id"])
+
+        assert identities.user_from_session(token) == user
+        assert user["is_superuser"] is False
+        assert subscription["status"] == "trialing"
+        assert access["access"]["type"] == "trial"
+        assert access["access"]["download_formats"] == ["pdf"]
+        assert access["access"]["watermark"] is True
+        assert access["modules"]["xmltv_validator"]["enabled"] is True
+        assert access["modules"]["prelogs"]["enabled"] is True
+        assert access["modules"]["hls_validator"]["enabled"] is True
+        assert access["modules"]["xmltv_generator"]["enabled"] is False
+        assert access["modules"]["xmltv_repair"]["enabled"] is False
+        assert access["modules"]["postlogs"]["enabled"] is False
+        assert access["modules"]["hls_monitor"]["enabled"] is False
+
+        billing.update_subscription(
+            organization["id"],
+            status="trialing",
+            billing_cycle=None,
+            current_period_end=(
+                datetime.now(timezone.utc) - timedelta(minutes=1)
+            ),
+            cancel_at_period_end=True,
+        )
+        expired = entitlements.effective_entitlements(organization["id"])
+        assert expired["access"]["active"] is False
+        assert not any(
+            module["enabled"]
+            for module in expired["modules"].values()
+        )

@@ -69,9 +69,13 @@ def test_public_landing_page_presents_the_platform():
     assert "+$59" in html
     assert "Media QC Engine" in html
     assert "COMING SOON" in html
-    assert 'href="/app"' in html
+    assert "/app?mode=signin" in html
+    assert "/app?mode=create" in html
+    assert "/app?mode=trial" in html
     assert "broadcastcontrol.io" not in html.lower()
     assert "Broadcast Control" not in html
+    assert "Orion Media" not in html
+    assert "It is not a fabricated product screenshot." in html
     assert "--landing-black: #02060c" in css
     assert "@media (max-width: 760px)" in css
     assert "landing-menu-toggle" in javascript
@@ -99,6 +103,7 @@ def test_frontend_uses_xmltv_endpoints():
     assert "/api/xmltv/generate" in javascript
     assert "/api/xmltv/programming-grid" in javascript
     assert "/api/xmltv/validate" in validator_javascript
+    assert "/api/xmltv/validate/report/pdf" in validator_javascript
     assert "/api/xmltv/repair/preview" in repair_javascript
     assert "/api/xmltv/repair" in repair_javascript
     assert "/api/prelogs/options" in prelog_javascript
@@ -122,6 +127,7 @@ def test_validator_frontend_is_available():
     assert 'href="#validator"' in html
     assert 'id="download-validator-report"' in html
     assert 'id="download-validator-html-report"' in html
+    assert 'id="download-validator-pdf-report"' in html
     assert 'class="download-menu"' in html
     assert "Download Report" in html
     assert "validation-report.json" in javascript
@@ -163,6 +169,10 @@ def test_secure_account_interface_is_present():
 
     assert 'id="bootstrap-form"' in html
     assert 'id="login-form"' in html
+    assert 'id="trial-form"' in html
+    assert 'id="show-login-tab"' in html
+    assert 'id="show-trial-tab"' in html
+    assert "Start 7-Day Free Trial" in html
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
     assert "/static/auth.js" in html
@@ -179,6 +189,8 @@ def test_secure_account_interface_is_present():
     admin_javascript = (FRONTEND_DIR / "admin.js").read_text()
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
+    assert "/api/auth/trial" in auth_javascript
+    assert "moduleSurfaces" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
     assert "/api/admin/incidents/" in admin_javascript

@@ -40,8 +40,8 @@
         <a href="#roadmap">Roadmap</a>
       </nav>
       <div class="landing-header-actions">
-        <a class="landing-login" href="/app">Sign In</a>
-        <a class="landing-button landing-button-small" href="#contact">
+        <a class="landing-login" href="/app?mode=signin">Sign In</a>
+        <a class="landing-button landing-button-small" href="/app?mode=create">
           Request Access
         </a>
       </div>
@@ -61,6 +61,9 @@
           </p>
           <div class="landing-hero-actions">
             <a class="landing-button" href="#products">Explore the Platform</a>
+            <a class="landing-button landing-button-outline" href="/app?mode=trial">
+              Start Free Trial
+            </a>
             <a class="landing-text-link" href="#workflow">
               See how it works <span>→</span>
             </a>
@@ -72,53 +75,40 @@
           </div>
         </div>
 
-        <div class="landing-console" aria-label="Broadcast operations preview">
+        <div class="landing-console platform-map" aria-label="Platform product map">
           <div class="console-topbar">
             <div>
               <span class="console-signal"></span>
-              Operations Desk
+              Platform Product Map
             </div>
-            <span>UTC 18:42:16</span>
+            <span>ACTUAL AVAILABLE MODULES</span>
           </div>
-          <div class="console-body">
-            <aside>
-              <span class="is-active">Overview</span>
-              <span>Programming</span>
-              <span>Traffic</span>
-              <span>Streaming QC</span>
-              <span>Reports</span>
-            </aside>
-            <div class="console-workspace">
-              <div class="console-heading">
-                <div>
-                  <small>ACTIVE WORKSPACE</small>
-                  <strong>Orion Media</strong>
-                </div>
-                <span>All systems operational</span>
-              </div>
-              <div class="console-modules">
-                <article><i>&lt;/&gt;</i><strong>XMLTV</strong><small>Ready</small></article>
-                <article><i>✓</i><strong>Validation</strong><small>100%</small></article>
-                <article><i>PL</i><strong>Pre-Logs</strong><small>12 jobs</small></article>
-                <article><i>QC</i><strong>Stream QC</strong><small>Stable</small></article>
-              </div>
-              <div class="console-activity">
-                <div class="console-activity-head">
-                  <strong>Operational Activity</strong>
-                  <span>Live</span>
-                </div>
-                <div class="console-row">
-                  <span>XMLTV Validator</span><span>schedule.xml</span><b>Completed</b>
-                </div>
-                <div class="console-row">
-                  <span>Post-Logs</span><span>INDOTEL_JULY</span><b>Completed</b>
-                </div>
-                <div class="console-row">
-                  <span>HLS Validator</span><span>primary.m3u8</span><b>Valid</b>
-                </div>
-              </div>
-            </div>
+          <div class="platform-map-body">
+            <article>
+              <small>PROGRAMMING</small>
+              <strong>XMLTV Operations</strong>
+              <span>Generator · Validator · Repair · Grid</span>
+            </article>
+            <article>
+              <small>TRAFFIC</small>
+              <strong>Broadcast Logs</strong>
+              <span>Pre-Logs · Post-Logs · PDF · Excel</span>
+            </article>
+            <article>
+              <small>STREAMING QC</small>
+              <strong>HLS Validation</strong>
+              <span>Structure · SCTE-35 · Bandwidth</span>
+            </article>
+            <article>
+              <small>INPUTS</small>
+              <strong>Multi-format Sources</strong>
+              <span>CSV · XLSX · XML · TXT · JSON</span>
+            </article>
           </div>
+          <p class="platform-map-note">
+            Product map based on modules currently implemented in Broadcast
+            Tool Pro. It is not a fabricated product screenshot.
+          </p>
         </div>
       </section>
 
@@ -349,11 +339,11 @@
         <div>
           <a
             class="landing-button"
-            href="/app"
+            href="/app?mode=create"
           >
             Request Access
           </a>
-          <a class="landing-text-link" href="/app">
+          <a class="landing-text-link" href="/app?mode=signin">
             Existing customer? Sign in <span>→</span>
           </a>
         </div>
@@ -369,7 +359,7 @@
         <a href="#products">Products</a>
         <a href="#operations">Operations</a>
         <a href="#pricing">Pricing</a>
-        <a href="/app">Sign In</a>
+        <a href="/app?mode=signin">Sign In</a>
       </div>
       <p>© 2026 Broadcast Tool Pro. All rights reserved.</p>
     </footer>

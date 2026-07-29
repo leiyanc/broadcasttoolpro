@@ -210,7 +210,10 @@ def _bandwidth_chart(samples: list[dict], spanish: bool) -> Drawing:
     return drawing
 
 
-def generate_hls_report(payload: dict) -> bytes:
+def generate_hls_report(
+    payload: dict,
+    trial_watermark: bool = False,
+) -> bytes:
     spanish = payload.get("report_language") == "es"
     copy = SPANISH if spanish else {}
 
@@ -639,6 +642,20 @@ def generate_hls_report(payload: dict) -> bytes:
 
     def page(canvas, doc):
         canvas.saveState()
+        if trial_watermark:
+            canvas.setFillColor(
+                colors.Color(0.08, 0.22, 0.48, alpha=0.12)
+            )
+            canvas.setFont("Helvetica-Bold", 28)
+            canvas.translate(letter[0] / 2, letter[1] / 2)
+            canvas.rotate(32)
+            canvas.drawCentredString(
+                0,
+                0,
+                "BROADCAST TOOL PRO - FREE TRIAL",
+            )
+            canvas.rotate(-32)
+            canvas.translate(-letter[0] / 2, -letter[1] / 2)
         canvas.setStrokeColor(LINE)
         canvas.line(
             doc.leftMargin,

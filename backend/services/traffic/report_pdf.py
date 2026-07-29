@@ -59,6 +59,7 @@ def generate_report_pdf(
     agency: str | None = None,
     logo_content: bytes | None = None,
     report_type: str = "prelog",
+    trial_watermark: bool = False,
 ) -> bytes:
     if not events:
         raise ValueError("At least one scheduled event is required.")
@@ -212,11 +213,28 @@ def generate_report_pdf(
         textColor=colors.HexColor("#829AB1"),
         alignment=TA_CENTER,
     )
-    document.build([
+    story = [
         header_table,
         Spacer(1, 14),
         report_table,
         Spacer(1, 12),
         Paragraph(footer, footer_style),
-    ])
+    ]
+
+    def page(canvas, doc):
+        if not trial_watermark:
+            return
+        canvas.saveState()
+        canvas.setFillColor(colors.Color(0.08, 0.22, 0.48, alpha=0.12))
+        canvas.setFont("Helvetica-Bold", 34)
+        canvas.translate(landscape(letter)[0] / 2, landscape(letter)[1] / 2)
+        canvas.rotate(28)
+        canvas.drawCentredString(
+            0,
+            0,
+            "BROADCAST TOOL PRO - FREE TRIAL",
+        )
+        canvas.restoreState()
+
+    document.build(story, onFirstPage=page, onLaterPages=page)
     return output.getvalue()

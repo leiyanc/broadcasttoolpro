@@ -11,7 +11,9 @@ from backend.models.identity import (
     BootstrapRequest,
     LoginRequest,
     MemberCreate,
+    TrialRegistrationRequest,
 )
+from backend.services.billing_store import billing_store
 from backend.services.identity_store import identity_store
 from backend.services.entitlements import entitlement_store
 
@@ -100,6 +102,28 @@ def require_module(module_code: str):
     return dependency
 
 
+def access_for_user(user: dict) -> dict:
+    organizations = identity_store.organizations_for_user(user["id"])
+    if not organizations:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No organization is assigned to this account.",
+        )
+    organization = organizations[0]
+    entitlements = entitlement_store.effective_entitlements(
+        organization["id"]
+    )
+    return {
+        "organization": organization,
+        "entitlements": entitlements,
+        "trial": entitlements.get("access", {}).get("type") == "trial",
+    }
+
+
+def is_trial_user(user: object) -> bool:
+    return isinstance(user, dict) and access_for_user(user)["trial"]
+
+
 def require_active_organization(
     user: dict = Depends(current_user),
 ) -> dict:
@@ -143,6 +167,32 @@ def login(request: LoginRequest, response: Response):
     return {
         "user": user,
         "organizations": identity_store.organizations_for_user(user["id"]),
+    }
+
+
+@router.post("/trial", status_code=status.HTTP_201_CREATED)
+def register_trial(
+    request: TrialRegistrationRequest,
+    response: Response,
+):
+    try:
+        user, organization, token = identity_store.register_trial(
+            **request.model_dump()
+        )
+        subscription = billing_store.create_trial_subscription(
+            organization["id"],
+            days=7,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _set_session_cookie(response, token)
+    return {
+        "user": user,
+        "organizations": [organization],
+        "trial": {
+            "status": subscription["status"],
+            "ends_at": subscription["current_period_end"],
+        },
     }
 
 
