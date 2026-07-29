@@ -11,6 +11,7 @@ from backend.models.billing import SubscriptionAdminUpdate
 from backend.services.admin_store import admin_store
 from backend.services.billing_store import billing_store
 from backend.services.backup_manager import backup_manager
+from backend.services.google_drive_backup import google_drive_backup
 from backend.services.entitlements import entitlement_store
 
 
@@ -36,7 +37,10 @@ def admin_overview(_: dict = Depends(superuser)):
 
 @router.get("/backups")
 def backup_status(_: dict = Depends(superuser)):
-    return backup_manager.status()
+    return {
+        **backup_manager.status(),
+        "google_drive": google_drive_backup.status(),
+    }
 
 
 @router.post("/backups")
@@ -48,10 +52,20 @@ def create_backup(_: dict = Depends(superuser)):
                 status_code=409,
                 detail="A backup is already running or unavailable.",
             )
+        drive_result = None
+        if google_drive_backup.is_authorized():
+            drive_result = google_drive_backup.upload_safely(
+                backup_directory=backup_manager.backup_directory,
+                manifest=backup,
+            )
         return {
             "backup": backup,
             "verification": backup_manager.verify_latest(),
-            "status": backup_manager.status(),
+            "google_drive_upload": drive_result,
+            "status": {
+                **backup_manager.status(),
+                "google_drive": google_drive_backup.status(),
+            },
         }
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

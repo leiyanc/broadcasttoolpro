@@ -98,13 +98,23 @@ function renderBackupStatus(backup) {
     ? `Last verified backup: ${new Date(latest.created_at).toLocaleString()}`
     : "No verified backup has been created yet.";
   adminBackupDetails.replaceChildren();
+  const drive = backup.google_drive || {};
+  const driveUsage = Number(drive.drive_usage_bytes || 0);
+  const driveTarget = Number(drive.target_usage_bytes || 0);
   const details = {
     Status: backup.status,
     Retention: `${backup.retention_days} days`,
     Schedule: `Every ${backup.automatic_interval_hours} hours`,
-    Storage: backup.external_storage_configured
-      ? "External backup location configured"
-      : "Local development location — configure external storage before launch",
+    Storage: drive.authorized
+      ? "Encrypted Google Drive backup"
+      : backup.external_storage_configured
+        ? "External backup location configured"
+        : "Local development location — configure external storage before launch",
+    "Drive usage": drive.authorized && driveUsage
+      ? `${(driveUsage / 1_000_000_000).toFixed(2)} GB of ${(driveTarget / 1_000_000_000).toFixed(0)} GB operating target`
+      : drive.authorized
+        ? "Connected — awaiting first upload"
+        : "Not connected",
   };
   Object.entries(details).forEach(([label, value]) => {
     const item = document.createElement("div");

@@ -17,6 +17,7 @@ from backend.api.admin import router as admin_router
 from backend.api.billing import router as billing_router
 from backend.api.support import router as support_router
 from backend.services.backup_manager import backup_manager
+from backend.services.google_drive_backup import google_drive_backup
 
 
 @asynccontextmanager
@@ -26,7 +27,15 @@ async def lifespan(_: FastAPI):
     async def backup_loop():
         while not stop_event.is_set():
             try:
-                await asyncio.to_thread(backup_manager.create_if_due)
+                backup = await asyncio.to_thread(
+                    backup_manager.create_if_due
+                )
+                if backup and google_drive_backup.is_authorized():
+                    await asyncio.to_thread(
+                        google_drive_backup.upload_safely,
+                        backup_directory=backup_manager.backup_directory,
+                        manifest=backup,
+                    )
             except Exception:
                 pass
             try:

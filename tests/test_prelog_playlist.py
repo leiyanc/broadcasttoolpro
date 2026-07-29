@@ -460,7 +460,8 @@ def test_prelog_workbook_embeds_jpg_logo():
             if name.startswith("xl/media/")
         ]
 
-    assert len(media_files) == 1
+    assert len(media_files) == 2
+    assert any(name.endswith(".jpeg") for name in media_files)
 
 
 def test_postlog_filters_actual_airings():

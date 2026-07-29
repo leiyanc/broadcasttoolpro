@@ -12,7 +12,21 @@ Each backup consists of:
 - A `.json` manifest containing its creation time, size, SHA-256 checksum, and
   integrity result
 
-The default retention period is 14 days.
+The default local retention period is 14 days.
+
+The Stage 1 off-server copy is stored in the personal Google Drive folder
+`Broadcast Tool Pro Backups`. Database files are encrypted before upload and
+are accompanied by a checksum manifest. Google receives only the encrypted
+database artifact.
+
+Remote retention is automatic:
+
+- The seven most recent daily backup sets are retained.
+- Four additional weekly recovery points are retained.
+- Older Broadcast Tool Pro backup sets are permanently recycled.
+- The newest verified recovery point is never removed by capacity recycling.
+- Total Drive usage targets 4 GB and may never exceed the configured 5 GB hard
+  ceiling as a result of a new Broadcast Tool Pro backup.
 
 ## Production Configuration
 
@@ -29,11 +43,19 @@ The Control Panel must display `External backup location configured` before
 commercial launch. If it displays a local-development warning, the backups can
 be lost with the application server and are not production-ready.
 
-No storage vendor is required. The configured directory may be:
+The local configured directory may be:
 
 - A low-cost persistent disk mounted separately from the application
 - A synchronized backup volume
 - Another protected filesystem location with independent retention
+
+Google Drive authorization files and the backup encryption key live outside
+the repository under the protected user configuration directory. They must
+never be committed or copied into the application source.
+
+The encryption key is required for disaster recovery. Keep a protected copy
+in the owner's password manager or offline recovery vault. Do not store that
+copy in the same Google Drive folder as the encrypted backups.
 
 ## Daily Operation
 
@@ -47,6 +69,10 @@ Every created backup is:
 3. Hashed with SHA-256.
 4. Recorded in a manifest.
 5. Subject to the configured retention policy.
+6. Encrypted locally and uploaded to Google Drive when authorization is
+   configured.
+7. Verified after upload and recycled according to the remote retention and
+   capacity policy.
 
 Super Admins can inspect the latest backup and run an immediate verified backup
 from `Control Panel → Backup & Recovery`.
@@ -60,8 +86,15 @@ database.
 Only restore during a maintenance window:
 
 1. Stop the Broadcast Tool Pro application.
-2. Identify the `.sqlite3` backup and its matching `.json` manifest.
-3. Run the protected restore tool:
+2. Download and decrypt the newest complete Google Drive recovery point:
+
+```text
+python -m tools.download_google_drive_backup \
+  --destination /protected-recovery-location
+```
+
+3. Identify the recovered `.sqlite3` backup and matching `.json` manifest.
+4. Run the protected restore tool:
 
 ```text
 python tools/restore_database.py \
@@ -70,10 +103,11 @@ python tools/restore_database.py \
   --confirm RESTORE_DATABASE
 ```
 
-4. The tool verifies the manifest, checksum, and SQLite integrity.
-5. It preserves the current database as a timestamped pre-restore copy.
-6. Start the application.
-7. Confirm `/health`, account login, organization access, and recent records.
+5. The tools verify encryption, manifests, checksums, and SQLite integrity.
+6. The restore preserves the current database as a timestamped pre-restore
+   copy.
+7. Start the application.
+8. Confirm `/health`, account login, organization access, and recent records.
 
 ## Required Recovery Test
 

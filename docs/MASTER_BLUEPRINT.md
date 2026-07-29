@@ -236,10 +236,17 @@ The Stage 1 implementation includes a cost-free SQLite backup foundation:
 - A protected offline restoration tool that preserves a pre-restore copy
 - Backup health visibility through the application health endpoint and Control
   Panel
+- Encrypted off-server backups in the owner's Google Drive using the
+  least-privilege `drive.file` scope
+- Automatic remote retention of seven daily and four weekly recovery points
+- A 4 GB operating target and 5 GB hard Drive-usage ceiling with recycling of
+  the oldest Broadcast Tool Pro backup sets
+- A tested download, decryption, checksum, and SQLite-integrity recovery path
 
-Production launch still requires configuring the backup directory on a
-persistent location independent of the application filesystem and completing
-a documented restoration test.
+The initial Google Drive recovery path is appropriate for the pre-revenue
+stage. It must be replaced with organization-owned managed storage when
+commercial scale, operational ownership, or recovery-time requirements justify
+the change.
 
 The operating-cost target for this stage is approximately USD 10–30 per month,
 excluding variable payment-provider and email-delivery fees.
