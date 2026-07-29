@@ -75,6 +75,7 @@ class EmailOutboxStore:
                     ),
                     attempts INTEGER NOT NULL DEFAULT 0,
                     last_error TEXT,
+                    provider_message_id TEXT,
                     sent_at TEXT,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (organization_id)
@@ -85,6 +86,17 @@ class EmailOutboxStore:
                 CREATE INDEX IF NOT EXISTS idx_email_outbox_delivery
                     ON email_outbox(status, scheduled_for);
             """)
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(email_outbox)"
+                ).fetchall()
+            }
+            if "provider_message_id" not in columns:
+                connection.execute(
+                    "ALTER TABLE email_outbox "
+                    "ADD COLUMN provider_message_id TEXT"
+                )
 
     def schedule_trial_lifecycle(
         self,
@@ -230,6 +242,92 @@ class EmailOutboxStore:
                 (datetime.now(timezone.utc).isoformat(), limit),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def claim_pending(self, limit: int = 25) -> list[dict]:
+        """Atomically reserve due messages for one delivery worker."""
+        now = datetime.now(timezone.utc).isoformat()
+        claimed: list[dict] = []
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """
+                SELECT * FROM email_outbox
+                WHERE status = 'queued' AND scheduled_for <= ?
+                ORDER BY scheduled_for
+                LIMIT ?
+                """,
+                (now, limit),
+            ).fetchall()
+            for row in rows:
+                updated = connection.execute(
+                    """
+                    UPDATE email_outbox
+                    SET status = 'sending', attempts = attempts + 1,
+                        last_error = NULL
+                    WHERE id = ? AND status = 'queued'
+                    """,
+                    (row["id"],),
+                )
+                if updated.rowcount:
+                    claimed_row = connection.execute(
+                        "SELECT * FROM email_outbox WHERE id = ?",
+                        (row["id"],),
+                    ).fetchone()
+                    claimed.append(dict(claimed_row))
+        return claimed
+
+    def mark_sent(
+        self,
+        message_id: str,
+        provider_message_id: str | None,
+    ) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE email_outbox
+                SET status = 'sent', provider_message_id = ?,
+                    sent_at = ?, last_error = NULL
+                WHERE id = ? AND status = 'sending'
+                """,
+                (
+                    provider_message_id,
+                    datetime.now(timezone.utc).isoformat(),
+                    message_id,
+                ),
+            )
+
+    def mark_delivery_failure(
+        self,
+        message_id: str,
+        error: str,
+        *,
+        maximum_attempts: int = 5,
+    ) -> None:
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT attempts FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+            if row is None:
+                return
+            attempts = int(row["attempts"])
+            status = "failed" if attempts >= maximum_attempts else "queued"
+            retry_at = datetime.now(timezone.utc) + timedelta(
+                minutes=min(2 ** attempts, 60)
+            )
+            connection.execute(
+                """
+                UPDATE email_outbox
+                SET status = ?, scheduled_for = ?, last_error = ?
+                WHERE id = ? AND status = 'sending'
+                """,
+                (
+                    status,
+                    retry_at.isoformat(),
+                    error[:1000],
+                    message_id,
+                ),
+            )
 
 
 email_outbox_store = EmailOutboxStore()

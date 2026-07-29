@@ -39,6 +39,10 @@ Production must set:
 BTP_ENV=production
 BTP_COOKIE_SECURE=true
 BTP_APPLICATION_URL=https://your-production-domain/app
+BTP_EMAIL_PROVIDER=ses
+BTP_EMAIL_FROM=Broadcast Tool Pro <notifications@your-domain.com>
+BTP_EMAIL_REPLY_TO=support@your-domain.com
+BTP_SES_REGION=us-east-1
 ```
 
 `BTP_ENV=production` enables secure cookies and HTTP Strict Transport Security.
@@ -53,7 +57,11 @@ work around an incorrect proxy or TLS configuration.
 - Keep application and dependency security updates current.
 - Restrict access to the database, OAuth files, encryption key, and backups.
 - Review rejected sign-ins and temporary locks in the Control Panel.
-- Connect transactional email before enabling password recovery for customers.
+- Amazon SES is the transactional email provider. Verify the sending domain,
+  enable DKIM, SPF, and DMARC, request SES production access, and monitor
+  bounces and complaints before enabling customer delivery.
+- Use the standard AWS credential chain. Never place AWS access keys in source
+  code or commit them to the repository.
 - Add infrastructure-level request limiting before public launch; the current
   database-backed account lock protects individual accounts but does not
   replace edge-level abuse protection.

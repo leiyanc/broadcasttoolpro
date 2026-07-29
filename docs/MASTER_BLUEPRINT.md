@@ -195,11 +195,15 @@ Trial communications are scheduled as an auditable lifecycle:
 - One-day remaining reminder
 - Trial-ended notification
 
-These messages are stored in a provider-neutral email outbox. Production
-delivery requires an approved transactional email provider, authenticated
-sending domain, retry policy, delivery-status tracking, and unsubscribe or
-preference handling where legally required. Provider credentials must never be
-stored in source code.
+These messages are stored in a provider-neutral email outbox. Amazon SES is
+the initial production provider because it offers usage-based pricing without
+a fixed monthly subscription. The delivery worker atomically claims queued
+messages, records the SES message ID, retries transient failures with bounded
+backoff, and preserves the final error for operational review. Production
+requires an authenticated sending domain, SES production access, DKIM, SPF,
+DMARC, bounce and complaint monitoring, and unsubscribe or preference handling
+where legally required. Provider credentials must never be stored in source
+code.
 
 ## Cost-Conscious Infrastructure Strategy
 
@@ -250,10 +254,10 @@ The Stage 1 security baseline now includes:
 - Security event auditing visible to the Super Admin
 - Production-only secure cookies, HSTS, and standard browser security headers
 
-Transactional email delivery and infrastructure-level request limiting remain
-commercial-launch requirements. Password recovery messages are currently
-created in the email outbox and will be delivered after the email provider is
-connected.
+The provider-neutral email outbox is connected to Amazon SES and remains
+disabled until production environment variables and AWS credentials are
+configured. Infrastructure-level request limiting remains a commercial-launch
+requirement.
 
 The Stage 1 implementation includes a cost-free SQLite backup foundation:
 

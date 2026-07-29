@@ -1,0 +1,143 @@
+import html
+import os
+from dataclasses import dataclass
+from typing import Protocol
+
+from backend.services.email_outbox import (
+    EmailOutboxStore,
+    email_outbox_store,
+)
+
+
+class EmailProvider(Protocol):
+    def send(self, message: dict) -> str | None:
+        """Deliver one outbox message and return the provider message ID."""
+
+
+@dataclass(frozen=True)
+class SesSettings:
+    sender: str
+    region: str
+    reply_to: str | None = None
+
+    @classmethod
+    def from_environment(cls) -> "SesSettings":
+        sender = os.getenv("BTP_EMAIL_FROM", "").strip()
+        if not sender:
+            raise RuntimeError(
+                "BTP_EMAIL_FROM is required when Amazon SES is enabled."
+            )
+        return cls(
+            sender=sender,
+            region=(
+                os.getenv("BTP_SES_REGION")
+                or os.getenv("AWS_REGION")
+                or "us-east-1"
+            ).strip(),
+            reply_to=os.getenv("BTP_EMAIL_REPLY_TO", "").strip() or None,
+        )
+
+
+class AmazonSesProvider:
+    def __init__(self, settings: SesSettings | None = None):
+        self.settings = settings or SesSettings.from_environment()
+        try:
+            import boto3
+        except ImportError as exc:
+            raise RuntimeError(
+                "Install project dependencies before enabling Amazon SES."
+            ) from exc
+        self.client = boto3.client("sesv2", region_name=self.settings.region)
+
+    @staticmethod
+    def _html_body(message: dict) -> str:
+        body = "<br>".join(
+            html.escape(line) for line in message["body_text"].splitlines()
+        )
+        return (
+            "<div style=\"font-family:Arial,sans-serif;color:#102842;"
+            "line-height:1.6;max-width:640px\">"
+            "<h2 style=\"color:#1765ff\">Broadcast Tool Pro</h2>"
+            f"<p>{body}</p>"
+            "<p style=\"color:#60728c;font-size:12px\">"
+            "All Your Broadcast Needs. One Place.</p></div>"
+        )
+
+    def send(self, message: dict) -> str | None:
+        request = {
+            "FromEmailAddress": self.settings.sender,
+            "Destination": {
+                "ToAddresses": [message["recipient_email"]],
+            },
+            "Content": {
+                "Simple": {
+                    "Subject": {
+                        "Data": message["subject"],
+                        "Charset": "UTF-8",
+                    },
+                    "Body": {
+                        "Text": {
+                            "Data": message["body_text"],
+                            "Charset": "UTF-8",
+                        },
+                        "Html": {
+                            "Data": self._html_body(message),
+                            "Charset": "UTF-8",
+                        },
+                    },
+                }
+            },
+        }
+        if self.settings.reply_to:
+            request["ReplyToAddresses"] = [self.settings.reply_to]
+        response = self.client.send_email(**request)
+        return response.get("MessageId")
+
+
+class EmailDeliveryService:
+    def __init__(
+        self,
+        outbox: EmailOutboxStore = email_outbox_store,
+        provider: EmailProvider | None = None,
+    ):
+        self.outbox = outbox
+        self.provider = provider
+
+    @staticmethod
+    def is_enabled() -> bool:
+        return os.getenv("BTP_EMAIL_PROVIDER", "").strip().lower() == "ses"
+
+    def _provider(self) -> EmailProvider:
+        if self.provider is not None:
+            return self.provider
+        self.provider = AmazonSesProvider()
+        return self.provider
+
+    def deliver_due(self, limit: int = 25) -> dict:
+        if self.provider is None and not self.is_enabled():
+            return {"enabled": False, "claimed": 0, "sent": 0, "failed": 0}
+        messages = self.outbox.claim_pending(limit)
+        sent = 0
+        failed = 0
+        provider = self._provider()
+        for message in messages:
+            try:
+                provider_message_id = provider.send(message)
+            except Exception as exc:
+                self.outbox.mark_delivery_failure(message["id"], str(exc))
+                failed += 1
+            else:
+                self.outbox.mark_sent(
+                    message["id"],
+                    provider_message_id,
+                )
+                sent += 1
+        return {
+            "enabled": True,
+            "claimed": len(messages),
+            "sent": sent,
+            "failed": failed,
+        }
+
+
+email_delivery_service = EmailDeliveryService()

@@ -19,6 +19,7 @@ from backend.api.billing import router as billing_router
 from backend.api.support import router as support_router
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
+from backend.services.email_delivery import email_delivery_service
 
 
 @asynccontextmanager
@@ -44,10 +45,22 @@ async def lifespan(_: FastAPI):
             except TimeoutError:
                 continue
 
+    async def email_delivery_loop():
+        while not stop_event.is_set():
+            try:
+                await asyncio.to_thread(email_delivery_service.deliver_due)
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=30)
+            except TimeoutError:
+                continue
+
     backup_task = asyncio.create_task(backup_loop())
+    email_delivery_task = asyncio.create_task(email_delivery_loop())
     yield
     stop_event.set()
-    await backup_task
+    await asyncio.gather(backup_task, email_delivery_task)
 
 
 app = FastAPI(
@@ -109,4 +122,7 @@ def health():
     return {
         "status": "healthy",
         "backup": backup_manager.status()["status"],
+        "email_delivery": (
+            "enabled" if email_delivery_service.is_enabled() else "disabled"
+        ),
     }
