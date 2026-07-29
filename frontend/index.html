@@ -30,7 +30,7 @@
     <script src="/static/app.js?v=20260727-8" defer></script>
     <script src="/static/xmltv-validator.js?v=20260728-3" defer></script>
     <script src="/static/xmltv-repair.js?v=20260726-2" defer></script>
-    <script src="/static/prelog-filter.js?v=20260728-2" defer></script>
+    <script src="/static/prelog-filter.js?v=20260728-3" defer></script>
     <script
       src="/static/postlog-certification.js?v=20260726-4"
       defer
@@ -1282,7 +1282,7 @@
           include, and preview every scheduled occurrence before export.
         </p>
 
-        <form id="prelog-filter-form">
+        <form id="prelog-filter-form" autocomplete="off">
           <label
             class="drop-zone compact-drop-zone"
             id="prelog-drop-zone"
@@ -1437,11 +1437,20 @@
           <div class="filter-grid">
             <label>
               <span>Client Name (Optional)</span>
-              <input id="prelog-client-name" type="text" />
+              <input
+                id="prelog-client-name"
+                type="text"
+                autocomplete="off"
+              />
             </label>
             <label>
               <span>Channel Name</span>
-              <input id="prelog-channel-name" type="text" required />
+              <input
+                id="prelog-channel-name"
+                type="text"
+                required
+                autocomplete="off"
+              />
             </label>
             <label>
               <span>Report Language</span>
@@ -1462,6 +1471,7 @@
               <input
                 id="prelog-product"
                 type="text"
+                autocomplete="off"
                 placeholder="Leave blank to omit this column"
               />
             </label>
@@ -1470,6 +1480,7 @@
               <input
                 id="prelog-agency"
                 type="text"
+                autocomplete="off"
                 placeholder="Leave blank to omit this column"
               />
             </label>

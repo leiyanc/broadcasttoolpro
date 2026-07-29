@@ -43,11 +43,18 @@ let playlistsInspected = false;
 let availableFilterOptions = null;
 const PRELOG_FILTER_STORAGE_KEY = "broadcastToolPro.prelogFilters";
 const PRELOG_FILTER_MODE_STORAGE_KEY = "broadcastToolPro.prelogFilterMode";
+let prelogStorageScope = "anonymous";
+
+function scopedStorageKey(baseKey) {
+  return `${baseKey}.${prelogStorageScope}`;
+}
 
 function storedFilterValues() {
   try {
     return JSON.parse(
-      localStorage.getItem(PRELOG_FILTER_STORAGE_KEY) || "{}",
+      localStorage.getItem(
+        scopedStorageKey(PRELOG_FILTER_STORAGE_KEY),
+      ) || "{}",
     );
   } catch {
     return {};
@@ -61,7 +68,7 @@ function saveCurrentFilterValue() {
   const values = storedFilterValues();
   values[mode] = prelogFilterValue.value;
   localStorage.setItem(
-    PRELOG_FILTER_STORAGE_KEY,
+    scopedStorageKey(PRELOG_FILTER_STORAGE_KEY),
     JSON.stringify(values),
   );
 }
@@ -148,7 +155,7 @@ function showPrelogError(message) {
 prelogFiles.addEventListener("change", updatePrelogFiles);
 prelogFilterMode.addEventListener("change", () => {
   localStorage.setItem(
-    PRELOG_FILTER_MODE_STORAGE_KEY,
+    scopedStorageKey(PRELOG_FILTER_MODE_STORAGE_KEY),
     prelogFilterMode.value,
   );
   restoreFilterValue();
@@ -393,11 +400,33 @@ exportPrelogButton.addEventListener("click", async () => {
   }
 });
 
-const savedFilterMode = localStorage.getItem(
-  PRELOG_FILTER_MODE_STORAGE_KEY,
-);
-if (["all", "prefix", "exact", "contains"].includes(savedFilterMode)) {
-  prelogFilterMode.value = savedFilterMode;
+function restoreAccountPreferences() {
+  const savedFilterMode = localStorage.getItem(
+    scopedStorageKey(PRELOG_FILTER_MODE_STORAGE_KEY),
+  );
+  prelogFilterMode.value = (
+    ["all", "prefix", "exact", "contains"].includes(savedFilterMode)
+      ? savedFilterMode
+      : "all"
+  );
+  restoreFilterValue();
+  updateFilterControls(availableFilterOptions);
 }
-restoreFilterValue();
-updateFilterControls();
+
+window.addEventListener("btp:identity", (event) => {
+  const identity = event.detail;
+  prelogStorageScope = (
+    identity?.organizations?.[0]?.id
+    || identity?.user?.id
+    || "anonymous"
+  );
+  restoreAccountPreferences();
+  if (!identity) {
+    prelogProduct.value = "";
+    prelogAgency.value = "";
+    prelogClientName.value = "";
+    prelogChannelName.value = "";
+  }
+});
+
+restoreAccountPreferences();

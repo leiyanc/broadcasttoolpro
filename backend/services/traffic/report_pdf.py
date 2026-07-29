@@ -6,6 +6,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     Image,
     Paragraph,
@@ -23,6 +24,44 @@ BRAND_LOGO = (
     / "assets"
     / "broadcast-tool-pro-logo.png"
 )
+
+
+class TrialWatermarkCanvas(Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_pages = []
+
+    def showPage(self):
+        self._saved_pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        page_count = len(self._saved_pages)
+        for page_number, page_state in enumerate(self._saved_pages, start=1):
+            self.__dict__.update(page_state)
+            self.saveState()
+            page_width, page_height = landscape(letter)
+            self.setFillColor(
+                colors.Color(0.08, 0.22, 0.48, alpha=0.16)
+            )
+            self.setFont("Helvetica-Bold", 30)
+            self.translate(page_width / 2, page_height / 2)
+            self.rotate(28)
+            self.drawCentredString(
+                0,
+                0,
+                "BROADCAST TOOL PRO - FREE TRIAL",
+            )
+            self.restoreState()
+            self.setFont("Helvetica", 7)
+            self.setFillColor(colors.HexColor("#64748B"))
+            self.drawRightString(
+                page_width - 24,
+                12,
+                f"Free Trial · Page {page_number} of {page_count}",
+            )
+            Canvas.showPage(self)
+        Canvas.save(self)
 
 
 def _brand_logo() -> Image:
@@ -221,20 +260,6 @@ def generate_report_pdf(
         Paragraph(footer, footer_style),
     ]
 
-    def page(canvas, doc):
-        if not trial_watermark:
-            return
-        canvas.saveState()
-        canvas.setFillColor(colors.Color(0.08, 0.22, 0.48, alpha=0.12))
-        canvas.setFont("Helvetica-Bold", 34)
-        canvas.translate(landscape(letter)[0] / 2, landscape(letter)[1] / 2)
-        canvas.rotate(28)
-        canvas.drawCentredString(
-            0,
-            0,
-            "BROADCAST TOOL PRO - FREE TRIAL",
-        )
-        canvas.restoreState()
-
-    document.build(story, onFirstPage=page, onLaterPages=page)
+    canvasmaker = TrialWatermarkCanvas if trial_watermark else Canvas
+    document.build(story, canvasmaker=canvasmaker)
     return output.getvalue()

@@ -289,6 +289,8 @@ def test_prelog_filter_builder_is_available():
     assert "Auto Detect from Playlist" in html
     assert "broadcastToolPro.prelogFilters" in javascript
     assert "broadcastToolPro.prelogFilterMode" in javascript
+    assert "scopedStorageKey" in javascript
+    assert 'window.addEventListener("btp:identity"' in javascript
     assert 'id="prelog-export-panel"' in html
     assert 'id="prelog-logo"' in html
     assert 'id="prelog-product"' in html

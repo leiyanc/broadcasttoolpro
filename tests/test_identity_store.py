@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from backend.main import app
 from backend.services.billing_store import BillingStore
 from backend.services.entitlements import EntitlementStore
+from backend.services.email_outbox import EmailOutboxStore
 from backend.services.identity_store import IdentityStore
 from backend.services.tenant_store import TenantStore
 
@@ -155,6 +156,18 @@ def test_trial_registration_is_limited_to_three_modules():
         assert access["modules"]["xmltv_repair"]["enabled"] is False
         assert access["modules"]["postlogs"]["enabled"] is False
         assert access["modules"]["hls_monitor"]["enabled"] is False
+
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+        communications = outbox.schedule_trial_lifecycle(
+            organization_id=organization["id"],
+            recipient_email=user["email"],
+            trial_ends_at=subscription["current_period_end"],
+        )
+        assert len(communications) == 4
+        assert communications[0]["template_code"] == "trial_welcome"
+        assert communications[-1]["template_code"] == "trial_expired"
+        assert len(outbox.pending()) == 1
 
         billing.update_subscription(
             organization["id"],

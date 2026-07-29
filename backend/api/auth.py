@@ -16,6 +16,7 @@ from backend.models.identity import (
 from backend.services.billing_store import billing_store
 from backend.services.identity_store import identity_store
 from backend.services.entitlements import entitlement_store
+from backend.services.email_outbox import email_outbox_store
 
 
 SESSION_COOKIE = "btp_session"
@@ -200,6 +201,11 @@ def register_trial(
             organization["id"],
             days=7,
         )
+        communications = email_outbox_store.schedule_trial_lifecycle(
+            organization_id=organization["id"],
+            recipient_email=user["email"],
+            trial_ends_at=subscription["current_period_end"],
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     _set_session_cookie(response, token)
@@ -209,6 +215,7 @@ def register_trial(
         "trial": {
             "status": subscription["status"],
             "ends_at": subscription["current_period_end"],
+            "communications_scheduled": len(communications),
         },
     }
 
