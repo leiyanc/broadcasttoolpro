@@ -52,6 +52,11 @@ and no-store authentication headers.
 Production deployment must use HTTPS. Secure cookies must not be disabled to
 work around an incorrect proxy or TLS configuration.
 
+For local development, copy `.env.example` to `.env.local` and enter the
+restricted SES IAM credentials. `.env.local` and every other environment file
+are excluded from Git. Production credentials must be entered directly in the
+hosting provider's secret-variable manager, not uploaded as a file.
+
 ## Operational Requirements
 
 - Keep application and dependency security updates current.

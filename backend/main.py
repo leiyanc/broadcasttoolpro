@@ -3,9 +3,14 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env.local")
 
 from backend.api.xmltv import router as xmltv_router
 from backend.api.prelogs import router as prelogs_router
@@ -99,7 +104,7 @@ app.include_router(admin_router)
 app.include_router(billing_router)
 app.include_router(support_router)
 
-FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
 app.mount(
     "/static",
     StaticFiles(directory=FRONTEND_DIR),

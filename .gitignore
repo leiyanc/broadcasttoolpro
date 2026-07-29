@@ -6,3 +6,6 @@ google-drive-oauth-client.json
 google-drive-token.json
 backup-encryption.key
 client_secret_*.json
+.env
+.env.*
+!.env.example
