@@ -19,6 +19,7 @@ from backend.services.entitlements import entitlement_store
 
 
 SESSION_COOKIE = "btp_session"
+REMEMBERED_SESSION_DAYS = 30
 
 router = APIRouter(
     prefix="/api/auth",
@@ -33,16 +34,23 @@ def authentication_status():
     }
 
 
-def _set_session_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        key=SESSION_COOKIE,
-        value=token,
-        max_age=12 * 60 * 60,
-        httponly=True,
-        samesite="strict",
-        secure=False,
-        path="/",
-    )
+def _set_session_cookie(
+    response: Response,
+    token: str,
+    *,
+    remember_me: bool = False,
+) -> None:
+    cookie_options = {
+        "key": SESSION_COOKIE,
+        "value": token,
+        "httponly": True,
+        "samesite": "strict",
+        "secure": False,
+        "path": "/",
+    }
+    if remember_me:
+        cookie_options["max_age"] = REMEMBERED_SESSION_DAYS * 24 * 60 * 60
+    response.set_cookie(**cookie_options)
 
 
 def current_user(
@@ -160,10 +168,19 @@ def login(request: LoginRequest, response: Response):
         user, token = identity_store.authenticate(
             request.email,
             request.password,
+            session_hours=(
+                REMEMBERED_SESSION_DAYS * 24
+                if request.remember_me
+                else 12
+            ),
         )
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    _set_session_cookie(response, token)
+    _set_session_cookie(
+        response,
+        token,
+        remember_me=request.remember_me,
+    )
     return {
         "user": user,
         "organizations": identity_store.organizations_for_user(user["id"]),

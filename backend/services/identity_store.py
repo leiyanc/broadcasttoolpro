@@ -233,7 +233,13 @@ class IdentityStore:
             raw_token,
         )
 
-    def authenticate(self, email: str, password: str) -> tuple[dict, str]:
+    def authenticate(
+        self,
+        email: str,
+        password: str,
+        *,
+        session_hours: int = SESSION_HOURS,
+    ) -> tuple[dict, str]:
         with self._connection() as connection:
             row = connection.execute(
                 "SELECT * FROM users WHERE email = ? AND status = 'active'",
@@ -244,7 +250,10 @@ class IdentityStore:
             row["password_hash"],
         ):
             raise ValueError("Invalid email or password.")
-        token = self.create_session(row["id"])
+        token = self.create_session(
+            row["id"],
+            session_hours=session_hours,
+        )
         return self.get_user(row["id"]), token
 
     def register_trial(
@@ -325,11 +334,16 @@ class IdentityStore:
             token,
         )
 
-    def create_session(self, user_id: str) -> str:
+    def create_session(
+        self,
+        user_id: str,
+        *,
+        session_hours: int = SESSION_HOURS,
+    ) -> str:
         token = secrets.token_urlsafe(32)
         timestamp = _utc_now()
         expires_at = (
-            datetime.now(timezone.utc) + timedelta(hours=SESSION_HOURS)
+            datetime.now(timezone.utc) + timedelta(hours=session_hours)
         ).isoformat()
         with self._connection() as connection:
             connection.execute(

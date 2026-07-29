@@ -43,6 +43,14 @@ def test_bootstrap_creates_owner_and_secure_session():
         identities.revoke_session(second_token)
         assert identities.user_from_session(second_token) is None
 
+        remembered_user, remembered_token = identities.authenticate(
+            "owner@example.com",
+            "a-secure-password",
+            session_hours=30 * 24,
+        )
+        assert remembered_user == user
+        assert identities.user_from_session(remembered_token) == user
+
 
 def test_roles_are_scoped_to_each_organization():
     with TemporaryDirectory() as directory:

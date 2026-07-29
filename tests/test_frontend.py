@@ -172,6 +172,7 @@ def test_secure_account_interface_is_present():
     assert 'id="trial-form"' in html
     assert 'id="show-login-tab"' in html
     assert 'id="show-trial-tab"' in html
+    assert 'name="remember_me"' in html
     assert "Start 7-Day Free Trial" in html
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
@@ -190,6 +191,7 @@ def test_secure_account_interface_is_present():
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
     assert "/api/auth/trial" in auth_javascript
+    assert 'requestedMode === "trial"' in auth_javascript
     assert "moduleSurfaces" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript

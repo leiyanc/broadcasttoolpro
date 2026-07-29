@@ -337,6 +337,31 @@ main {
   font-weight: 500;
 }
 
+.auth-card .remember-session {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  cursor: pointer;
+}
+
+.auth-card .remember-session input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--blue);
+}
+
+.auth-card .remember-session > span {
+  display: grid;
+  gap: 2px;
+}
+
+.auth-card .remember-session strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
 .auth-card input {
   width: 100%;
   min-height: 48px;

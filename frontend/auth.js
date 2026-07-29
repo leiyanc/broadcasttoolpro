@@ -203,6 +203,12 @@ function showPlatform(identity) {
 }
 
 async function initializeAuthentication() {
+  const requestedMode = requestedAuthenticationMode();
+  if (requestedMode === "trial" || requestedMode === "create") {
+    showAuthentication(false);
+    selectAuthenticationMode(requestedMode);
+    return;
+  }
   try {
     showPlatform(await authRequest("/api/auth/me"));
   } catch {
