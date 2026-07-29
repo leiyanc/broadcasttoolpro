@@ -227,6 +227,23 @@ Commercial launch still requires:
 - Temporary-file cleanup
 - Dependency and security update procedures
 
+The Stage 1 security baseline now includes:
+
+- Scrypt password hashing with unique salts
+- Hashed server-side sessions in HTTP-only, same-site cookies
+- 12-hour standard sessions and optional 30-day remembered sessions
+- Automatic expired-session cleanup
+- Temporary account lock after repeated failed sign-ins
+- Single-use, 30-minute password recovery tokens
+- Revocation of every active session after password recovery
+- Security event auditing visible to the Super Admin
+- Production-only secure cookies, HSTS, and standard browser security headers
+
+Transactional email delivery and infrastructure-level request limiting remain
+commercial-launch requirements. Password recovery messages are currently
+created in the email outbox and will be delivered after the email provider is
+connected.
+
 The Stage 1 implementation includes a cost-free SQLite backup foundation:
 
 - Automatic verified backups every 24 hours

@@ -3,9 +3,22 @@ const platformContent = document.querySelector("#platform-content");
 const bootstrapForm = document.querySelector("#bootstrap-form");
 const loginForm = document.querySelector("#login-form");
 const trialForm = document.querySelector("#trial-form");
+const passwordResetRequestForm = document.querySelector(
+  "#password-reset-request-form",
+);
+const passwordResetConfirmForm = document.querySelector(
+  "#password-reset-confirm-form",
+);
 const bootstrapMessage = document.querySelector("#bootstrap-message");
 const loginMessage = document.querySelector("#login-message");
 const trialMessage = document.querySelector("#trial-message");
+const passwordResetRequestMessage = document.querySelector(
+  "#password-reset-request-message",
+);
+const passwordResetConfirmMessage = document.querySelector(
+  "#password-reset-confirm-message",
+);
+const showPasswordReset = document.querySelector("#show-password-reset");
 const showLoginTab = document.querySelector("#show-login-tab");
 const showTrialTab = document.querySelector("#show-trial-tab");
 const accountButton = document.querySelector("#account-button");
@@ -143,17 +156,35 @@ function formPayload(form) {
 
 function selectAuthenticationMode(mode) {
   const trial = mode === "trial" || mode === "create";
-  loginForm.classList.toggle("is-hidden", trial);
-  trialForm.classList.toggle("is-hidden", !trial);
-  showLoginTab.classList.toggle("is-active", !trial);
+  const resetRequest = mode === "forgot";
+  const resetConfirm = mode === "reset";
+  loginForm.classList.toggle(
+    "is-hidden",
+    trial || resetRequest || resetConfirm,
+  );
+  trialForm.classList.toggle(
+    "is-hidden",
+    !trial || resetRequest || resetConfirm,
+  );
+  passwordResetRequestForm.classList.toggle("is-hidden", !resetRequest);
+  passwordResetConfirmForm.classList.toggle("is-hidden", !resetConfirm);
+  showLoginTab.classList.toggle(
+    "is-active",
+    !trial && !resetRequest && !resetConfirm,
+  );
   showTrialTab.classList.toggle("is-active", trial);
-  showLoginTab.setAttribute("aria-selected", String(!trial));
+  showLoginTab.setAttribute(
+    "aria-selected",
+    String(!trial && !resetRequest && !resetConfirm),
+  );
   showTrialTab.setAttribute("aria-selected", String(trial));
 }
 
 function requestedAuthenticationMode() {
   const mode = new URLSearchParams(window.location.search).get("mode");
-  return mode === "trial" || mode === "create" ? mode : "signin";
+  return ["trial", "create", "forgot", "reset"].includes(mode)
+    ? mode
+    : "signin";
 }
 
 function showAuthentication(bootstrapRequired) {
@@ -184,6 +215,8 @@ function showPlatform(identity) {
   bootstrapForm.classList.add("is-hidden");
   loginForm.classList.add("is-hidden");
   trialForm.classList.add("is-hidden");
+  passwordResetRequestForm.classList.add("is-hidden");
+  passwordResetConfirmForm.classList.add("is-hidden");
   platformContent.classList.remove("is-hidden");
   accountButton.classList.remove("is-hidden");
   accountAvatar.textContent = user.display_name.slice(0, 1).toUpperCase();
@@ -204,7 +237,12 @@ function showPlatform(identity) {
 
 async function initializeAuthentication() {
   const requestedMode = requestedAuthenticationMode();
-  if (requestedMode === "trial" || requestedMode === "create") {
+  if (
+    requestedMode === "trial"
+    || requestedMode === "create"
+    || requestedMode === "forgot"
+    || requestedMode === "reset"
+  ) {
     showAuthentication(false);
     selectAuthenticationMode(requestedMode);
     return;
@@ -264,6 +302,70 @@ trialForm.addEventListener("submit", (event) => {
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
   submitAuthentication(loginForm, "/api/auth/login", loginMessage);
+});
+
+passwordResetRequestForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = passwordResetRequestForm.querySelector(
+    "button[type='submit']",
+  );
+  button.disabled = true;
+  passwordResetRequestMessage.classList.remove("is-error");
+  try {
+    const result = await authRequest("/api/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify(formPayload(passwordResetRequestForm)),
+    });
+    passwordResetRequestForm.reset();
+    passwordResetRequestMessage.textContent = result.message;
+  } catch (error) {
+    passwordResetRequestMessage.textContent = error.message;
+    passwordResetRequestMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+passwordResetConfirmForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = passwordResetConfirmForm.querySelector(
+    "button[type='submit']",
+  );
+  button.disabled = true;
+  passwordResetConfirmMessage.classList.remove("is-error");
+  try {
+    const token = new URLSearchParams(window.location.search).get("token");
+    const result = await authRequest("/api/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        password: new FormData(passwordResetConfirmForm).get("password"),
+      }),
+    });
+    passwordResetConfirmForm.reset();
+    passwordResetConfirmMessage.textContent = result.message;
+    window.setTimeout(() => {
+      history.replaceState(null, "", "/app?mode=signin");
+      selectAuthenticationMode("signin");
+    }, 1200);
+  } catch (error) {
+    passwordResetConfirmMessage.textContent = error.message;
+    passwordResetConfirmMessage.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+showPasswordReset.addEventListener("click", () => {
+  history.replaceState(null, "", "/app?mode=forgot");
+  selectAuthenticationMode("forgot");
+});
+
+document.querySelectorAll("[data-return-to-login]").forEach((button) => {
+  button.addEventListener("click", () => {
+    history.replaceState(null, "", "/app?mode=signin");
+    selectAuthenticationMode("signin");
+  });
 });
 
 showLoginTab.addEventListener("click", () => {

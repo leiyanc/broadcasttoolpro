@@ -6,7 +6,10 @@ from backend.main import app
 from backend.services.billing_store import BillingStore
 from backend.services.entitlements import EntitlementStore
 from backend.services.email_outbox import EmailOutboxStore
-from backend.services.identity_store import IdentityStore
+from backend.services.identity_store import (
+    AuthenticationLockedError,
+    IdentityStore,
+)
 from backend.services.tenant_store import TenantStore
 
 
@@ -113,6 +116,9 @@ def test_authentication_routes_are_registered():
     assert "/api/auth/trial" in paths
     assert "/api/auth/me" in paths
     assert "/api/auth/logout" in paths
+    assert "/api/auth/password-reset/request" in paths
+    assert "/api/auth/password-reset/confirm" in paths
+    assert "/api/admin/security-events" in paths
     assert (
         "/api/auth/organizations/{organization_id}/members"
         in paths
@@ -184,3 +190,69 @@ def test_trial_registration_is_limited_to_three_modules():
             module["enabled"]
             for module in expired["modules"].values()
         )
+
+
+def test_failed_logins_are_temporarily_locked_and_audited():
+    with TemporaryDirectory() as directory:
+        _, identities = _stores(directory)
+        identities.bootstrap(
+            organization_name="Secure Network",
+            display_name="Owner",
+            email="owner@example.com",
+            password="a-secure-password",
+        )
+
+        for _ in range(5):
+            try:
+                identities.authenticate(
+                    "owner@example.com",
+                    "incorrect-password",
+                )
+            except ValueError:
+                pass
+
+        try:
+            identities.authenticate(
+                "owner@example.com",
+                "a-secure-password",
+            )
+        except AuthenticationLockedError:
+            pass
+        else:
+            raise AssertionError("The temporary login lock was not enforced.")
+
+        event_types = {
+            event["event_type"]
+            for event in identities.security_events()
+        }
+        assert "login_failed" in event_types
+        assert "login_blocked" in event_types
+
+
+def test_password_reset_is_single_use_and_revokes_existing_sessions():
+    with TemporaryDirectory() as directory:
+        _, identities = _stores(directory)
+        user, _, original_session = identities.bootstrap(
+            organization_name="Recovery Network",
+            display_name="Owner",
+            email="owner@example.com",
+            password="a-secure-password",
+        )
+        reset = identities.create_password_reset("owner@example.com")
+        assert reset is not None
+        _, token = reset
+
+        identities.reset_password(token, "a-new-secure-password")
+
+        assert identities.user_from_session(original_session) is None
+        authenticated, _ = identities.authenticate(
+            "owner@example.com",
+            "a-new-secure-password",
+        )
+        assert authenticated["id"] == user["id"]
+        try:
+            identities.reset_password(token, "another-secure-password")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("A reset token must be single use.")

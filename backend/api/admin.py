@@ -12,6 +12,7 @@ from backend.services.admin_store import admin_store
 from backend.services.billing_store import billing_store
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
+from backend.services.identity_store import identity_store
 from backend.services.entitlements import entitlement_store
 
 
@@ -33,6 +34,18 @@ def superuser(user: dict = Depends(current_user)) -> dict:
 @router.get("/overview")
 def admin_overview(_: dict = Depends(superuser)):
     return admin_store.overview()
+
+
+@router.get("/security-events")
+def security_events(
+    limit: int = 100,
+    _: dict = Depends(superuser),
+):
+    return {
+        "events": identity_store.security_events(
+            min(max(limit, 1), 500)
+        ),
+    }
 
 
 @router.get("/backups")

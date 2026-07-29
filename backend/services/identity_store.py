@@ -10,6 +10,11 @@ from backend.services.tenant_store import DATABASE_PATH, _slugify, _utc_now
 
 
 SESSION_HOURS = 12
+MAX_FAILED_LOGINS = 5
+FAILED_LOGIN_WINDOW_MINUTES = 15
+LOGIN_LOCK_MINUTES = 15
+PASSWORD_RESET_MINUTES = 30
+PASSWORD_RESET_COOLDOWN_MINUTES = 5
 ROLE_RANK = {
     "viewer": 10,
     "operator": 20,
@@ -51,6 +56,15 @@ def _password_matches(password: str, encoded: str) -> bool:
 
 def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+_DUMMY_PASSWORD_HASH = _password_hash(
+    "broadcast-tool-pro-invalid-password-sentinel"
+)
+
+
+class AuthenticationLockedError(ValueError):
+    pass
 
 
 class IdentityStore:
@@ -107,6 +121,38 @@ class IdentityStore:
                     ON organization_memberships(user_id);
                 CREATE INDEX IF NOT EXISTS idx_sessions_token
                     ON user_sessions(token_hash);
+
+                CREATE TABLE IF NOT EXISTS login_security (
+                    email TEXT PRIMARY KEY,
+                    failed_attempts INTEGER NOT NULL DEFAULT 0,
+                    first_failed_at TEXT NOT NULL,
+                    locked_until TEXT,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS security_audit_log (
+                    id TEXT PRIMARY KEY,
+                    event_type TEXT NOT NULL,
+                    user_id TEXT,
+                    email TEXT,
+                    success INTEGER NOT NULL,
+                    details TEXT,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_security_audit_created
+                    ON security_audit_log(created_at);
+
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id)
+                        REFERENCES users(id) ON DELETE CASCADE
+                );
             """)
             columns = {
                 row["name"]
@@ -240,16 +286,59 @@ class IdentityStore:
         *,
         session_hours: int = SESSION_HOURS,
     ) -> tuple[dict, str]:
+        email = email.strip().lower()
+        now = datetime.now(timezone.utc)
         with self._connection() as connection:
+            security = connection.execute(
+                "SELECT * FROM login_security WHERE email = ?",
+                (email,),
+            ).fetchone()
+            if security and security["locked_until"]:
+                locked_until = datetime.fromisoformat(
+                    security["locked_until"]
+                )
+                if locked_until > now:
+                    self._record_security_event(
+                        connection,
+                        event_type="login_blocked",
+                        email=email,
+                        success=False,
+                        details="Temporary login lock is active.",
+                    )
+                    connection.commit()
+                    raise AuthenticationLockedError(
+                        "Too many sign-in attempts. Try again in 15 minutes."
+                    )
             row = connection.execute(
                 "SELECT * FROM users WHERE email = ? AND status = 'active'",
                 (email,),
             ).fetchone()
-        if row is None or not _password_matches(
-            password,
-            row["password_hash"],
-        ):
-            raise ValueError("Invalid email or password.")
+            password_valid = _password_matches(
+                password,
+                row["password_hash"] if row else _DUMMY_PASSWORD_HASH,
+            )
+            if row is None or not password_valid:
+                self._register_failed_login(connection, email, now)
+                self._record_security_event(
+                    connection,
+                    event_type="login_failed",
+                    email=email,
+                    success=False,
+                    details="Invalid credentials.",
+                )
+                connection.commit()
+                raise ValueError("Invalid email or password.")
+            connection.execute(
+                "DELETE FROM login_security WHERE email = ?",
+                (email,),
+            )
+            self._record_security_event(
+                connection,
+                event_type="login_succeeded",
+                user_id=row["id"],
+                email=email,
+                success=True,
+            )
         token = self.create_session(
             row["id"],
             session_hours=session_hours,
@@ -347,6 +436,10 @@ class IdentityStore:
         ).isoformat()
         with self._connection() as connection:
             connection.execute(
+                "DELETE FROM user_sessions WHERE expires_at <= ?",
+                (timestamp,),
+            )
+            connection.execute(
                 """
                 INSERT INTO user_sessions (
                     id, user_id, token_hash, expires_at, created_at
@@ -365,6 +458,10 @@ class IdentityStore:
     def user_from_session(self, token: str) -> dict | None:
         now = _utc_now()
         with self._connection() as connection:
+            connection.execute(
+                "DELETE FROM user_sessions WHERE expires_at <= ?",
+                (now,),
+            )
             row = connection.execute(
                 """
                 SELECT users.*
@@ -380,10 +477,280 @@ class IdentityStore:
 
     def revoke_session(self, token: str) -> None:
         with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT users.id, users.email
+                FROM user_sessions
+                JOIN users ON users.id = user_sessions.user_id
+                WHERE user_sessions.token_hash = ?
+                """,
+                (_token_hash(token),),
+            ).fetchone()
             connection.execute(
                 "DELETE FROM user_sessions WHERE token_hash = ?",
                 (_token_hash(token),),
             )
+            if row:
+                self._record_security_event(
+                    connection,
+                    event_type="logout",
+                    user_id=row["id"],
+                    email=row["email"],
+                    success=True,
+                )
+
+    def revoke_all_sessions(self, user_id: str) -> int:
+        with self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM user_sessions WHERE user_id = ?",
+                (user_id,),
+            )
+            user = connection.execute(
+                "SELECT email FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            self._record_security_event(
+                connection,
+                event_type="all_sessions_revoked",
+                user_id=user_id,
+                email=user["email"] if user else None,
+                success=True,
+                details=f"{cursor.rowcount} sessions revoked.",
+            )
+            return cursor.rowcount
+
+    @staticmethod
+    def _record_security_event(
+        connection: sqlite3.Connection,
+        *,
+        event_type: str,
+        success: bool,
+        user_id: str | None = None,
+        email: str | None = None,
+        details: str | None = None,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO security_audit_log (
+                id, event_type, user_id, email, success, details, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid4()),
+                event_type,
+                user_id,
+                email,
+                int(success),
+                details,
+                _utc_now(),
+            ),
+        )
+
+    @staticmethod
+    def _register_failed_login(
+        connection: sqlite3.Connection,
+        email: str,
+        now: datetime,
+    ) -> None:
+        row = connection.execute(
+            "SELECT * FROM login_security WHERE email = ?",
+            (email,),
+        ).fetchone()
+        window = timedelta(minutes=FAILED_LOGIN_WINDOW_MINUTES)
+        attempts = 1
+        first_failed_at = now
+        if row:
+            previous_start = datetime.fromisoformat(
+                row["first_failed_at"]
+            )
+            if now - previous_start <= window:
+                attempts = row["failed_attempts"] + 1
+                first_failed_at = previous_start
+        locked_until = None
+        if attempts >= MAX_FAILED_LOGINS:
+            locked_until = (
+                now + timedelta(minutes=LOGIN_LOCK_MINUTES)
+            ).isoformat()
+        connection.execute(
+            """
+            INSERT INTO login_security (
+                email, failed_attempts, first_failed_at,
+                locked_until, updated_at
+            ) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+                failed_attempts = excluded.failed_attempts,
+                first_failed_at = excluded.first_failed_at,
+                locked_until = excluded.locked_until,
+                updated_at = excluded.updated_at
+            """,
+            (
+                email,
+                attempts,
+                first_failed_at.isoformat(),
+                locked_until,
+                now.isoformat(),
+            ),
+        )
+
+    def security_events(self, limit: int = 100) -> list[dict]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM security_audit_log
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def create_password_reset(
+        self,
+        email: str,
+    ) -> tuple[dict, str] | None:
+        email = email.strip().lower()
+        now = datetime.now(timezone.utc)
+        with self._connection() as connection:
+            user = connection.execute(
+                "SELECT id, email FROM users WHERE email = ?",
+                (email,),
+            ).fetchone()
+            if user is None:
+                self._record_security_event(
+                    connection,
+                    event_type="password_reset_requested",
+                    email=email,
+                    success=True,
+                    details="No matching active account disclosed.",
+                )
+                return None
+            recent = connection.execute(
+                """
+                SELECT created_at
+                FROM password_reset_tokens
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (user["id"],),
+            ).fetchone()
+            if recent and datetime.fromisoformat(recent["created_at"]) > (
+                now - timedelta(minutes=PASSWORD_RESET_COOLDOWN_MINUTES)
+            ):
+                self._record_security_event(
+                    connection,
+                    event_type="password_reset_throttled",
+                    user_id=user["id"],
+                    email=email,
+                    success=False,
+                    details="Recovery request cooldown is active.",
+                )
+                return None
+            token = secrets.token_urlsafe(32)
+            connection.execute(
+                """
+                UPDATE password_reset_tokens
+                SET used_at = ?
+                WHERE user_id = ? AND used_at IS NULL
+                """,
+                (now.isoformat(), user["id"]),
+            )
+            connection.execute(
+                """
+                INSERT INTO password_reset_tokens (
+                    id, user_id, token_hash, expires_at, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    user["id"],
+                    _token_hash(token),
+                    (
+                        now + timedelta(minutes=PASSWORD_RESET_MINUTES)
+                    ).isoformat(),
+                    now.isoformat(),
+                ),
+            )
+            organization = connection.execute(
+                """
+                SELECT organizations.id, organizations.name
+                FROM organization_memberships
+                JOIN organizations
+                  ON organizations.id =
+                     organization_memberships.organization_id
+                WHERE organization_memberships.user_id = ?
+                ORDER BY organization_memberships.created_at
+                LIMIT 1
+                """,
+                (user["id"],),
+            ).fetchone()
+            self._record_security_event(
+                connection,
+                event_type="password_reset_requested",
+                user_id=user["id"],
+                email=email,
+                success=True,
+            )
+        if organization is None:
+            return None
+        return {
+            "user_id": user["id"],
+            "email": user["email"],
+            "organization_id": organization["id"],
+            "organization_name": organization["name"],
+        }, token
+
+    def reset_password(self, token: str, new_password: str) -> dict:
+        now = datetime.now(timezone.utc)
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT password_reset_tokens.*, users.email
+                FROM password_reset_tokens
+                JOIN users ON users.id = password_reset_tokens.user_id
+                WHERE password_reset_tokens.token_hash = ?
+                  AND password_reset_tokens.used_at IS NULL
+                  AND password_reset_tokens.expires_at > ?
+                  AND users.status = 'active'
+                """,
+                (_token_hash(token), now.isoformat()),
+            ).fetchone()
+            if row is None:
+                raise ValueError(
+                    "The password reset link is invalid or has expired."
+                )
+            connection.execute(
+                """
+                UPDATE users
+                SET password_hash = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (_password_hash(new_password), now.isoformat(), row["user_id"]),
+            )
+            connection.execute(
+                """
+                UPDATE password_reset_tokens
+                SET used_at = ?
+                WHERE user_id = ? AND used_at IS NULL
+                """,
+                (now.isoformat(), row["user_id"]),
+            )
+            connection.execute(
+                "DELETE FROM user_sessions WHERE user_id = ?",
+                (row["user_id"],),
+            )
+            connection.execute(
+                "DELETE FROM login_security WHERE email = ?",
+                (row["email"],),
+            )
+            self._record_security_event(
+                connection,
+                event_type="password_reset_completed",
+                user_id=row["user_id"],
+                email=row["email"],
+                success=True,
+            )
+        return self.get_user(row["user_id"])
 
     def get_user(self, user_id: str) -> dict:
         with self._connection() as connection:

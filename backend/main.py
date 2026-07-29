@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -54,6 +55,24 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=()"
+    )
+    if request.url.path.startswith("/api/auth"):
+        response.headers["Cache-Control"] = "no-store"
+    if os.getenv("BTP_ENV", "").lower() == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+    return response
 
 
 app.include_router(xmltv_router)

@@ -14,6 +14,9 @@ const adminBackupStatus = document.querySelector("#admin-backup-status");
 const adminBackupDetails = document.querySelector("#admin-backup-details");
 const adminBackupMessage = document.querySelector("#admin-backup-message");
 const runBackupButton = document.querySelector("#run-backup-button");
+const adminSecurityBody = document.querySelector("#admin-security-body");
+const adminSecurityTable = document.querySelector("#admin-security-table");
+const adminSecurityStatus = document.querySelector("#admin-security-status");
 const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
@@ -124,6 +127,23 @@ function renderBackupStatus(backup) {
     small.textContent = label;
     item.append(strong, small);
     adminBackupDetails.appendChild(item);
+  });
+}
+
+function renderSecurityEvents(events) {
+  adminSecurityBody.replaceChildren();
+  adminSecurityStatus.textContent = events.length
+    ? `${events.length} recent security events.`
+    : "No security events recorded.";
+  adminSecurityTable.classList.toggle("is-hidden", events.length === 0);
+  events.forEach((event) => {
+    const row = document.createElement("tr");
+    adminCell(row, new Date(event.created_at).toLocaleString());
+    adminCell(row, event.event_type.replaceAll("_", " "));
+    adminCell(row, event.email || "System");
+    adminCell(row, event.success ? "Successful" : "Rejected");
+    adminCell(row, event.details || "—");
+    adminSecurityBody.appendChild(row);
   });
 }
 
@@ -498,11 +518,18 @@ adminCloseTicket.addEventListener("click", () => {
 async function loadControlPlane() {
   adminMessage.textContent = "";
   try {
-    const [overview, organizations, incidents, backups] = await Promise.all([
+    const [
+      overview,
+      organizations,
+      incidents,
+      backups,
+      security,
+    ] = await Promise.all([
       adminRequest("/api/admin/overview"),
       adminRequest("/api/admin/organizations"),
       adminRequest("/api/admin/incidents"),
       adminRequest("/api/admin/backups"),
+      adminRequest("/api/admin/security-events"),
     ]);
     adminMetrics.replaceChildren();
     Object.entries({
@@ -523,6 +550,7 @@ async function loadControlPlane() {
     renderOrganizations(organizations.organizations);
     renderIncidents(incidents.incidents);
     renderBackupStatus(backups);
+    renderSecurityEvents(security.events);
   } catch (error) {
     adminMessage.textContent = error.message;
     adminMessage.classList.add("is-error");

@@ -127,6 +127,45 @@ class EmailOutboxStore:
                 )
         return self.list_for_organization(organization_id)
 
+    def schedule_password_reset(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        reset_url: str,
+    ) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid4())
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO email_outbox (
+                    id, organization_id, recipient_email, template_code,
+                    subject, body_text, scheduled_for, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                """,
+                (
+                    message_id,
+                    organization_id,
+                    recipient_email.strip().lower(),
+                    f"password_reset_{message_id}",
+                    "Reset your Broadcast Tool Pro password",
+                    (
+                        "A password reset was requested for your Broadcast "
+                        f"Tool Pro account. Use this secure link within 30 "
+                        f"minutes: {reset_url}\n\nIf you did not request "
+                        "this change, ignore this message."
+                    ),
+                    now,
+                    now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+        return dict(row)
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

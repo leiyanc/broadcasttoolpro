@@ -183,7 +183,69 @@
           <button class="button button-primary" type="submit">
             Sign In
           </button>
+          <button
+            class="text-link auth-text-button"
+            id="show-password-reset"
+            type="button"
+          >
+            Forgot your password?
+          </button>
           <p class="auth-message" id="login-message"></p>
+        </form>
+
+        <form class="auth-card is-hidden" id="password-reset-request-form">
+          <p class="eyebrow">ACCOUNT RECOVERY</p>
+          <h2>Reset Password</h2>
+          <p class="auth-copy">
+            Enter your account email. If it matches an active account,
+            secure reset instructions will be sent.
+          </p>
+          <label>
+            <span>Email Address</span>
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <button class="button button-primary" type="submit">
+            Send Reset Instructions
+          </button>
+          <button
+            class="text-link auth-text-button"
+            data-return-to-login
+            type="button"
+          >
+            Return to Sign In
+          </button>
+          <p class="auth-message" id="password-reset-request-message"></p>
+        </form>
+
+        <form class="auth-card is-hidden" id="password-reset-confirm-form">
+          <p class="eyebrow">ACCOUNT RECOVERY</p>
+          <h2>Choose a New Password</h2>
+          <p class="auth-copy">
+            The secure recovery link expires after 30 minutes and can be
+            used only once.
+          </p>
+          <label>
+            <span>New Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minlength="10"
+              autocomplete="new-password"
+            />
+            <small>Use at least 10 characters.</small>
+          </label>
+          <button class="button button-primary" type="submit">
+            Update Password
+          </button>
+          <button
+            class="text-link auth-text-button"
+            data-return-to-login
+            type="button"
+          >
+            Return to Sign In
+          </button>
+          <p class="auth-message" id="password-reset-confirm-message"></p>
         </form>
 
         <form class="auth-card is-hidden" id="trial-form">
@@ -406,6 +468,31 @@
             id="admin-backup-message"
             aria-live="polite"
           ></p>
+        </div>
+        <div class="admin-section">
+          <p class="eyebrow">SECURITY</p>
+          <h3>Recent Account Activity</h3>
+          <p class="section-copy">
+            Review successful access, rejected sign-ins, temporary locks,
+            password recovery, and session revocation.
+          </p>
+          <p class="history-status" id="admin-security-status">
+            No security events recorded.
+          </p>
+          <div class="table-scroll is-hidden" id="admin-security-table">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Date / Time</th>
+                  <th>Event</th>
+                  <th>Account</th>
+                  <th>Result</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="admin-security-body"></tbody>
+            </table>
+          </div>
         </div>
         <div class="admin-section">
           <div class="section-heading">

@@ -378,6 +378,15 @@ main {
   margin-top: 4px;
 }
 
+.auth-card .auth-text-button {
+  justify-self: center;
+  padding: 2px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
 .auth-message {
   min-height: 18px;
   margin: 0;

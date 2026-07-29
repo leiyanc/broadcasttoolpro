@@ -1,3 +1,5 @@
+import os
+
 from fastapi import (
     APIRouter,
     Cookie,
@@ -11,16 +13,25 @@ from backend.models.identity import (
     BootstrapRequest,
     LoginRequest,
     MemberCreate,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     TrialRegistrationRequest,
 )
 from backend.services.billing_store import billing_store
-from backend.services.identity_store import identity_store
+from backend.services.identity_store import (
+    AuthenticationLockedError,
+    identity_store,
+)
 from backend.services.entitlements import entitlement_store
 from backend.services.email_outbox import email_outbox_store
 
 
 SESSION_COOKIE = "btp_session"
 REMEMBERED_SESSION_DAYS = 30
+PASSWORD_RESET_RESPONSE = (
+    "If an active account matches that email address, password reset "
+    "instructions have been queued."
+)
 
 router = APIRouter(
     prefix="/api/auth",
@@ -46,7 +57,11 @@ def _set_session_cookie(
         "value": token,
         "httponly": True,
         "samesite": "strict",
-        "secure": False,
+        "secure": (
+            os.getenv("BTP_COOKIE_SECURE", "").lower()
+            in {"1", "true", "yes"}
+            or os.getenv("BTP_ENV", "").lower() == "production"
+        ),
         "path": "/",
     }
     if remember_me:
@@ -175,6 +190,8 @@ def login(request: LoginRequest, response: Response):
                 else 12
             ),
         )
+    except AuthenticationLockedError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     _set_session_cookie(
@@ -185,6 +202,36 @@ def login(request: LoginRequest, response: Response):
     return {
         "user": user,
         "organizations": identity_store.organizations_for_user(user["id"]),
+    }
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+def request_password_reset(request: PasswordResetRequest):
+    reset = identity_store.create_password_reset(request.email)
+    if reset:
+        account, token = reset
+        application_url = os.getenv(
+            "BTP_APPLICATION_URL",
+            "http://127.0.0.1:8000/app",
+        ).rstrip("/")
+        email_outbox_store.schedule_password_reset(
+            organization_id=account["organization_id"],
+            recipient_email=account["email"],
+            reset_url=f"{application_url}?mode=reset&token={token}",
+        )
+    return {"message": PASSWORD_RESET_RESPONSE}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(request: PasswordResetConfirm):
+    try:
+        identity_store.reset_password(request.token, request.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "message": (
+            "Password updated. Sign in again with your new password."
+        )
     }
 
 
@@ -238,7 +285,17 @@ def logout(
 ):
     if session_token:
         identity_store.revoke_session(session_token)
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(
+        SESSION_COOKIE,
+        path="/",
+        httponly=True,
+        samesite="strict",
+        secure=(
+            os.getenv("BTP_COOKIE_SECURE", "").lower()
+            in {"1", "true", "yes"}
+            or os.getenv("BTP_ENV", "").lower() == "production"
+        ),
+    )
 
 
 @router.post(
