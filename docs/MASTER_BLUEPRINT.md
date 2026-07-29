@@ -145,6 +145,51 @@ A future provider integration must
 use webhooks as the authoritative source for payment status and must be
 idempotent, auditable, and isolated from broadcast-processing workflows.
 
+## Account Access and Trial Lifecycle
+
+Account creation supports two distinct commercial paths:
+
+- Start an optional 7-day free trial.
+- Choose and purchase a commercial plan directly.
+
+The trial must never be mandatory. A future account that has not selected
+either path may remain in a Pending Plan state without access to paid modules.
+
+Authentication requirements:
+
+- Sign In, Create Account, and Free Trial entry points must preserve their
+  requested mode.
+- Sessions are temporary by default.
+- An explicit Remember Me option may extend the authenticated session for 30
+  days.
+- Authentication cookies are HTTP-only and organization access is always
+  enforced by the backend.
+- Browser password-manager autofill is separate from product session
+  persistence and must not be treated as authenticated access.
+
+The free trial includes only XMLTV Validator, Pre-Logs, and HLS Validator.
+Trial exports are limited to branded PDF files. Every trial PDF carries a
+visible Broadcast Tool Pro watermark above the report content while preserving
+the readability of operational data.
+
+User preferences and remembered operational values must be scoped to the
+authenticated organization or user. A new account must never inherit filters,
+customer names, channel settings, or other operational values from another
+account using the same browser.
+
+Trial communications are scheduled as an auditable lifecycle:
+
+- Welcome email when registration is completed
+- Three-day remaining reminder
+- One-day remaining reminder
+- Trial-ended notification
+
+These messages are stored in a provider-neutral email outbox. Production
+delivery requires an approved transactional email provider, authenticated
+sending domain, retry policy, delivery-status tracking, and unsubscribe or
+preference handling where legally required. Provider credentials must never be
+stored in source code.
+
 ## Customer Support Workflow
 
 Authenticated users can create support requests from the contextual Help
