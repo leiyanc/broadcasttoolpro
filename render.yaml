@@ -10,7 +10,6 @@ services:
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
     initialDeployHook: python tools/bootstrap_admin.py
     healthCheckPath: /health
-    maxShutdownDelaySeconds: 30
     disk:
       name: broadcast-tool-pro-staging-data
       mountPath: /opt/render/project/src/data
