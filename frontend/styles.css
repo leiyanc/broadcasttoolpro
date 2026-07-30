@@ -1056,6 +1056,48 @@ main {
   min-width: 132px;
 }
 
+.admin-organizations-table {
+  min-width: 1840px;
+}
+
+.admin-organizations-table th:nth-child(1),
+.admin-organizations-table td:nth-child(1) {
+  min-width: 150px;
+}
+
+.admin-organizations-table th:nth-child(2),
+.admin-organizations-table td:nth-child(2) {
+  min-width: 230px;
+}
+
+.admin-organizations-table th:nth-child(3),
+.admin-organizations-table td:nth-child(3) {
+  min-width: 150px;
+}
+
+.admin-organizations-table th:nth-child(4),
+.admin-organizations-table td:nth-child(4),
+.admin-organizations-table th:nth-child(5),
+.admin-organizations-table td:nth-child(5) {
+  min-width: 145px;
+}
+
+.admin-organizations-table th:nth-child(6),
+.admin-organizations-table td:nth-child(6) {
+  min-width: 125px;
+}
+
+.admin-organizations-table th:nth-child(7),
+.admin-organizations-table td:nth-child(7) {
+  min-width: 120px;
+}
+
+.admin-organizations-table td:nth-child(3) select,
+.admin-organizations-table td:nth-child(7) select {
+  width: 100%;
+  min-width: 0;
+}
+
 .admin-action-group {
   display: grid;
   grid-template-columns: minmax(105px, 1fr) auto;
