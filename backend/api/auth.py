@@ -14,6 +14,7 @@ from backend.models.identity import (
     AccessRequestCreate,
     AccountActivationConfirm,
     BootstrapRequest,
+    EmailPreferencesUpdate,
     LoginRequest,
     MemberCreate,
     PasswordResetConfirm,
@@ -207,6 +208,22 @@ def login(request: LoginRequest, response: Response):
         "user": user,
         "organizations": identity_store.organizations_for_user(user["id"]),
     }
+
+
+@router.get("/email-preferences")
+def email_preferences(user: dict = Depends(current_user)):
+    return email_outbox_store.preferences_for(user["email"])
+
+
+@router.put("/email-preferences")
+def update_email_preferences(
+    request: EmailPreferencesUpdate,
+    user: dict = Depends(current_user),
+):
+    return email_outbox_store.update_preferences(
+        user["email"],
+        trial_reminders=request.trial_reminders,
+    )
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)

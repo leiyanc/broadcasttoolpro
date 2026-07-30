@@ -41,6 +41,10 @@ class LoginRequest(BaseModel):
         return _normalized_email(value)
 
 
+class EmailPreferencesUpdate(BaseModel):
+    trial_reminders: bool = True
+
+
 class PasswordResetRequest(BaseModel):
     email: str
 

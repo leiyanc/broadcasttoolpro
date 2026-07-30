@@ -52,6 +52,12 @@ const accountPanelEmail = document.querySelector("#account-panel-email");
 const accountPanelOrganization = document.querySelector(
   "#account-panel-organization",
 );
+const trialReminderPreference = document.querySelector(
+  "#trial-reminder-preference",
+);
+const accountPreferenceMessage = document.querySelector(
+  "#account-preference-message",
+);
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
 const suspendedPanel = document.querySelector("#organization-suspended");
@@ -492,6 +498,39 @@ showFreeTrialLink.addEventListener("click", openFreeTrial);
 
 accountButton.addEventListener("click", () => {
   accountPanel.classList.toggle("is-hidden");
+  if (!accountPanel.classList.contains("is-hidden")) {
+    accountPreferenceMessage.textContent = "";
+    authRequest("/api/auth/email-preferences")
+      .then((preferences) => {
+        trialReminderPreference.checked = preferences.trial_reminders;
+      })
+      .catch((error) => {
+        accountPreferenceMessage.textContent = error.message;
+        accountPreferenceMessage.classList.add("is-error");
+      });
+  }
+});
+
+trialReminderPreference.addEventListener("change", async () => {
+  trialReminderPreference.disabled = true;
+  accountPreferenceMessage.classList.remove("is-error");
+  accountPreferenceMessage.textContent = "Saving preference...";
+  try {
+    const preferences = await authRequest("/api/auth/email-preferences", {
+      method: "PUT",
+      body: JSON.stringify({
+        trial_reminders: trialReminderPreference.checked,
+      }),
+    });
+    trialReminderPreference.checked = preferences.trial_reminders;
+    accountPreferenceMessage.textContent = "Email preference saved.";
+  } catch (error) {
+    trialReminderPreference.checked = !trialReminderPreference.checked;
+    accountPreferenceMessage.textContent = error.message;
+    accountPreferenceMessage.classList.add("is-error");
+  } finally {
+    trialReminderPreference.disabled = false;
+  }
 });
 
 logoutButton.addEventListener("click", async () => {

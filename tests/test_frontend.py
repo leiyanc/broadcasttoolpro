@@ -196,6 +196,8 @@ def test_secure_account_interface_is_present():
     assert "Start 7-Day Free Trial" in html
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
+    assert 'id="trial-reminder-preference"' in html
+    assert 'id="account-preference-message"' in html
     assert "/static/auth.js" in html
     assert "/static/admin.js" in html
     assert "/static/billing.js" in html
@@ -210,6 +212,7 @@ def test_secure_account_interface_is_present():
     admin_javascript = (FRONTEND_DIR / "admin.js").read_text()
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
+    assert "/api/auth/email-preferences" in auth_javascript
     assert "/api/auth/trial" in auth_javascript
     assert 'requestedMode === "trial"' in auth_javascript
     assert "moduleSurfaces" in auth_javascript

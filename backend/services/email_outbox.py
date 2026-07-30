@@ -99,6 +99,12 @@ class EmailOutboxStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS email_preferences (
+                    recipient_email TEXT PRIMARY KEY,
+                    trial_reminders INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
             """)
             columns = {
                 row["name"]
@@ -372,6 +378,62 @@ class EmailOutboxStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def preferences_for(self, recipient_email: str) -> dict:
+        normalized = recipient_email.strip().lower()
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT trial_reminders, updated_at
+                FROM email_preferences
+                WHERE recipient_email = ?
+                """,
+                (normalized,),
+            ).fetchone()
+        return {
+            "recipient_email": normalized,
+            "trial_reminders": (
+                bool(row["trial_reminders"]) if row is not None else True
+            ),
+            "updated_at": row["updated_at"] if row is not None else None,
+        }
+
+    def update_preferences(
+        self,
+        recipient_email: str,
+        *,
+        trial_reminders: bool,
+    ) -> dict:
+        normalized = recipient_email.strip().lower()
+        updated_at = datetime.now(timezone.utc).isoformat()
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO email_preferences (
+                    recipient_email, trial_reminders, updated_at
+                ) VALUES (?, ?, ?)
+                ON CONFLICT (recipient_email) DO UPDATE SET
+                    trial_reminders = excluded.trial_reminders,
+                    updated_at = excluded.updated_at
+                """,
+                (normalized, int(trial_reminders), updated_at),
+            )
+            if not trial_reminders:
+                connection.execute(
+                    """
+                    UPDATE email_outbox
+                    SET status = 'canceled',
+                        last_error = 'Disabled by recipient preference.'
+                    WHERE recipient_email = ?
+                      AND status = 'queued'
+                      AND template_code IN (
+                          'trial_three_days_remaining',
+                          'trial_one_day_remaining'
+                      )
+                    """,
+                    (normalized,),
+                )
+        return self.preferences_for(normalized)
+
     def pending(self, limit: int = 100) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(
@@ -382,6 +444,18 @@ class EmailOutboxStore:
                       SELECT 1 FROM email_suppressions
                       WHERE email_suppressions.recipient_email =
                             email_outbox.recipient_email
+                  )
+                  AND (
+                      template_code NOT IN (
+                          'trial_three_days_remaining',
+                          'trial_one_day_remaining'
+                      )
+                      OR NOT EXISTS (
+                          SELECT 1 FROM email_preferences
+                          WHERE email_preferences.recipient_email =
+                                email_outbox.recipient_email
+                            AND email_preferences.trial_reminders = 0
+                      )
                   )
                 ORDER BY scheduled_for
                 LIMIT ?
@@ -404,6 +478,18 @@ class EmailOutboxStore:
                       SELECT 1 FROM email_suppressions
                       WHERE email_suppressions.recipient_email =
                             email_outbox.recipient_email
+                  )
+                  AND (
+                      template_code NOT IN (
+                          'trial_three_days_remaining',
+                          'trial_one_day_remaining'
+                      )
+                      OR NOT EXISTS (
+                          SELECT 1 FROM email_preferences
+                          WHERE email_preferences.recipient_email =
+                                email_outbox.recipient_email
+                            AND email_preferences.trial_reminders = 0
+                      )
                   )
                 ORDER BY scheduled_for
                 LIMIT ?

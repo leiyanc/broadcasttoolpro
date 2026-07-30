@@ -521,6 +521,45 @@ main {
   gap: 10px;
 }
 
+.account-email-preference {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 620px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+.account-email-preference input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+
+.account-email-preference span {
+  display: grid;
+  gap: 3px;
+}
+
+.account-email-preference small,
+.account-preference-message {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.account-preference-message {
+  min-height: 1.25rem;
+  margin-top: 8px !important;
+}
+
+.account-preference-message.is-error {
+  color: var(--danger);
+}
+
 .admin-shell {
   margin: 24px 0 64px;
   padding: clamp(24px, 5vw, 46px);
