@@ -445,3 +445,17 @@ restricted to sandbox operation.
   must also use a trusted Amazon SNS HTTPS host.
 - The platform must never repeatedly send to a permanently bounced address or
   to a recipient who submitted a complaint.
+
+## Public Trust and Compliance Pages
+
+The public website exposes permanent, provider-neutral pages for:
+
+- Privacy Policy at `/privacy`
+- Terms of Service at `/terms`
+- Transactional Email Policy at `/email-policy`
+
+The landing-page footer links to each page. The email policy documents the
+transactional purpose of messages, recipient sources, authenticated provider
+events, and the suppression process for permanent bounces and complaints.
+These pages form the initial operational compliance baseline and must receive
+jurisdiction-appropriate legal review before commercial launch.

@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from backend.main import FRONTEND_DIR, application, home
+from backend.main import (
+    FRONTEND_DIR,
+    application,
+    email_policy,
+    home,
+    privacy_policy,
+    terms_of_service,
+)
 
 
 def test_frontend_files_exist():
@@ -11,6 +18,10 @@ def test_frontend_files_exist():
     assert (FRONTEND_DIR / "styles.css").is_file()
     assert (FRONTEND_DIR / "app.js").is_file()
     assert (FRONTEND_DIR / "theme.js").is_file()
+    assert (FRONTEND_DIR / "legal.css").is_file()
+    assert (FRONTEND_DIR / "privacy.html").is_file()
+    assert (FRONTEND_DIR / "terms.html").is_file()
+    assert (FRONTEND_DIR / "email-policy.html").is_file()
 
 
 def test_frontend_supports_persistent_light_and_dark_modes():
@@ -50,6 +61,12 @@ def test_home_returns_frontend():
     assert Path(application_response.path) == FRONTEND_DIR / "index.html"
 
 
+def test_public_policy_routes_return_their_pages():
+    assert Path(privacy_policy().path) == FRONTEND_DIR / "privacy.html"
+    assert Path(terms_of_service().path) == FRONTEND_DIR / "terms.html"
+    assert Path(email_policy().path) == FRONTEND_DIR / "email-policy.html"
+
+
 def test_public_landing_page_presents_the_platform():
     html = (FRONTEND_DIR / "landing.html").read_text()
     css = (FRONTEND_DIR / "landing.css").read_text()
@@ -79,6 +96,9 @@ def test_public_landing_page_presents_the_platform():
     assert "--landing-black: #02060c" in css
     assert "@media (max-width: 760px)" in css
     assert "landing-menu-toggle" in javascript
+    assert 'href="/privacy"' in html
+    assert 'href="/terms"' in html
+    assert 'href="/email-policy"' in html
 
 
 def test_frontend_uses_xmltv_endpoints():

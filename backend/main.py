@@ -132,6 +132,21 @@ def application():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+@app.get("/privacy")
+def privacy_policy():
+    return FileResponse(FRONTEND_DIR / "privacy.html")
+
+
+@app.get("/terms")
+def terms_of_service():
+    return FileResponse(FRONTEND_DIR / "terms.html")
+
+
+@app.get("/email-policy")
+def email_policy():
+    return FileResponse(FRONTEND_DIR / "email-policy.html")
+
+
 @app.get("/health")
 def health():
     return {
