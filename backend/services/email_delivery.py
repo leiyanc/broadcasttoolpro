@@ -7,6 +7,9 @@ from backend.services.email_outbox import (
     EmailOutboxStore,
     email_outbox_store,
 )
+from backend.services.email_suppression import (
+    EmailSuppressionStore,
+)
 
 
 class EmailProvider(Protocol):
@@ -99,9 +102,14 @@ class EmailDeliveryService:
         self,
         outbox: EmailOutboxStore = email_outbox_store,
         provider: EmailProvider | None = None,
+        suppressions: EmailSuppressionStore | None = None,
     ):
         self.outbox = outbox
         self.provider = provider
+        self.suppressions = suppressions or EmailSuppressionStore(
+            outbox.database_path
+        )
+        self.suppressions.initialize()
 
     @staticmethod
     def is_enabled() -> bool:
@@ -130,6 +138,16 @@ class EmailDeliveryService:
                 self.outbox.mark_sent(
                     message["id"],
                     provider_message_id,
+                )
+                self.suppressions.record_event(
+                    event_type="send",
+                    recipient_email=message["recipient_email"],
+                    provider="amazon_ses",
+                    provider_message_id=provider_message_id,
+                    details={
+                        "template_code": message["template_code"],
+                        "outbox_message_id": message["id"],
+                    },
                 )
                 sent += 1
         return {

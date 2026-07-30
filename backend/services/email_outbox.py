@@ -85,6 +85,20 @@ class EmailOutboxStore:
 
                 CREATE INDEX IF NOT EXISTS idx_email_outbox_delivery
                     ON email_outbox(status, scheduled_for);
+
+                CREATE TABLE IF NOT EXISTS email_suppressions (
+                    recipient_email TEXT PRIMARY KEY,
+                    reason TEXT NOT NULL CHECK (
+                        reason IN (
+                            'permanent_bounce', 'complaint', 'manual'
+                        )
+                    ),
+                    source TEXT NOT NULL,
+                    provider_message_id TEXT,
+                    details TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
             """)
             columns = {
                 row["name"]
@@ -364,6 +378,11 @@ class EmailOutboxStore:
                 """
                 SELECT * FROM email_outbox
                 WHERE status = 'queued' AND scheduled_for <= ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM email_suppressions
+                      WHERE email_suppressions.recipient_email =
+                            email_outbox.recipient_email
+                  )
                 ORDER BY scheduled_for
                 LIMIT ?
                 """,
@@ -381,6 +400,11 @@ class EmailOutboxStore:
                 """
                 SELECT * FROM email_outbox
                 WHERE status = 'queued' AND scheduled_for <= ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM email_suppressions
+                      WHERE email_suppressions.recipient_email =
+                            email_outbox.recipient_email
+                  )
                 ORDER BY scheduled_for
                 LIMIT ?
                 """,

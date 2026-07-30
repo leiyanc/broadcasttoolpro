@@ -424,3 +424,21 @@ The report must identify:
 
 Reports must be available in English and Spanish and carry Broadcast Tool Pro
 branding.
+
+## Transactional Email Governance
+
+Transactional email is provider-neutral and passes through an auditable
+outbox. Public sending remains disabled while the selected provider account is
+restricted to sandbox operation.
+
+- Every accepted send records the provider message identifier.
+- Permanent bounces and complaints immediately suppress the recipient.
+- Queued messages for suppressed recipients are canceled before delivery.
+- Temporary bounces are audited but do not automatically suppress a recipient.
+- Suppression removal requires an explicit administrative action.
+- Delivery, bounce, complaint, reject, and send events are retained for
+  operational review.
+- Production integration must authenticate provider event notifications before
+  recording them.
+- The platform must never repeatedly send to a permanently bounced address or
+  to a recipient who submitted a complaint.
