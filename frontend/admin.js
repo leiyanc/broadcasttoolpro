@@ -165,14 +165,31 @@ function renderAccessRequests(requests) {
     adminCell(row, `${request.contact_name}\n${request.email}`);
     adminCell(row, new Date(request.created_at).toLocaleString());
     adminCell(row, request.status);
+    if (request.status !== "pending") {
+      adminCell(
+        row,
+        request.assigned_plan
+          ? request.assigned_plan[0].toUpperCase()
+            + request.assigned_plan.slice(1)
+          : "—",
+      );
+      adminCell(row, "—");
+      adminCell(row, "—");
+      adminCell(row, "—");
+      adminCell(
+        row,
+        request.status === "rejected" ? "Rejected" : "Completed",
+      );
+      adminAccessBody.appendChild(row);
+      return;
+    }
     const planCell = document.createElement("td");
     const plan = adminSelect(["professional", "enterprise"], "professional");
-    plan.disabled = request.status !== "pending";
+    plan.className = "admin-plan-select";
     planCell.appendChild(plan);
     row.appendChild(planCell);
     const paymentCell = document.createElement("td");
     const waived = addonToggle(false, "Waive payment");
-    waived.input.disabled = request.status !== "pending";
     paymentCell.appendChild(waived.control);
     row.appendChild(paymentCell);
     const expirationCell = document.createElement("td");
@@ -199,13 +216,32 @@ function renderAccessRequests(requests) {
         waived.input.checked ? "Waived" : "Paid";
     });
     const actionCell = document.createElement("td");
-    if (request.status === "pending") {
-      const approve = document.createElement("button");
-      approve.className = "button button-small button-primary";
-      approve.type = "button";
-      approve.textContent = "Approve";
-      approve.addEventListener("click", async () => {
-        approve.disabled = true;
+    const actionGroup = document.createElement("div");
+    actionGroup.className = "admin-action-group";
+    const action = adminSelect(["approve", "reject"], "approve");
+    action.setAttribute("aria-label", `Action for ${request.id}`);
+    const apply = document.createElement("button");
+    apply.className = "button button-small button-primary";
+    apply.type = "button";
+    apply.textContent = "Apply";
+    action.addEventListener("change", () => {
+      apply.classList.toggle(
+        "button-danger",
+        action.value === "reject",
+      );
+    });
+    apply.addEventListener("click", async () => {
+      if (
+        action.value === "reject"
+        && !window.confirm(
+          `Reject access request ${request.id}?`,
+        )
+      ) {
+        return;
+      }
+      apply.disabled = true;
+      action.disabled = true;
+      if (action.value === "approve") {
         adminAccessMessage.textContent = "Creating customer account…";
         adminAccessMessage.classList.remove("is-error");
         try {
@@ -237,15 +273,10 @@ function renderAccessRequests(requests) {
         } catch (error) {
           adminAccessMessage.textContent = error.message;
           adminAccessMessage.classList.add("is-error");
-          approve.disabled = false;
+          apply.disabled = false;
+          action.disabled = false;
         }
-      });
-      const reject = document.createElement("button");
-      reject.className = "button button-small button-secondary";
-      reject.type = "button";
-      reject.textContent = "Reject";
-      reject.addEventListener("click", async () => {
-        reject.disabled = true;
+      } else {
         try {
           await adminRequest(
             `/api/admin/access-requests/${request.id}/reject`,
@@ -255,13 +286,13 @@ function renderAccessRequests(requests) {
         } catch (error) {
           adminAccessMessage.textContent = error.message;
           adminAccessMessage.classList.add("is-error");
-          reject.disabled = false;
+          apply.disabled = false;
+          action.disabled = false;
         }
-      });
-      actionCell.append(approve, reject);
-    } else {
-      actionCell.textContent = request.assigned_plan || "—";
-    }
+      }
+    });
+    actionGroup.append(action, apply);
+    actionCell.appendChild(actionGroup);
     row.appendChild(actionCell);
     adminAccessBody.appendChild(row);
   });

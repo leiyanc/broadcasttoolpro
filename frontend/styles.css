@@ -989,6 +989,52 @@ main {
   accent-color: var(--blue);
 }
 
+#admin-access-table .preview-table {
+  min-width: 1480px;
+}
+
+#admin-access-table th,
+#admin-access-table td {
+  vertical-align: middle;
+}
+
+#admin-access-table td:nth-child(6) {
+  min-width: 150px;
+}
+
+#admin-access-table td:nth-child(10) {
+  min-width: 190px;
+}
+
+.admin-plan-select {
+  width: 100%;
+  min-width: 132px;
+}
+
+.admin-action-group {
+  display: grid;
+  grid-template-columns: minmax(105px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-action-group select {
+  width: 100%;
+  min-width: 105px;
+}
+
+.admin-action-group .button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.button-danger {
+  color: #ffffff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
 .admin-toggle > span {
   display: inline;
   margin: 0;

@@ -166,3 +166,25 @@ def test_access_request_schedules_requester_and_admin_notifications():
             message["recipient_email"] for message in messages
         } == {"operator@example.com", "admin@example.com"}
         assert all(message["status"] == "queued" for message in messages)
+
+
+def test_rejected_email_can_submit_a_future_access_request():
+    with TemporaryDirectory() as directory:
+        _, _, _, requests = _stores(directory)
+        first = requests.create(
+            organization_name="Returning Network",
+            contact_name="Operations Manager",
+            email="returning@example.com",
+            message=None,
+        )
+        requests.reject(first["id"])
+
+        second = requests.create(
+            organization_name="Returning Network",
+            contact_name="Operations Manager",
+            email="returning@example.com",
+            message="We are ready to reconsider the platform.",
+        )
+
+        assert second["id"] != first["id"]
+        assert second["status"] == "pending"
