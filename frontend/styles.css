@@ -1823,7 +1823,7 @@ h2 {
   width: 310px;
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(16, 42, 67, 0.16);
 }
@@ -2237,6 +2237,30 @@ select:focus {
   margin: 14px 0 0;
   padding-left: 18px;
   color: var(--danger);
+}
+
+.template-guidance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.8rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--panel-muted);
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.template-guidance strong {
+  color: var(--ink);
+}
+
+.template-guidance a {
+  color: var(--blue);
+  font-weight: 700;
 }
 
 .history-shell {

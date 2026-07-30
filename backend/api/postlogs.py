@@ -186,6 +186,7 @@ async def export_postlog(
                 language=report_language,
                 product=product,
                 agency=agency,
+                client_name=client_name if isinstance(client_name, str) else None,
                 logo_content=logo_content,
                 report_type="postlog",
             )
@@ -201,6 +202,7 @@ async def export_postlog(
                 language=report_language,
                 product=product,
                 agency=agency,
+                client_name=client_name if isinstance(client_name, str) else None,
                 logo_content=logo_content,
                 report_type="postlog",
             )
@@ -235,6 +237,9 @@ async def export_postlog(
                         language=report_language,
                         product=product,
                         agency=agency,
+                        client_name=(
+                            client_name if isinstance(client_name, str) else None
+                        ),
                         logo_content=logo_content,
                         report_type="postlog",
                     )
@@ -246,6 +251,9 @@ async def export_postlog(
                         language=report_language,
                         product=product,
                         agency=agency,
+                        client_name=(
+                            client_name if isinstance(client_name, str) else None
+                        ),
                         logo_content=logo_content,
                         report_type="postlog",
                     )

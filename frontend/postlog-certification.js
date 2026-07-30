@@ -1,5 +1,6 @@
 const postlogForm = document.querySelector("#postlog-form");
 const postlogFiles = document.querySelector("#postlog-files");
+const postlogDropZone = document.querySelector("#postlog-drop-zone");
 const postlogFileTitle = document.querySelector("#postlog-file-title");
 const postlogFileSubtitle = document.querySelector("#postlog-file-subtitle");
 const inspectPostlogsButton = document.querySelector("#inspect-postlogs-button");
@@ -43,6 +44,7 @@ const postlogProfileStatus = document.querySelector(
 );
 
 let postlogsInspected = false;
+let postlogDragDepth = 0;
 const POSTLOG_FILTERS_KEY = "broadcastToolPro.postlogFilters";
 const PROFILE_DATABASE = "BroadcastToolPro";
 const PROFILE_STORE = "postlogProfiles";
@@ -206,7 +208,7 @@ function updatePostlogMode() {
   );
 }
 
-postlogFiles.addEventListener("change", () => {
+function handlePostlogFilesChanged() {
   const files = [...postlogFiles.files];
   if (!files.length) return;
   postlogFileTitle.textContent = (
@@ -220,7 +222,47 @@ postlogFiles.addEventListener("change", () => {
   postlogSummary.classList.add("is-hidden");
   postlogResult.classList.add("is-hidden");
   postlogExportPanel.classList.add("is-hidden");
-});
+}
+
+postlogFiles.addEventListener("change", handlePostlogFilesChanged);
+
+if (postlogDropZone) {
+  postlogDropZone.addEventListener("dragenter", (event) => {
+    event.preventDefault();
+    postlogDragDepth += 1;
+    postlogDropZone.classList.add("is-dragging");
+  });
+  postlogDropZone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  });
+  postlogDropZone.addEventListener("dragleave", (event) => {
+    event.preventDefault();
+    postlogDragDepth = Math.max(0, postlogDragDepth - 1);
+    if (!postlogDragDepth) {
+      postlogDropZone.classList.remove("is-dragging");
+    }
+  });
+  postlogDropZone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    postlogDragDepth = 0;
+    postlogDropZone.classList.remove("is-dragging");
+    const supported = new Set(["csv", "xlsx", "json", "txt", "xml"]);
+    const files = [...event.dataTransfer.files].filter((file) => {
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      return supported.has(extension);
+    });
+    if (!files.length) {
+      postlogFileTitle.textContent = "Unsupported As-Run file";
+      postlogFileSubtitle.textContent = "Use CSV, XLSX, JSON, TXT, or XML.";
+      return;
+    }
+    const transfer = new DataTransfer();
+    files.forEach((file) => transfer.items.add(file));
+    postlogFiles.files = transfer.files;
+    handlePostlogFilesChanged();
+  });
+}
 
 postlogMode.addEventListener("change", updatePostlogMode);
 postlogValue.addEventListener("input", () => {

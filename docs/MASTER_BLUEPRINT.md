@@ -473,3 +473,24 @@ transactional purpose of messages, recipient sources, authenticated provider
 events, and the suppression process for permanent bounces and complaints.
 These pages form the initial operational compliance baseline and must receive
 jurisdiction-appropriate legal review before commercial launch.
+
+## Pilot Feedback Quality Standard
+
+External pilot feedback is treated as product evidence and must improve shared
+platform behavior rather than create customer-specific code paths.
+
+The first staging pilot established these cross-module requirements:
+
+- XMLTV import failures must direct the user to the official Excel and CSV
+  templates so structural and formatting errors are actionable.
+- Programming Grid exports must include a compact visual legend for Live,
+  Premiere, and Replay indicators without reducing schedule readability.
+- Optional client identity entered for Pre Logs or Post Logs must be included
+  in generated deliverables and omitted completely when left blank.
+- Every multi-file upload area must support reliable click selection and
+  drag-and-drop with explicit supported-format validation.
+- Stream-monitoring reports must preserve and display the exact analyzed
+  start and end timestamps, including those timestamps on bandwidth charts.
+
+These behaviors are part of the common reporting and workflow standards and
+must remain covered by automated regression tests.

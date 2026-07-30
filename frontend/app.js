@@ -11,6 +11,9 @@ const resultTitle = document.querySelector("#result-title");
 const resultMessage = document.querySelector("#result-message");
 const resultMetrics = document.querySelector("#result-metrics");
 const issueList = document.querySelector("#issue-list");
+const xmltvTemplateGuidance = document.querySelector(
+  "#xmltv-template-guidance",
+);
 const authorizationPanel = document.querySelector("#authorization-panel");
 const authorizationMessage = document.querySelector("#authorization-message");
 const acceptAutoFixes = document.querySelector("#accept-auto-fixes");
@@ -269,6 +272,7 @@ function showResult(result) {
   const success = Boolean(normalized.success);
 
   resultPanel.classList.remove("is-hidden");
+  xmltvTemplateGuidance?.classList.toggle("is-hidden", success);
   resultPanel.classList.toggle("is-error", !success);
   resultIcon.textContent = success ? "✓" : "!";
   resultTitle.textContent = success

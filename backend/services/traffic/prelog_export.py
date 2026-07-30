@@ -22,6 +22,7 @@ LABELS = {
         "title": "Pre Log",
         "postlog_title": "Post Log — Broadcast Certification",
         "channel": "Channel Name",
+        "client": "Client Name",
         "product": "Product",
         "asset": "Asset ID",
         "date": "Date",
@@ -36,6 +37,7 @@ LABELS = {
         "title": "Pre Log",
         "postlog_title": "Post Log — Certificación de Emisiones",
         "channel": "Nombre del canal",
+        "client": "Nombre del cliente",
         "product": "Producto",
         "asset": "Identificador del elemento",
         "date": "Fecha",
@@ -85,6 +87,7 @@ def generate_prelog_workbook(
     language: str = "en",
     product: str | None = None,
     agency: str | None = None,
+    client_name: str | None = None,
     logo_content: bytes | None = None,
     report_type: str = "prelog",
 ) -> bytes:
@@ -157,6 +160,10 @@ def generate_prelog_workbook(
         f"{last_airing:%B %d, %Y %H:%M}"
     )
     worksheet["C3"].font = Font(name="Aptos", size=10, color="64748B")
+    if client_name and client_name.strip():
+        worksheet.merge_cells(f"C4:{title_end_column}4")
+        worksheet["C4"] = f"{labels['client']}: {client_name.strip()}"
+        worksheet["C4"].font = Font(name="Aptos", size=9, color="64748B")
 
     header_row = 5
     asset_column = 3 if include_product else 2

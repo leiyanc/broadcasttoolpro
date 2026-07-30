@@ -96,6 +96,7 @@ def generate_report_pdf(
     language: str = "en",
     product: str | None = None,
     agency: str | None = None,
+    client_name: str | None = None,
     logo_content: bytes | None = None,
     report_type: str = "prelog",
     trial_watermark: bool = False,
@@ -173,6 +174,11 @@ def generate_report_pdf(
             meta_style,
         ),
     ]
+    if client_name and client_name.strip():
+        heading.append(Paragraph(
+            f"{labels['client']}: {client_name.strip()}",
+            meta_style,
+        ))
     logo = _logo(logo_content)
     header_table = Table(
         [[_brand_logo(), heading, logo or ""]],

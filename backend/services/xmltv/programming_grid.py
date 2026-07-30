@@ -21,6 +21,9 @@ BRAND_LOGO = (
     / "broadcast-tool-pro-logo.png"
 )
 LIVE_BACKGROUND = colors.HexColor("#7F1D1D")
+PREMIERE_MARKER = colors.HexColor("#D97706")
+REPLAY_MARKER = colors.HexColor("#64748B")
+GRID_LEGEND_LABELS = ("Live", "Premiere", "Replay")
 LIVE_COLORS = (
     colors.HexColor("#7F1D1D"),
     colors.HexColor("#78350F"),
@@ -247,6 +250,21 @@ def _draw_page(
                 fill=1,
                 stroke=1,
             )
+            marker = None
+            if not is_live and programme.get("premiere"):
+                marker = PREMIERE_MARKER
+            elif not is_live and programme.get("previously_shown"):
+                marker = REPLAY_MARKER
+            if marker:
+                pdf.setFillColor(marker)
+                pdf.rect(
+                    x + 0.5,
+                    block_bottom,
+                    2.2,
+                    block_top - block_bottom,
+                    fill=1,
+                    stroke=0,
+                )
             if block_top - block_bottom >= 5:
                 pdf.setFillColor(colors.white if is_live else NAVY)
                 pdf.setFont("Helvetica-Bold", 5.5)
@@ -265,6 +283,20 @@ def _draw_page(
         preserveAspectRatio=True,
         mask="auto",
     )
+    legend_x = left + 126
+    legend_y = 13
+    legend = (
+        (GRID_LEGEND_LABELS[0], LIVE_BACKGROUND),
+        (GRID_LEGEND_LABELS[1], PREMIERE_MARKER),
+        (GRID_LEGEND_LABELS[2], REPLAY_MARKER),
+    )
+    pdf.setFont("Helvetica-Bold", 5.2)
+    for label, fill in legend:
+        pdf.setFillColor(fill)
+        pdf.roundRect(legend_x, legend_y - 3, 8, 8, 1.5, fill=1, stroke=0)
+        pdf.setFillColor(MUTED)
+        pdf.drawString(legend_x + 11, legend_y - 1, label)
+        legend_x += 11 + stringWidth(label, "Helvetica-Bold", 5.2) + 12
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica", 5.5)
     pdf.drawRightString(

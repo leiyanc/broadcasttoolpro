@@ -8,6 +8,7 @@ from starlette.datastructures import UploadFile
 from backend.api.xmltv import download_programming_grid
 from backend.services.xmltv.programming_grid import (
     LIVE_BACKGROUND,
+    GRID_LEGEND_LABELS,
     _live_color,
     _show_color,
     generate_programming_grid,
@@ -47,6 +48,7 @@ def test_programming_grid_creates_a_pdf():
 
     assert content.startswith(b"%PDF")
     assert len(content) > 1_000
+    assert GRID_LEGEND_LABELS == ("Live", "Premiere", "Replay")
 
 
 def test_equal_show_titles_use_the_same_light_background():

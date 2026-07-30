@@ -33,6 +33,7 @@ let hlsMonitorUrl = "";
 let hlsPolls = 0;
 let latestHlsResult = null;
 let hlsMonitorStartedAt = null;
+let hlsMonitorStoppedAt = null;
 let hlsMonitorFailed = false;
 const hlsSeenTriggers = new Set();
 const hlsMonitorTriggers = [];
@@ -256,6 +257,9 @@ function stopHlsMonitoring(completed = false) {
     `${hlsPolls} inspections · ${hlsSeenTriggers.size} unique triggers`
   );
   hlsMonitorCountdown.textContent = "00:00";
+  if (hlsMonitorStartedAt) {
+    hlsMonitorStoppedAt = new Date();
+  }
 }
 
 function updateHlsCountdown() {
@@ -326,6 +330,7 @@ if (hlsForm) {
     hlsButton.disabled = true;
     hlsButton.textContent = "Validating…";
     hlsMonitorStartedAt = null;
+    hlsMonitorStoppedAt = null;
     hlsMonitorFailed = false;
     hlsMonitorTriggers.length = 0;
     hlsMonitorIssues.clear();
@@ -356,6 +361,7 @@ if (hlsMonitorButton) {
     hlsPolls = 0;
     hlsMonitorFailed = false;
     hlsMonitorStartedAt = new Date();
+    hlsMonitorStoppedAt = null;
     hlsMonitorUrl = hlsUrl.value.trim();
     hlsMonitorEndsAt = (
       Date.now() + Number(hlsMonitorDuration.value) * 60 * 1000
@@ -395,6 +401,10 @@ function hlsReportPayload() {
     url: hlsUrl.value.trim(),
     playlist_type: result.playlist_type || "unknown",
     monitoring_minutes: monitoringMinutes,
+    monitoring_started_at: hlsMonitorStartedAt?.toISOString() || null,
+    monitoring_ended_at: (
+      hlsMonitorStoppedAt || (hlsMonitorStartedAt ? new Date() : null)
+    )?.toISOString() || null,
     inspections: hlsPolls || 1,
     generated_at: new Date().toISOString(),
     report_language: hlsReportLanguage.value,

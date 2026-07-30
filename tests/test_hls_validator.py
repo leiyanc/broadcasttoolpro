@@ -7,6 +7,7 @@ from backend.services.hls.validator import (
 )
 from backend.api.hls import download_hls_report
 from backend.services.hls.report import generate_hls_report
+from backend.services.hls.report import _timestamp_label
 
 
 MASTER_PLAYLIST = """#EXTM3U
@@ -39,6 +40,12 @@ segment100.ts
 #EXTINF:8,
 segment101.ts
 """
+
+
+def test_hls_report_timestamp_label_uses_utc():
+    assert _timestamp_label("2026-07-27T12:30:45Z") == (
+        "2026-07-27 12:30:45 UTC"
+    )
 
 
 def test_master_playlist_reports_variants():

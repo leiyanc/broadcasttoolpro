@@ -204,6 +204,7 @@ async def export_prelog(
                 language=report_language,
                 product=product,
                 agency=agency,
+                client_name=client_name if isinstance(client_name, str) else None,
                 logo_content=logo_content,
             )
             media_type = (
@@ -217,6 +218,7 @@ async def export_prelog(
                 language=report_language,
                 product=product,
                 agency=agency,
+                client_name=client_name if isinstance(client_name, str) else None,
                 logo_content=logo_content,
                 report_type="prelog",
                 trial_watermark=is_trial,

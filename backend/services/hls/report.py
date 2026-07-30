@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, String
@@ -115,7 +116,22 @@ def _paragraph(value, style):
     return Paragraph(_text(value), style)
 
 
-def _bandwidth_chart(samples: list[dict], spanish: bool) -> Drawing:
+def _timestamp_label(value: str | None) -> str:
+    if not value:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    except (TypeError, ValueError):
+        return str(value)[:24]
+
+
+def _bandwidth_chart(
+    samples: list[dict],
+    spanish: bool,
+    started_at: str | None = None,
+    ended_at: str | None = None,
+) -> Drawing:
     width = 6.9 * inch
     height = 2.45 * inch
     left = 48
@@ -190,21 +206,27 @@ def _bandwidth_chart(samples: list[dict], spanish: bool) -> Drawing:
         fontSize=7,
         fillColor=NAVY,
     ))
+    start_label = _timestamp_label(
+        started_at or (samples[0].get("detected_at") if samples else None)
+    )
+    end_label = _timestamp_label(
+        ended_at or (samples[-1].get("detected_at") if samples else None)
+    )
     drawing.add(String(
         left,
         12,
-        "Inicio" if spanish else "Start",
+        start_label or ("Inicio" if spanish else "Start"),
         fontName="Helvetica",
-        fontSize=7,
+        fontSize=6.3,
         fillColor=MUTED,
     ))
     drawing.add(String(
         right,
         12,
-        "Fin" if spanish else "End",
+        end_label or ("Fin" if spanish else "End"),
         textAnchor="end",
         fontName="Helvetica",
-        fontSize=7,
+        fontSize=6.3,
         fillColor=MUTED,
     ))
     return drawing
@@ -360,6 +382,14 @@ def generate_hls_report(
         [translated("triggers", "Unique Triggers"), str(payload.get("trigger_count", 0))],
         [translated("generated", "Generated"), str(payload.get("generated_at") or "")],
     ]
+    if payload.get("monitoring_started_at") or payload.get("monitoring_ended_at"):
+        summary.insert(4, [
+            "Ventana Analizada" if spanish else "Analyzed Window",
+            (
+                f"{_timestamp_label(payload.get('monitoring_started_at'))} - "
+                f"{_timestamp_label(payload.get('monitoring_ended_at'))}"
+            ).strip(" -"),
+        ])
     summary_table = Table(
         [[_paragraph(key, label), _paragraph(value, body)] for key, value in summary],
         colWidths=[1.45 * inch, 5.45 * inch],
@@ -397,7 +427,12 @@ def generate_hls_report(
             small,
         ))
         story.append(Spacer(1, 0.05 * inch))
-        story.append(_bandwidth_chart(bandwidth_samples, spanish))
+        story.append(_bandwidth_chart(
+            bandwidth_samples,
+            spanish,
+            payload.get("monitoring_started_at"),
+            payload.get("monitoring_ended_at"),
+        ))
         bandwidth_summary = [
             [
                 "Minimo" if spanish else "Minimum",

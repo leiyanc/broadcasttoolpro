@@ -417,6 +417,18 @@ def test_prelog_workbook_uses_requested_language_and_columns():
     }
 
 
+def test_prelog_workbook_exports_optional_client_name():
+    _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
+    content = generate_prelog_workbook(
+        events[:2],
+        channel_name="Comercio TV",
+        client_name="Banco Ejemplo",
+    )
+    worksheet = load_workbook(BytesIO(content))["Pre Log"]
+
+    assert worksheet["C4"].value == "Client Name: Banco Ejemplo"
+
+
 def test_prelog_export_endpoint_downloads_xlsx():
     upload = UploadFile(
         filename="ignored.csv",
