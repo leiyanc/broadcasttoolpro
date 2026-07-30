@@ -2,7 +2,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from datetime import datetime, timedelta, timezone
 
+import pytest
+from fastapi import HTTPException, Response
+
+from backend.api.auth import _web_bootstrap_allowed, bootstrap_platform
 from backend.main import app
+from backend.models.identity import BootstrapRequest
 from backend.services.billing_store import BillingStore
 from backend.services.entitlements import EntitlementStore
 from backend.services.email_outbox import EmailOutboxStore
@@ -123,6 +128,31 @@ def test_authentication_routes_are_registered():
         "/api/auth/organizations/{organization_id}/members"
         in paths
     )
+
+
+def test_web_bootstrap_is_disabled_in_public_environments(monkeypatch):
+    monkeypatch.setenv("BTP_ENV", "staging")
+    monkeypatch.delenv("BTP_ALLOW_WEB_BOOTSTRAP", raising=False)
+
+    assert _web_bootstrap_allowed() is False
+    with pytest.raises(HTTPException) as exc_info:
+        bootstrap_platform(
+            BootstrapRequest(
+                organization_name="Public Staging",
+                display_name="Unauthorized Visitor",
+                email="visitor@example.com",
+                password="a-secure-password",
+            ),
+            Response(),
+        )
+    assert exc_info.value.status_code == 403
+
+
+def test_web_bootstrap_remains_available_for_local_development(monkeypatch):
+    monkeypatch.setenv("BTP_ENV", "development")
+    monkeypatch.delenv("BTP_ALLOW_WEB_BOOTSTRAP", raising=False)
+
+    assert _web_bootstrap_allowed() is True
 
 
 def test_trial_registration_is_limited_to_three_modules():

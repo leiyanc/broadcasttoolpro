@@ -47,7 +47,21 @@ router = APIRouter(
 @router.get("/status")
 def authentication_status():
     return {
-        "bootstrap_required": not identity_store.has_users(),
+        "bootstrap_required": (
+            not identity_store.has_users()
+            and _web_bootstrap_allowed()
+        ),
+    }
+
+
+def _web_bootstrap_allowed() -> bool:
+    explicit = os.getenv("BTP_ALLOW_WEB_BOOTSTRAP", "").strip().lower()
+    if explicit:
+        return explicit in {"1", "true", "yes"}
+    return os.getenv("BTP_ENV", "development").strip().lower() in {
+        "development",
+        "local",
+        "test",
     }
 
 
@@ -170,6 +184,14 @@ def require_active_organization(
 
 @router.post("/bootstrap", status_code=status.HTTP_201_CREATED)
 def bootstrap_platform(request: BootstrapRequest, response: Response):
+    if not _web_bootstrap_allowed():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Web-based platform bootstrap is disabled. "
+                "Initialize the administrator through the deployment process."
+            ),
+        )
     try:
         user, organization, token = identity_store.bootstrap(
             **request.model_dump()

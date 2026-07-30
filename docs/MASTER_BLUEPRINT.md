@@ -254,6 +254,12 @@ Target: 0–10 paying customers.
 - Store only temporary processing files on local disk.
 - Delete temporary uploads and generated working files according to a defined
   retention policy.
+
+The first public staging environment uses one paid entry-level service, one
+small persistent disk, one application worker, and a provider-generated URL.
+It remains isolated from local development, disables automatic deployments,
+and does not connect the production domain. Web-based Super Admin bootstrap is
+disabled; the first administrator is created once from hosting secrets.
 - Maintain automatic off-server backups of the database and essential records.
 - Use a free or low-cost transactional email tier when email delivery is
   connected.

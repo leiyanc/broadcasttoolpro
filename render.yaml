@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: broadcast-tool-pro-staging
+    runtime: python
+    plan: starter
+    region: virginia
+    branch: feature/xmltv-generator
+    autoDeployTrigger: off
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
+    initialDeployHook: python tools/bootstrap_admin.py
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
+    disk:
+      name: broadcast-tool-pro-staging-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: BTP_ENV
+        value: staging
+      - key: BTP_COOKIE_SECURE
+        value: "true"
+      - key: BTP_ALLOW_WEB_BOOTSTRAP
+        value: "false"
+      - key: BTP_DATA_DIR
+        value: /opt/render/project/src/data
+      - key: BTP_BACKUP_DIR
+        value: /opt/render/project/src/data/backups
+      - key: BTP_BACKUP_RETENTION_DAYS
+        value: "14"
+      - key: BTP_EMAIL_PROVIDER
+        value: disabled
+      - key: BTP_APPLICATION_URL
+        sync: false
+      - key: BTP_INITIAL_ORGANIZATION_NAME
+        sync: false
+      - key: BTP_INITIAL_ADMIN_NAME
+        sync: false
+      - key: BTP_INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: BTP_INITIAL_ADMIN_PASSWORD
+        sync: false

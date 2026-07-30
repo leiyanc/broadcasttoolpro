@@ -1,3 +1,4 @@
+import os
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -6,7 +7,12 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(
+    os.getenv(
+        "BTP_DATA_DIR",
+        str(Path(__file__).resolve().parents[1] / "data"),
+    )
+).expanduser()
 DATABASE_PATH = DATA_DIR / "broadcast_tool_pro.db"
 
 

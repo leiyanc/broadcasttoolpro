@@ -4,10 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from backend.services.tenant_store import DATA_DIR, DATABASE_PATH
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 REPORTS_DIR = DATA_DIR / "reports"
-DATABASE_PATH = DATA_DIR / "broadcast_tool_pro.db"
 
 
 def _connection() -> sqlite3.Connection:
