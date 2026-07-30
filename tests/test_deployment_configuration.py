@@ -15,7 +15,7 @@ def test_render_staging_blueprint_is_isolated_and_persistent():
     assert "BTP_DATA_DIR" in blueprint
     assert "mountPath: /opt/render/project/src/data" in blueprint
     assert "sizeGB: 1" in blueprint
-    assert "initialDeployHook: python tools/bootstrap_admin.py" in blueprint
+    assert "initialDeployHook: python -m tools.bootstrap_admin" in blueprint
     assert "BTP_EMAIL_PROVIDER" in blueprint
     assert "value: disabled" in blueprint
 
