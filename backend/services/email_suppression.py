@@ -239,6 +239,38 @@ class EmailSuppressionStore:
             events.append(event)
         return events
 
+    def health_summary(
+        self,
+        *,
+        event_limit: int = 100,
+        suppression_limit: int = 100,
+    ) -> dict:
+        with self._connection() as connection:
+            outbox_rows = connection.execute(
+                """
+                SELECT status, COUNT(*) AS count
+                FROM email_outbox
+                GROUP BY status
+                """
+            ).fetchall()
+            event_rows = connection.execute(
+                """
+                SELECT event_type, COUNT(*) AS count
+                FROM email_delivery_events
+                GROUP BY event_type
+                """
+            ).fetchall()
+        return {
+            "outbox": {
+                row["status"]: row["count"] for row in outbox_rows
+            },
+            "events": {
+                row["event_type"]: row["count"] for row in event_rows
+            },
+            "suppressions": self.list(suppression_limit),
+            "recent_events": self.events(event_limit),
+        }
+
 
 email_suppression_store = EmailSuppressionStore()
 email_suppression_store.initialize()

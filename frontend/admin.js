@@ -21,6 +21,29 @@ const adminAccessBody = document.querySelector("#admin-access-body");
 const adminAccessTable = document.querySelector("#admin-access-table");
 const adminAccessStatus = document.querySelector("#admin-access-status");
 const adminAccessMessage = document.querySelector("#admin-access-message");
+const adminEmailMetrics = document.querySelector("#admin-email-metrics");
+const adminEmailMessage = document.querySelector("#admin-email-message");
+const adminSuppressionStatus = document.querySelector(
+  "#admin-suppression-status",
+);
+const adminSuppressionTable = document.querySelector(
+  "#admin-suppression-table",
+);
+const adminSuppressionBody = document.querySelector(
+  "#admin-suppression-body",
+);
+const adminEmailEventStatus = document.querySelector(
+  "#admin-email-event-status",
+);
+const adminEmailEventTable = document.querySelector(
+  "#admin-email-event-table",
+);
+const adminEmailEventBody = document.querySelector(
+  "#admin-email-event-body",
+);
+const refreshEmailHealthButton = document.querySelector(
+  "#refresh-email-health",
+);
 const suspendedAdminControlButton = document.querySelector(
   "#suspended-admin-button",
 );
@@ -149,6 +172,107 @@ function renderSecurityEvents(events) {
     adminCell(row, event.details || "—");
     adminSecurityBody.appendChild(row);
   });
+}
+
+function renderEmailHealth(health) {
+  adminEmailMetrics.replaceChildren();
+  const outbox = health.outbox || {};
+  const events = health.events || {};
+  const metrics = {
+    Provider: health.provider === "amazon_ses"
+      ? "Amazon SES enabled"
+      : "Sending disabled",
+    "SNS Events": health.sns_configured
+      ? "Configured"
+      : "Awaiting public endpoint",
+    Queued: outbox.queued || 0,
+    Sent: outbox.sent || 0,
+    Failed: outbox.failed || 0,
+    "Permanent Bounces": events.permanent_bounce || 0,
+    Complaints: events.complaint || 0,
+    Suppressed: health.suppressions.length,
+  };
+  Object.entries(metrics).forEach(([label, value]) => {
+    const item = document.createElement("div");
+    const strong = document.createElement("strong");
+    const small = document.createElement("small");
+    strong.textContent = value;
+    small.textContent = label;
+    item.append(strong, small);
+    adminEmailMetrics.appendChild(item);
+  });
+
+  adminSuppressionBody.replaceChildren();
+  adminSuppressionStatus.textContent = health.suppressions.length
+    ? `${health.suppressions.length} suppressed recipient(s).`
+    : "No suppressed recipients.";
+  adminSuppressionTable.classList.toggle(
+    "is-hidden",
+    health.suppressions.length === 0,
+  );
+  health.suppressions.forEach((suppression) => {
+    const row = document.createElement("tr");
+    adminCell(row, suppression.recipient_email);
+    adminCell(row, suppression.reason.replaceAll("_", " "));
+    adminCell(row, suppression.source);
+    adminCell(row, new Date(suppression.updated_at).toLocaleString());
+    const actionCell = adminCell(row, "");
+    const removeButton = document.createElement("button");
+    removeButton.className = "button button-secondary admin-save";
+    removeButton.type = "button";
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", async () => {
+      if (!window.confirm(
+        `Remove email suppression for ${suppression.recipient_email}? `
+        + "Only continue after verifying the address and recipient intent.",
+      )) {
+        return;
+      }
+      removeButton.disabled = true;
+      adminEmailMessage.textContent = "Removing suppression…";
+      adminEmailMessage.classList.remove("is-error", "is-success");
+      try {
+        const result = await adminRequest(
+          `/api/admin/email-suppressions/${
+            encodeURIComponent(suppression.recipient_email)
+          }`,
+          { method: "DELETE" },
+        );
+        adminEmailMessage.textContent = result.message;
+        adminEmailMessage.classList.add("is-success");
+        await loadEmailHealth();
+      } catch (error) {
+        adminEmailMessage.textContent = error.message;
+        adminEmailMessage.classList.add("is-error");
+        removeButton.disabled = false;
+      }
+    });
+    actionCell.replaceChildren(removeButton);
+    adminSuppressionBody.appendChild(row);
+  });
+
+  adminEmailEventBody.replaceChildren();
+  adminEmailEventStatus.textContent = health.recent_events.length
+    ? `${health.recent_events.length} recent email event(s).`
+    : "No delivery events recorded.";
+  adminEmailEventTable.classList.toggle(
+    "is-hidden",
+    health.recent_events.length === 0,
+  );
+  health.recent_events.forEach((event) => {
+    const row = document.createElement("tr");
+    adminCell(row, new Date(event.occurred_at).toLocaleString());
+    adminCell(row, event.event_type.replaceAll("_", " "));
+    adminCell(row, event.recipient_email || "Not disclosed");
+    adminCell(row, event.provider.replaceAll("_", " "));
+    adminCell(row, event.provider_message_id || "—");
+    adminEmailEventBody.appendChild(row);
+  });
+}
+
+async function loadEmailHealth() {
+  const health = await adminRequest("/api/admin/email-health");
+  renderEmailHealth(health);
 }
 
 function renderAccessRequests(requests) {
@@ -705,6 +829,7 @@ async function loadControlPlane() {
       backups,
       security,
       accessRequests,
+      emailHealth,
     ] = await Promise.all([
       adminRequest("/api/admin/overview"),
       adminRequest("/api/admin/organizations"),
@@ -712,6 +837,7 @@ async function loadControlPlane() {
       adminRequest("/api/admin/backups"),
       adminRequest("/api/admin/security-events"),
       adminRequest("/api/admin/access-requests"),
+      adminRequest("/api/admin/email-health"),
     ]);
     adminMetrics.replaceChildren();
     Object.entries({
@@ -734,6 +860,7 @@ async function loadControlPlane() {
     renderBackupStatus(backups);
     renderSecurityEvents(security.events);
     renderAccessRequests(accessRequests.requests);
+    renderEmailHealth(emailHealth);
   } catch (error) {
     adminMessage.textContent = error.message;
     adminMessage.classList.add("is-error");
@@ -773,6 +900,21 @@ closeAdminButton.addEventListener("click", () => {
 });
 
 refreshAdminButton.addEventListener("click", loadControlPlane);
+refreshEmailHealthButton.addEventListener("click", async () => {
+  refreshEmailHealthButton.disabled = true;
+  adminEmailMessage.textContent = "Refreshing email health…";
+  adminEmailMessage.classList.remove("is-error", "is-success");
+  try {
+    await loadEmailHealth();
+    adminEmailMessage.textContent = "Email health refreshed.";
+    adminEmailMessage.classList.add("is-success");
+  } catch (error) {
+    adminEmailMessage.textContent = error.message;
+    adminEmailMessage.classList.add("is-error");
+  } finally {
+    refreshEmailHealthButton.disabled = false;
+  }
+});
 suspendedAdminControlButton.addEventListener("click", () => {
   adminControlPlane.classList.remove("is-hidden");
   suspendedPanel.classList.add("is-hidden");

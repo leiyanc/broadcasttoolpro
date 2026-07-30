@@ -20,6 +20,8 @@ from backend.services.google_drive_backup import google_drive_backup
 from backend.services.identity_store import identity_store
 from backend.services.entitlements import entitlement_store
 from backend.services.email_outbox import email_outbox_store
+from backend.services.email_delivery import email_delivery_service
+from backend.services.email_suppression import email_suppression_store
 
 
 router = APIRouter(
@@ -50,6 +52,41 @@ def security_events(
     return {
         "events": identity_store.security_events(
             min(max(limit, 1), 500)
+        ),
+    }
+
+
+@router.get("/email-health")
+def email_health(_: dict = Depends(superuser)):
+    return {
+        "provider": (
+            "amazon_ses"
+            if email_delivery_service.is_enabled()
+            else "disabled"
+        ),
+        "sns_configured": bool(
+            os.getenv("BTP_SES_SNS_TOPIC_ARN", "").strip()
+        ),
+        **email_suppression_store.health_summary(),
+    }
+
+
+@router.delete("/email-suppressions/{recipient_email}")
+def remove_email_suppression(
+    recipient_email: str,
+    _: dict = Depends(superuser),
+):
+    if not email_suppression_store.remove(recipient_email):
+        raise HTTPException(
+            status_code=404,
+            detail="The email address is not suppressed.",
+        )
+    return {
+        "removed": True,
+        "recipient_email": recipient_email.strip().lower(),
+        "message": (
+            "Suppression removed. Previously canceled messages remain "
+            "canceled and will not be sent automatically."
         ),
     }
 

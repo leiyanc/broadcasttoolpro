@@ -602,6 +602,76 @@
           </div>
         </div>
         <div class="admin-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">TRANSACTIONAL EMAIL</p>
+              <h3>Email Health</h3>
+              <p class="section-copy">
+                Review delivery activity, provider readiness, bounces,
+                complaints, and suppressed recipients.
+              </p>
+            </div>
+            <button
+              class="button button-secondary"
+              id="refresh-email-health"
+              type="button"
+            >
+              Refresh Email Health
+            </button>
+          </div>
+          <div
+            class="admin-backup-details"
+            id="admin-email-metrics"
+          ></div>
+          <p
+            class="auth-message admin-inline-message"
+            id="admin-email-message"
+            aria-live="polite"
+          ></p>
+          <h4 class="admin-subheading">Suppressed Recipients</h4>
+          <p class="history-status" id="admin-suppression-status">
+            No suppressed recipients.
+          </p>
+          <div
+            class="table-scroll is-hidden"
+            id="admin-suppression-table"
+          >
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Email Address</th>
+                  <th>Reason</th>
+                  <th>Source</th>
+                  <th>Last Updated</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-suppression-body"></tbody>
+            </table>
+          </div>
+          <h4 class="admin-subheading">Recent Delivery Events</h4>
+          <p class="history-status" id="admin-email-event-status">
+            No delivery events recorded.
+          </p>
+          <div
+            class="table-scroll is-hidden"
+            id="admin-email-event-table"
+          >
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Date / Time</th>
+                  <th>Event</th>
+                  <th>Recipient</th>
+                  <th>Provider</th>
+                  <th>Message ID</th>
+                </tr>
+              </thead>
+              <tbody id="admin-email-event-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="admin-section">
           <p class="eyebrow">CUSTOMER ONBOARDING</p>
           <h3>Access Requests</h3>
           <p class="section-copy">

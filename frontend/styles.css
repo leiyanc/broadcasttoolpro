@@ -928,6 +928,12 @@ main {
   font-size: 23px;
 }
 
+.admin-subheading {
+  margin: 24px 0 8px;
+  color: var(--navy);
+  font-size: 16px;
+}
+
 .admin-backup-details {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
