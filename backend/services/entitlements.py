@@ -128,7 +128,8 @@ class EntitlementStore:
             try:
                 subscription = connection.execute(
                     """
-                    SELECT status, current_period_end, provider
+                    SELECT status, current_period_end, provider,
+                           payment_waived, waiver_expires_at
                     FROM subscriptions
                     WHERE organization_id = ?
                     """,
@@ -140,12 +141,29 @@ class EntitlementStore:
         plan = organization["plan"]
         trial_active = False
         trial_ends_at = None
+        access_active = True
+        access_type = "paid"
+        access_ends_at = None
         if subscription and subscription["status"] == "trialing":
             trial_ends_at = subscription["current_period_end"]
             trial_active = (
                 datetime.fromisoformat(trial_ends_at)
                 > datetime.now(timezone.utc)
             )
+            access_active = trial_active
+            access_type = "trial"
+            access_ends_at = trial_ends_at
+        elif subscription:
+            access_active = subscription["status"] == "active"
+            if subscription["payment_waived"]:
+                access_type = "complimentary"
+                access_ends_at = subscription["waiver_expires_at"]
+                if (
+                    not access_ends_at
+                    or datetime.fromisoformat(access_ends_at)
+                    <= datetime.now(timezone.utc)
+                ):
+                    access_active = False
         enabled_addons = {row["addon_code"] for row in rows}
         trial_modules = {
             "xmltv_validator",
@@ -163,7 +181,8 @@ class EntitlementStore:
                 )
             else:
                 enabled = (
-                    definition.get("available", True)
+                    access_active
+                    and definition.get("available", True)
                     and (
                         source == "professional"
                         or plan == "enterprise"
@@ -177,13 +196,9 @@ class EntitlementStore:
         return {
             "plan": plan,
             "access": {
-                "type": "trial" if subscription and subscription[
-                    "status"
-                ] == "trialing" else "paid",
-                "active": trial_active if subscription and subscription[
-                    "status"
-                ] == "trialing" else True,
-                "ends_at": trial_ends_at,
+                "type": access_type,
+                "active": access_active,
+                "ends_at": access_ends_at,
                 "download_formats": (
                     ["pdf"] if subscription and subscription[
                         "status"
@@ -197,7 +212,10 @@ class EntitlementStore:
                 {
                     "code": code,
                     **ADD_ON_CATALOG[code],
-                    "enabled": code in enabled_addons or plan == "enterprise",
+                    "enabled": (
+                        access_active
+                        and (code in enabled_addons or plan == "enterprise")
+                    ),
                 }
                 for code in ADD_ON_CATALOG
             ],

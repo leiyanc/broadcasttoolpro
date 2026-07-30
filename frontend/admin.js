@@ -170,6 +170,34 @@ function renderAccessRequests(requests) {
     plan.disabled = request.status !== "pending";
     planCell.appendChild(plan);
     row.appendChild(planCell);
+    const paymentCell = document.createElement("td");
+    const waived = addonToggle(false, "Waive payment");
+    waived.input.disabled = request.status !== "pending";
+    paymentCell.appendChild(waived.control);
+    row.appendChild(paymentCell);
+    const expirationCell = document.createElement("td");
+    const expiration = document.createElement("input");
+    expiration.type = "date";
+    expiration.disabled = true;
+    const defaultExpiration = new Date();
+    defaultExpiration.setDate(defaultExpiration.getDate() + 30);
+    expiration.value = defaultExpiration.toISOString().slice(0, 10);
+    expirationCell.appendChild(expiration);
+    row.appendChild(expirationCell);
+    const reasonCell = document.createElement("td");
+    const reason = document.createElement("input");
+    reason.type = "text";
+    reason.maxLength = 500;
+    reason.placeholder = "Required if waived";
+    reason.disabled = true;
+    reasonCell.appendChild(reason);
+    row.appendChild(reasonCell);
+    waived.input.addEventListener("change", () => {
+      expiration.disabled = !waived.input.checked;
+      reason.disabled = !waived.input.checked;
+      waived.control.querySelector("span").textContent =
+        waived.input.checked ? "Waived" : "Paid";
+    });
     const actionCell = document.createElement("td");
     if (request.status === "pending") {
       const approve = document.createElement("button");
@@ -181,11 +209,25 @@ function renderAccessRequests(requests) {
         adminAccessMessage.textContent = "Creating customer account…";
         adminAccessMessage.classList.remove("is-error");
         try {
+          if (waived.input.checked && !reason.value.trim()) {
+            throw new Error(
+              "Enter an internal reason for waived payment.",
+            );
+          }
           const result = await adminRequest(
             `/api/admin/access-requests/${request.id}/approve`,
             {
               method: "POST",
-              body: JSON.stringify({ plan: plan.value }),
+              body: JSON.stringify({
+                plan: plan.value,
+                waive_payment: waived.input.checked,
+                access_expires_at: waived.input.checked
+                  ? `${expiration.value}T23:59:59Z`
+                  : null,
+                waiver_reason: waived.input.checked
+                  ? reason.value.trim()
+                  : null,
+              }),
             },
           );
           adminAccessMessage.textContent = (
@@ -434,6 +476,18 @@ function renderOrganizations(organizations) {
       ? "Included"
       : (monitoring.input.checked ? "Enabled" : "Disabled");
     monitoringCell.replaceChildren(monitoring.control);
+    adminCell(
+      row,
+      organization.subscription.payment_waived ? "Waived" : "Paid",
+    );
+    adminCell(
+      row,
+      organization.subscription.payment_waived
+        ? new Date(
+          organization.subscription.waiver_expires_at,
+        ).toLocaleDateString()
+        : "—",
+    );
     const actionCell = adminCell(row, "");
     const button = document.createElement("button");
     button.className = "button button-secondary admin-save";

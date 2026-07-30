@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -78,3 +79,51 @@ def test_access_request_and_activation_routes_are_registered():
     assert "/api/admin/access-requests" in paths
     assert "/api/admin/access-requests/{request_id}/approve" in paths
     assert "/api/admin/access-requests/{request_id}/reject" in paths
+
+
+def test_complimentary_enterprise_access_expires_automatically():
+    with TemporaryDirectory() as directory:
+        identities, billing, entitlements, _ = _stores(directory)
+        user, organization, _ = identities.provision_customer(
+            organization_name="Industry Evaluator",
+            display_name="Broadcast Expert",
+            email="expert@example.com",
+            plan="enterprise",
+        )
+        subscription = billing.create_complimentary_subscription(
+            organization["id"],
+            expires_at=(
+                datetime.now(timezone.utc) + timedelta(days=30)
+            ),
+            reason="Industry evaluator",
+            waived_by_user_id=user["id"],
+        )
+
+        access = entitlements.effective_entitlements(organization["id"])
+
+        assert subscription["payment_waived"] is True
+        assert subscription["provider"] == "complimentary"
+        assert subscription["amount_cents"] == 0
+        assert access["access"]["type"] == "complimentary"
+        assert access["access"]["active"] is True
+        assert access["modules"]["hls_monitor"]["enabled"] is True
+
+        expired_at = (
+            datetime.now(timezone.utc) - timedelta(minutes=1)
+        ).isoformat()
+        with billing._connection() as connection:
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET waiver_expires_at = ?, current_period_end = ?
+                WHERE organization_id = ?
+                """,
+                (expired_at, expired_at, organization["id"]),
+            )
+
+        expired = entitlements.effective_entitlements(organization["id"])
+        assert expired["access"]["active"] is False
+        assert not any(
+            module["enabled"]
+            for module in expired["modules"].values()
+        )

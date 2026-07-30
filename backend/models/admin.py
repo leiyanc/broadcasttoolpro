@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -24,3 +25,6 @@ class IncidentMessageCreate(BaseModel):
 
 class AccessRequestApproval(BaseModel):
     plan: Literal["professional", "enterprise"]
+    waive_payment: bool = False
+    access_expires_at: datetime | None = None
+    waiver_reason: str | None = Field(default=None, max_length=500)

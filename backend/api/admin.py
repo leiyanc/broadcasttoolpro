@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -67,12 +68,30 @@ def access_requests(
 def approve_access_request(
     request_id: str,
     request: AccessRequestApproval,
-    _: dict = Depends(superuser),
+    administrator: dict = Depends(superuser),
 ):
     try:
         access_request = access_request_store.get(request_id)
         if access_request["status"] != "pending":
             raise ValueError("Only a pending request can be approved.")
+        if request.waive_payment:
+            if request.access_expires_at is None:
+                raise ValueError(
+                    "An expiration date is required when payment is waived."
+                )
+            expiration = request.access_expires_at
+            if expiration.tzinfo is None:
+                expiration = expiration.replace(tzinfo=timezone.utc)
+            if expiration.astimezone(timezone.utc) <= datetime.now(
+                timezone.utc
+            ):
+                raise ValueError(
+                    "Complimentary access must expire in the future."
+                )
+            if len((request.waiver_reason or "").strip()) < 3:
+                raise ValueError(
+                    "A reason is required when payment is waived."
+                )
         user, organization, activation_token = (
             identity_store.provision_customer(
                 organization_name=access_request["organization_name"],
@@ -81,11 +100,21 @@ def approve_access_request(
                 plan=request.plan,
             )
         )
-        amount_cents = 9900 if request.plan == "professional" else 19900
-        subscription = billing_store.create_manual_paid_subscription(
-            organization["id"],
-            amount_cents=amount_cents,
-        )
+        if request.waive_payment:
+            subscription = billing_store.create_complimentary_subscription(
+                organization["id"],
+                expires_at=request.access_expires_at,
+                reason=request.waiver_reason or "",
+                waived_by_user_id=administrator["id"],
+            )
+        else:
+            amount_cents = (
+                9900 if request.plan == "professional" else 19900
+            )
+            subscription = billing_store.create_manual_paid_subscription(
+                organization["id"],
+                amount_cents=amount_cents,
+            )
         if request.plan == "professional":
             entitlement_store.set_addon(
                 organization["id"],
@@ -118,8 +147,9 @@ def approve_access_request(
             "subscription": subscription,
             "activation_url": activation_url,
             "message": (
-                f"{request.plan.title()} account created. The activation "
-                "message is queued."
+                f"{request.plan.title()} account created"
+                f"{' with waived payment' if request.waive_payment else ''}. "
+                "The activation message is queued."
             ),
         }
     except KeyError as exc:

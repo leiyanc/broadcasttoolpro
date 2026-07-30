@@ -165,6 +165,17 @@ Enterprise price and enables the complete currently available Enterprise
 entitlement set. Payment-provider integration may replace manual subscription
 activation later without changing the onboarding domain model.
 
+Super Admins may grant internal complimentary access when approving a trusted
+Professional or Enterprise evaluator. This is an administrative waiver, not a
+public plan:
+
+- It is never displayed on the landing page or public pricing.
+- A future expiration date and an internal reason are mandatory.
+- The authorizing Super Admin, reason, and expiration are recorded.
+- No invoice or payment is due during the complimentary period.
+- Access ends automatically at expiration unless the grant is explicitly
+  replaced by a paid subscription or extended by an authorized administrator.
+
 Authentication requirements:
 
 - Sign In, Request Access, Free Trial, and Account Activation entry points

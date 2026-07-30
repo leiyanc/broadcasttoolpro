@@ -43,6 +43,10 @@ class BillingStore:
                     current_period_start TEXT NOT NULL,
                     current_period_end TEXT NOT NULL,
                     cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+                    payment_waived INTEGER NOT NULL DEFAULT 0,
+                    waiver_reason TEXT,
+                    waiver_expires_at TEXT,
+                    waived_by_user_id TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     FOREIGN KEY (organization_id)
@@ -72,6 +76,32 @@ class BillingStore:
                 CREATE INDEX IF NOT EXISTS idx_invoices_organization
                     ON invoices(organization_id, invoice_date DESC);
             """)
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(subscriptions)"
+                ).fetchall()
+            }
+            migrations = {
+                "payment_waived": (
+                    "ALTER TABLE subscriptions ADD COLUMN "
+                    "payment_waived INTEGER NOT NULL DEFAULT 0"
+                ),
+                "waiver_reason": (
+                    "ALTER TABLE subscriptions ADD COLUMN waiver_reason TEXT"
+                ),
+                "waiver_expires_at": (
+                    "ALTER TABLE subscriptions ADD COLUMN "
+                    "waiver_expires_at TEXT"
+                ),
+                "waived_by_user_id": (
+                    "ALTER TABLE subscriptions ADD COLUMN "
+                    "waived_by_user_id TEXT"
+                ),
+            }
+            for column, statement in migrations.items():
+                if column not in columns:
+                    connection.execute(statement)
 
     def ensure_subscription(self, organization_id: str) -> dict:
         with self._connection() as connection:
@@ -178,6 +208,10 @@ class BillingStore:
                     billing_cycle = excluded.billing_cycle,
                     amount_cents = excluded.amount_cents,
                     provider = 'manual',
+                    payment_waived = 0,
+                    waiver_reason = NULL,
+                    waiver_expires_at = NULL,
+                    waived_by_user_id = NULL,
                     current_period_start = excluded.current_period_start,
                     current_period_end = excluded.current_period_end,
                     cancel_at_period_end = 0,
@@ -190,6 +224,71 @@ class BillingStore:
                     amount_cents,
                     now.isoformat(),
                     (now + timedelta(days=period_days)).isoformat(),
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+        return self.get_subscription(organization_id)
+
+    def create_complimentary_subscription(
+        self,
+        organization_id: str,
+        *,
+        expires_at: datetime,
+        reason: str,
+        waived_by_user_id: str,
+        billing_cycle: str = "monthly",
+    ) -> dict:
+        if billing_cycle not in {"monthly", "annual"}:
+            raise ValueError("A valid billing cycle is required.")
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.astimezone(timezone.utc)
+        now = datetime.now(timezone.utc)
+        if expires_at <= now:
+            raise ValueError(
+                "Complimentary access must expire in the future."
+            )
+        reason = reason.strip()
+        if len(reason) < 3:
+            raise ValueError(
+                "A reason is required when payment is waived."
+            )
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO subscriptions (
+                    id, organization_id, status, billing_cycle, currency,
+                    amount_cents, provider, current_period_start,
+                    current_period_end, cancel_at_period_end,
+                    payment_waived, waiver_reason, waiver_expires_at,
+                    waived_by_user_id, created_at, updated_at
+                ) VALUES (?, ?, 'active', ?, 'USD', 0, 'complimentary',
+                          ?, ?, 1, 1, ?, ?, ?, ?, ?)
+                ON CONFLICT (organization_id)
+                DO UPDATE SET
+                    status = 'active',
+                    billing_cycle = excluded.billing_cycle,
+                    amount_cents = 0,
+                    provider = 'complimentary',
+                    current_period_start = excluded.current_period_start,
+                    current_period_end = excluded.current_period_end,
+                    cancel_at_period_end = 1,
+                    payment_waived = 1,
+                    waiver_reason = excluded.waiver_reason,
+                    waiver_expires_at = excluded.waiver_expires_at,
+                    waived_by_user_id = excluded.waived_by_user_id,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    billing_cycle,
+                    now.isoformat(),
+                    expires_at.isoformat(),
+                    reason,
+                    expires_at.isoformat(),
+                    waived_by_user_id,
                     now.isoformat(),
                     now.isoformat(),
                 ),
@@ -276,6 +375,7 @@ class BillingStore:
         result["cancel_at_period_end"] = bool(
             result["cancel_at_period_end"]
         )
+        result["payment_waived"] = bool(result["payment_waived"])
         return result
 
 

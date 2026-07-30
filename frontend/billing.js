@@ -181,6 +181,7 @@ function renderPricing(pricing) {
 function renderBilling(payload) {
   const subscription = payload.subscription;
   const pricing = payload.pricing;
+  const complimentary = subscription.payment_waived;
   billingSummary.replaceChildren(
     billingCard(
       "Plan",
@@ -189,16 +190,27 @@ function renderBilling(payload) {
     ),
     billingCard(
       "Subscription",
-      subscription.status.replace("_", " "),
-      `${subscription.billing_cycle} billing`,
+      complimentary
+        ? "Complimentary access"
+        : subscription.status.replace("_", " "),
+      complimentary
+        ? "Payment waived by Broadcast Tool Pro"
+        : `${subscription.billing_cycle} billing`,
     ),
     billingCard(
-      subscription.cancel_at_period_end ? "Access Until" : "Renews",
-      billingDate(subscription.current_period_end),
-      `${billingMoney(
-        pricing.billing_total_cents,
-        pricing.currency,
-      )}/${pricing.billing_period}`,
+      complimentary || subscription.cancel_at_period_end
+        ? "Access Until"
+        : "Renews",
+      billingDate(
+        subscription.waiver_expires_at
+        || subscription.current_period_end,
+      ),
+      complimentary
+        ? "No payment due"
+        : `${billingMoney(
+          pricing.billing_total_cents,
+          pricing.currency,
+        )}/${pricing.billing_period}`,
     ),
   );
   renderPricing(pricing);
