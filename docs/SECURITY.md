@@ -43,6 +43,7 @@ BTP_EMAIL_PROVIDER=ses
 BTP_EMAIL_FROM=Broadcast Tool Pro <notifications@your-domain.com>
 BTP_EMAIL_REPLY_TO=support@your-domain.com
 BTP_SES_REGION=us-east-1
+BTP_SES_SNS_TOPIC_ARN=arn:aws:sns:us-east-1:ACCOUNT_ID:TOPIC_NAME
 ```
 
 `BTP_ENV=production` enables secure cookies and HTTP Strict Transport Security.
@@ -65,6 +66,12 @@ hosting provider's secret-variable manager, not uploaded as a file.
 - Amazon SES is the transactional email provider. Verify the sending domain,
   enable DKIM, SPF, and DMARC, request SES production access, and monitor
   bounces and complaints before enabling customer delivery.
+- Configure the SES notification topic to use the HTTPS endpoint
+  `/api/email-events/amazon-sns`. The endpoint verifies the SNS signature,
+  certificate URL, signature version, and exact configured topic ARN before it
+  confirms a subscription or processes an event.
+- Never expose the SNS endpoint without `BTP_SES_SNS_TOPIC_ARN`. Messages from
+  any other topic are rejected.
 - Use the standard AWS credential chain. Never place AWS access keys in source
   code or commit them to the repository.
 - Add infrastructure-level request limiting before public launch; the current

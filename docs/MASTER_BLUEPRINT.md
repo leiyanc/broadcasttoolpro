@@ -440,5 +440,8 @@ restricted to sandbox operation.
   operational review.
 - Production integration must authenticate provider event notifications before
   recording them.
+- Amazon SNS notifications are accepted only after cryptographic signature
+  verification and exact topic authorization. Subscription confirmation links
+  must also use a trusted Amazon SNS HTTPS host.
 - The platform must never repeatedly send to a permanently bounced address or
   to a recipient who submitted a complaint.

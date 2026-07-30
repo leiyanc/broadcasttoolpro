@@ -22,6 +22,7 @@ from backend.api.auth import router as auth_router
 from backend.api.admin import router as admin_router
 from backend.api.billing import router as billing_router
 from backend.api.support import router as support_router
+from backend.api.email_events import router as email_events_router
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
 from backend.services.email_delivery import email_delivery_service
@@ -111,6 +112,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(billing_router)
 app.include_router(support_router)
+app.include_router(email_events_router)
 
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 app.mount(
