@@ -306,6 +306,46 @@ class EmailOutboxStore:
                 created.append(dict(row))
         return created
 
+    def schedule_account_reactivated(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        organization_name: str,
+        plan: str,
+        sign_in_url: str,
+    ) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid4())
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO email_outbox (
+                    id, organization_id, recipient_email, template_code,
+                    subject, body_text, scheduled_for, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                """,
+                (
+                    message_id,
+                    organization_id,
+                    recipient_email.strip().lower(),
+                    f"account_reactivated_{message_id}",
+                    "Your Broadcast Tool Pro access was approved",
+                    (
+                        f"{organization_name} has been approved for the "
+                        f"{plan.title()} plan. Your existing account remains "
+                        f"valid. Sign in here: {sign_in_url}"
+                    ),
+                    now,
+                    now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+        return dict(row)
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

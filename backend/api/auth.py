@@ -308,6 +308,7 @@ def create_access_request(request: AccessRequestCreate):
     return {
         "request_id": access_request["id"],
         "status": access_request["status"],
+        "existing_account": access_request["existing_account"],
         "communications_scheduled": len(communications),
         "message": (
             "Your access request was received. Broadcast Tool Pro will "

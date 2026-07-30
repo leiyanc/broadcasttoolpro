@@ -162,7 +162,12 @@ function renderAccessRequests(requests) {
     const row = document.createElement("tr");
     adminCell(row, request.id);
     adminCell(row, request.organization_name);
-    adminCell(row, `${request.contact_name}\n${request.email}`);
+    adminCell(
+      row,
+      `${request.contact_name}\n${request.email}${
+        request.existing_account ? "\nExisting account" : ""
+      }`,
+    );
     adminCell(row, new Date(request.created_at).toLocaleString());
     adminCell(row, request.status);
     if (request.status !== "pending") {

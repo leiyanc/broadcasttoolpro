@@ -164,6 +164,11 @@ acknowledgement for the requester and a review notification for every active
 Super Admin. Email delivery depends on the configured provider; Amazon SES
 sandbox restrictions remain in effect until production access is approved.
 
+A rejected request does not prevent the same email address from submitting a
+future request. Existing or suspended customer identities may also submit a
+new commercial review request. Approval reactivates the existing organization
+and preserves its history instead of creating duplicate users or workspaces.
+
 Professional approval creates an active manual subscription at the published
 Professional price and enables Programming plus Traffic Operations.
 Enterprise approval creates an active manual subscription at the published

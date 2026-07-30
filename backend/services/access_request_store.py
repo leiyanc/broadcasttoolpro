@@ -34,6 +34,7 @@ class AccessRequestStore:
                     ),
                     organization_id TEXT,
                     user_id TEXT,
+                    existing_account INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     FOREIGN KEY (organization_id)
@@ -45,6 +46,19 @@ class AccessRequestStore:
                 CREATE INDEX IF NOT EXISTS idx_access_requests_status
                     ON access_requests(status, created_at);
             """)
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(access_requests)"
+                ).fetchall()
+            }
+            if "existing_account" not in columns:
+                connection.execute(
+                    """
+                    ALTER TABLE access_requests
+                    ADD COLUMN existing_account INTEGER NOT NULL DEFAULT 0
+                    """
+                )
 
     def create(
         self,
@@ -61,10 +75,6 @@ class AccessRequestStore:
                 "SELECT 1 FROM users WHERE email = ?",
                 (email,),
             ).fetchone()
-            if existing_user:
-                raise ValueError(
-                    "An account with this email address already exists."
-                )
             pending = connection.execute(
                 """
                 SELECT 1 FROM access_requests
@@ -81,8 +91,8 @@ class AccessRequestStore:
                 """
                 INSERT INTO access_requests (
                     id, organization_name, contact_name, email, message,
-                    status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+                    status, existing_account, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
                 """,
                 (
                     request_id,
@@ -90,6 +100,7 @@ class AccessRequestStore:
                     contact_name.strip(),
                     email,
                     message.strip() if message else None,
+                    int(bool(existing_user)),
                     now,
                     now,
                 ),
@@ -104,7 +115,9 @@ class AccessRequestStore:
             ).fetchone()
         if row is None:
             raise KeyError("Access request not found.")
-        return dict(row)
+        result = dict(row)
+        result["existing_account"] = bool(result["existing_account"])
+        return result
 
     def list(self, limit: int = 100) -> list[dict]:
         with self._connection() as connection:
@@ -118,7 +131,12 @@ class AccessRequestStore:
                 """,
                 (min(max(limit, 1), 500),),
             ).fetchall()
-        return [dict(row) for row in rows]
+        results = []
+        for row in rows:
+            result = dict(row)
+            result["existing_account"] = bool(result["existing_account"])
+            results.append(result)
+        return results
 
     def approve(
         self,

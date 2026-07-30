@@ -865,6 +865,82 @@ class IdentityStore:
             activation_token,
         )
 
+    def existing_customer_account(
+        self,
+        email: str,
+    ) -> tuple[dict, dict] | None:
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT users.id AS user_id, organizations.id AS organization_id
+                FROM users
+                JOIN organization_memberships
+                  ON organization_memberships.user_id = users.id
+                JOIN organizations
+                  ON organizations.id =
+                     organization_memberships.organization_id
+                WHERE users.email = ?
+                ORDER BY
+                    CASE organization_memberships.role
+                        WHEN 'owner' THEN 0 ELSE 1
+                    END,
+                    organization_memberships.created_at
+                LIMIT 1
+                """,
+                (email.strip().lower(),),
+            ).fetchone()
+        if row is None:
+            return None
+        return (
+            self.get_user(row["user_id"]),
+            self._organization_for_user(
+                row["user_id"],
+                row["organization_id"],
+            ),
+        )
+
+    def reactivate_customer_account(
+        self,
+        email: str,
+        plan: str,
+    ) -> tuple[dict, dict]:
+        if plan not in {"professional", "enterprise"}:
+            raise ValueError("A valid paid plan is required.")
+        existing = self.existing_customer_account(email)
+        if existing is None:
+            raise KeyError("Customer account not found.")
+        user, organization = existing
+        now = datetime.now(timezone.utc).isoformat()
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE organizations
+                SET plan = ?, status = 'active', updated_at = ?
+                WHERE id = ?
+                """,
+                (plan, now, organization["id"]),
+            )
+            connection.execute(
+                """
+                UPDATE users
+                SET status = 'active', updated_at = ?
+                WHERE id = ?
+                """,
+                (now, user["id"]),
+            )
+            self._record_security_event(
+                connection,
+                event_type="customer_account_reactivated",
+                user_id=user["id"],
+                email=user["email"],
+                success=True,
+                details=f"Existing account approved for {plan}.",
+            )
+        return (
+            self.get_user(user["id"]),
+            self._organization_for_user(user["id"], organization["id"]),
+        )
+
     def activate_account(
         self,
         token: str,

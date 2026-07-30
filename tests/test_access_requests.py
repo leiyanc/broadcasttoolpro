@@ -188,3 +188,42 @@ def test_rejected_email_can_submit_a_future_access_request():
 
         assert second["id"] != first["id"]
         assert second["status"] == "pending"
+
+
+def test_existing_suspended_account_can_request_and_regain_access():
+    with TemporaryDirectory() as directory:
+        identities, billing, _, requests = _stores(directory)
+        user, organization, _ = identities.register_trial(
+            organization_name="Returning Network",
+            display_name="Operations Manager",
+            email="existing@example.com",
+            password="secure-trial-password",
+        )
+        billing.create_trial_subscription(organization["id"])
+        with identities._connection() as connection:
+            connection.execute(
+                """
+                UPDATE organizations SET status = 'suspended'
+                WHERE id = ?
+                """,
+                (organization["id"],),
+            )
+
+        access_request = requests.create(
+            organization_name="Returning Network",
+            contact_name="Operations Manager",
+            email="existing@example.com",
+            message="We are ready for a paid plan.",
+        )
+        reactivated_user, reactivated_organization = (
+            identities.reactivate_customer_account(
+                "existing@example.com",
+                "professional",
+            )
+        )
+
+        assert access_request["existing_account"] is True
+        assert reactivated_user["id"] == user["id"]
+        assert reactivated_organization["id"] == organization["id"]
+        assert reactivated_organization["status"] == "active"
+        assert reactivated_organization["plan"] == "professional"

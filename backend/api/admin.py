@@ -92,14 +92,24 @@ def approve_access_request(
                 raise ValueError(
                     "A reason is required when payment is waived."
                 )
-        user, organization, activation_token = (
-            identity_store.provision_customer(
-                organization_name=access_request["organization_name"],
-                display_name=access_request["contact_name"],
-                email=access_request["email"],
-                plan=request.plan,
-            )
+        existing_account = identity_store.existing_customer_account(
+            access_request["email"]
         )
+        if existing_account:
+            user, organization = identity_store.reactivate_customer_account(
+                access_request["email"],
+                request.plan,
+            )
+            activation_token = None
+        else:
+            user, organization, activation_token = (
+                identity_store.provision_customer(
+                    organization_name=access_request["organization_name"],
+                    display_name=access_request["contact_name"],
+                    email=access_request["email"],
+                    plan=request.plan,
+                )
+            )
         if request.waive_payment:
             subscription = billing_store.create_complimentary_subscription(
                 organization["id"],
@@ -131,16 +141,26 @@ def approve_access_request(
             "BTP_APPLICATION_URL",
             "http://127.0.0.1:8000/app",
         ).rstrip("/")
-        activation_url = (
-            f"{application_url}?mode=activate&token={activation_token}"
-        )
-        email_outbox_store.schedule_account_activation(
-            organization_id=organization["id"],
-            recipient_email=user["email"],
-            organization_name=organization["name"],
-            plan=request.plan,
-            activation_url=activation_url,
-        )
+        if activation_token:
+            activation_url = (
+                f"{application_url}?mode=activate&token={activation_token}"
+            )
+            email_outbox_store.schedule_account_activation(
+                organization_id=organization["id"],
+                recipient_email=user["email"],
+                organization_name=organization["name"],
+                plan=request.plan,
+                activation_url=activation_url,
+            )
+        else:
+            activation_url = f"{application_url}?mode=signin"
+            email_outbox_store.schedule_account_reactivated(
+                organization_id=organization["id"],
+                recipient_email=user["email"],
+                organization_name=organization["name"],
+                plan=request.plan,
+                sign_in_url=activation_url,
+            )
         return {
             "request": approved,
             "organization": organization,
