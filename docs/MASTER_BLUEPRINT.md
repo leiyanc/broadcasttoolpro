@@ -259,7 +259,11 @@ The first public staging environment uses one paid entry-level service, one
 small persistent disk, one application worker, and a provider-generated URL.
 It remains isolated from local development, disables automatic deployments,
 and does not connect the production domain. Web-based Super Admin bootstrap is
-disabled; the first administrator is created once from hosting secrets.
+disabled; the first administrator is created once from hosting secrets. This
+environment was deployed and persistence-tested on July 30, 2026. Account,
+session, and Enterprise plan state survived a service restart, and the initial
+administrator password was removed from the hosting environment after
+bootstrap.
 - Maintain automatic off-server backups of the database and essential records.
 - Use a free or low-cost transactional email tier when email delivery is
   connected.

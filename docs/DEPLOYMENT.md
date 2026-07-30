@@ -19,6 +19,20 @@ and deployment testing. Local development remains independent.
 The service uses its Render-provided `onrender.com` address. The production
 domain is not connected at this stage.
 
+## Verified staging environment
+
+The initial staging environment was deployed and verified on July 30, 2026:
+
+- URL: `https://broadcast-tool-pro-staging.onrender.com/app`
+- Render service: `broadcast-tool-pro-staging`
+- Estimated baseline cost: USD 7.25 per month before taxes or overages
+- Persistent account, session, and plan data verified across a service restart
+- Initial Super Admin authentication verified
+- Super Admin organization plan verified as Enterprise
+- Public health, privacy, terms, and email-policy routes verified
+
+No credentials or customer operational data are recorded in this document.
+
 ## Required Render secrets
 
 The first Blueprint creation prompts for:
@@ -39,7 +53,8 @@ environment because it is no longer needed.
 2. In Render, create a Blueprint from `render.yaml`.
 3. Confirm the paid Starter service and 1 GB disk before approving creation.
 4. Enter the required secret values.
-5. Wait for the service and initial administrator hook to complete.
+5. Wait for the service and initial administrator hook
+   (`python -m tools.bootstrap_admin`) to complete.
 6. Open `/health`, `/privacy`, `/terms`, and `/email-policy`.
 7. Sign in with the staging administrator and immediately verify Account,
    Control Panel, and organization access.
