@@ -1056,6 +1056,24 @@ class IdentityStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def superuser_notification_targets(self) -> list[dict]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT users.id AS user_id, users.email,
+                       MIN(organization_memberships.organization_id)
+                           AS organization_id
+                FROM users
+                JOIN organization_memberships
+                  ON organization_memberships.user_id = users.id
+                WHERE users.is_superuser = 1
+                  AND users.status = 'active'
+                GROUP BY users.id, users.email
+                ORDER BY users.created_at
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def require_role(
         self,
         user_id: str,

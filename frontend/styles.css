@@ -406,6 +406,94 @@ main {
   color: var(--danger);
 }
 
+.access-request-success {
+  position: relative;
+  justify-items: center;
+  overflow: hidden;
+  text-align: center;
+}
+
+.access-request-success .auth-copy {
+  max-width: 430px;
+}
+
+.success-check {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  color: #ffffff;
+  background: var(--blue);
+  border-radius: 50%;
+  box-shadow: 0 12px 28px rgba(19, 93, 255, 0.28);
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.request-reference {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  padding: 16px;
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.request-reference span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.request-reference strong {
+  color: var(--ink);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+
+.success-next-step {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.success-confetti span {
+  position: absolute;
+  width: 7px;
+  height: 15px;
+  background: var(--blue);
+  border-radius: 3px;
+  opacity: 0;
+  animation: success-confetti 900ms ease-out forwards;
+}
+
+.success-confetti span:nth-child(1) { top: 7%; left: 17%; }
+.success-confetti span:nth-child(2) { top: 12%; left: 28%; animation-delay: 80ms; background: var(--signal); }
+.success-confetti span:nth-child(3) { top: 6%; right: 20%; animation-delay: 120ms; }
+.success-confetti span:nth-child(4) { top: 18%; right: 12%; animation-delay: 40ms; background: var(--signal); }
+.success-confetti span:nth-child(5) { top: 26%; left: 10%; animation-delay: 160ms; }
+.success-confetti span:nth-child(6) { top: 32%; right: 8%; animation-delay: 200ms; background: var(--signal); }
+.success-confetti span:nth-child(7) { top: 4%; left: 42%; animation-delay: 100ms; background: var(--signal); }
+.success-confetti span:nth-child(8) { top: 9%; right: 38%; animation-delay: 180ms; }
+
+@keyframes success-confetti {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) rotate(0deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(48px) rotate(210deg);
+  }
+}
+
 .account-panel {
   display: flex;
   justify-content: space-between;

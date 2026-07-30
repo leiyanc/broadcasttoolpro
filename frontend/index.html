@@ -297,6 +297,40 @@
           <p class="auth-message" id="access-request-message"></p>
         </form>
 
+        <section
+          class="auth-card access-request-success is-hidden"
+          id="access-request-success"
+          aria-live="polite"
+        >
+          <div class="success-confetti" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="success-check" aria-hidden="true">✓</div>
+          <p class="eyebrow">REQUEST RECEIVED</p>
+          <h2 id="access-request-success-title">Thank you.</h2>
+          <p class="auth-copy">
+            Your request is now awaiting review by Broadcast Tool Pro.
+            We will contact you at the email address you provided.
+          </p>
+          <div class="request-reference">
+            <span>Request Reference</span>
+            <strong id="access-request-reference"></strong>
+          </div>
+          <p class="success-next-step">
+            No payment has been collected. If approved, you will receive
+            account activation and plan instructions separately.
+          </p>
+          <a class="button button-primary" href="/">Return to Home</a>
+          <button
+            class="text-link auth-text-button"
+            data-return-to-login
+            type="button"
+          >
+            Go to Sign In
+          </button>
+        </section>
+
         <form class="auth-card is-hidden" id="trial-form">
           <p class="eyebrow">7-DAY FREE TRIAL</p>
           <h2>Create Account</h2>

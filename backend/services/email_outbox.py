@@ -218,6 +218,94 @@ class EmailOutboxStore:
             ).fetchone()
         return dict(row)
 
+    def schedule_access_request_received(
+        self,
+        *,
+        notification_organization_id: str,
+        request_id: str,
+        organization_name: str,
+        contact_name: str,
+        requester_email: str,
+        request_message: str | None,
+        administrator_emails: list[str],
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        messages = [
+            {
+                "recipient": requester_email,
+                "code": f"access_request_requester_{request_id}",
+                "subject": "We received your Broadcast Tool Pro request",
+                "body": (
+                    f"Hello {contact_name},\n\n"
+                    "Your Broadcast Tool Pro access request has been "
+                    f"received. Reference: {request_id}.\n\n"
+                    "Our team will review your workflow and contact you "
+                    "with the appropriate plan and activation instructions. "
+                    "No payment has been collected."
+                ),
+            }
+        ]
+        request_details = (
+            request_message.strip()
+            if request_message and request_message.strip()
+            else "No additional workflow details were provided."
+        )
+        for position, email in enumerate(
+            dict.fromkeys(
+                address.strip().lower()
+                for address in administrator_emails
+                if address.strip()
+            )
+        ):
+            messages.append(
+                {
+                    "recipient": email,
+                    "code": (
+                        f"access_request_admin_{request_id}_{position}"
+                    ),
+                    "subject": (
+                        f"New access request: {organization_name}"
+                    ),
+                    "body": (
+                        "A new paid-account access request is ready for "
+                        "review in the Control Panel.\n\n"
+                        f"Reference: {request_id}\n"
+                        f"Organization: {organization_name}\n"
+                        f"Contact: {contact_name}\n"
+                        f"Email: {requester_email}\n"
+                        f"Workflow: {request_details}"
+                    ),
+                }
+            )
+        created: list[dict] = []
+        with self._connection() as connection:
+            for message in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        message_id,
+                        notification_organization_id,
+                        message["recipient"].strip().lower(),
+                        message["code"],
+                        message["subject"],
+                        message["body"],
+                        now,
+                        now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?",
+                    (message_id,),
+                ).fetchone()
+                created.append(dict(row))
+        return created
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

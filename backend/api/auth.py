@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 from fastapi import (
     APIRouter,
@@ -272,15 +273,42 @@ def register_trial(
 
 @router.post("/access-requests", status_code=status.HTTP_201_CREATED)
 def create_access_request(request: AccessRequestCreate):
+    communications = []
     try:
         access_request = access_request_store.create(
             **request.model_dump()
         )
+        notification_targets = (
+            identity_store.superuser_notification_targets()
+        )
+        if notification_targets:
+            try:
+                communications = (
+                    email_outbox_store.schedule_access_request_received(
+                        notification_organization_id=(
+                            notification_targets[0]["organization_id"]
+                        ),
+                        request_id=access_request["id"],
+                        organization_name=access_request[
+                            "organization_name"
+                        ],
+                        contact_name=access_request["contact_name"],
+                        requester_email=access_request["email"],
+                        request_message=access_request["message"],
+                        administrator_emails=[
+                            target["email"]
+                            for target in notification_targets
+                        ],
+                    )
+                )
+            except sqlite3.Error:
+                communications = []
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {
         "request_id": access_request["id"],
         "status": access_request["status"],
+        "communications_scheduled": len(communications),
         "message": (
             "Your access request was received. Broadcast Tool Pro will "
             "review the appropriate account and plan."

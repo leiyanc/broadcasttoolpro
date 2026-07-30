@@ -158,6 +158,12 @@ the request, assigns Professional or Enterprise, and creates a separate paid
 organization account. The customer then uses a single-use activation link to
 create a password. Activation links expire after seven days.
 
+After submission, the request form is replaced by a dedicated confirmation
+screen with the request reference and next steps. The platform queues an
+acknowledgement for the requester and a review notification for every active
+Super Admin. Email delivery depends on the configured provider; Amazon SES
+sandbox restrictions remain in effect until production access is approved.
+
 Professional approval creates an active manual subscription at the published
 Professional price and enables Programming plus Traffic Operations.
 Enterprise approval creates an active manual subscription at the published

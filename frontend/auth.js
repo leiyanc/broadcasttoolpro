@@ -4,6 +4,15 @@ const bootstrapForm = document.querySelector("#bootstrap-form");
 const loginForm = document.querySelector("#login-form");
 const trialForm = document.querySelector("#trial-form");
 const accessRequestForm = document.querySelector("#access-request-form");
+const accessRequestSuccess = document.querySelector(
+  "#access-request-success",
+);
+const accessRequestSuccessTitle = document.querySelector(
+  "#access-request-success-title",
+);
+const accessRequestReference = document.querySelector(
+  "#access-request-reference",
+);
 const accountActivationForm = document.querySelector(
   "#account-activation-form",
 );
@@ -180,6 +189,7 @@ function selectAuthenticationMode(mode) {
     "is-hidden", !trial,
   );
   accessRequestForm.classList.toggle("is-hidden", !accessRequest);
+  accessRequestSuccess.classList.add("is-hidden");
   accountActivationForm.classList.toggle("is-hidden", !activation);
   passwordResetRequestForm.classList.toggle("is-hidden", !resetRequest);
   passwordResetConfirmForm.classList.toggle("is-hidden", !resetConfirm);
@@ -346,13 +356,18 @@ accessRequestForm.addEventListener("submit", async (event) => {
   button.disabled = true;
   accessRequestMessage.classList.remove("is-error");
   try {
+    const payload = formPayload(accessRequestForm);
     const result = await authRequest("/api/auth/access-requests", {
       method: "POST",
-      body: JSON.stringify(formPayload(accessRequestForm)),
+      body: JSON.stringify(payload),
     });
     accessRequestForm.reset();
-    accessRequestMessage.textContent =
-      `${result.message} Reference: ${result.request_id}`;
+    accessRequestMessage.textContent = "";
+    accessRequestSuccessTitle.textContent =
+      `Thank you, ${payload.contact_name}.`;
+    accessRequestReference.textContent = result.request_id;
+    accessRequestForm.classList.add("is-hidden");
+    accessRequestSuccess.classList.remove("is-hidden");
   } catch (error) {
     accessRequestMessage.textContent = error.message;
     accessRequestMessage.classList.add("is-error");

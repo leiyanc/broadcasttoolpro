@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from backend.main import app
 from backend.services.access_request_store import AccessRequestStore
 from backend.services.billing_store import BillingStore
+from backend.services.email_outbox import EmailOutboxStore
 from backend.services.entitlements import EntitlementStore
 from backend.services.identity_store import IdentityStore
 from backend.services.tenant_store import TenantStore
@@ -127,3 +128,41 @@ def test_complimentary_enterprise_access_expires_automatically():
             module["enabled"]
             for module in expired["modules"].values()
         )
+
+
+def test_access_request_schedules_requester_and_admin_notifications():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "access.db"
+        identities, _, _, requests = _stores(directory)
+        admin, organization, _ = identities.bootstrap(
+            organization_name="Broadcast Tool Pro",
+            display_name="Platform Admin",
+            email="admin@example.com",
+            password="secure-admin-password",
+        )
+        access_request = requests.create(
+            organization_name="Pilot Network",
+            contact_name="Operations Manager",
+            email="operator@example.com",
+            message="We want to evaluate traffic workflows.",
+        )
+        targets = identities.superuser_notification_targets()
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        messages = outbox.schedule_access_request_received(
+            notification_organization_id=organization["id"],
+            request_id=access_request["id"],
+            organization_name=access_request["organization_name"],
+            contact_name=access_request["contact_name"],
+            requester_email=access_request["email"],
+            request_message=access_request["message"],
+            administrator_emails=[target["email"] for target in targets],
+        )
+
+        assert admin["is_superuser"] is True
+        assert len(messages) == 2
+        assert {
+            message["recipient_email"] for message in messages
+        } == {"operator@example.com", "admin@example.com"}
+        assert all(message["status"] == "queued" for message in messages)
