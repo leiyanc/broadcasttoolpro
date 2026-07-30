@@ -483,8 +483,9 @@ The first staging pilot established these cross-module requirements:
 
 - XMLTV import failures must direct the user to the official Excel and CSV
   templates so structural and formatting errors are actionable.
-- Programming Grid exports must include a compact visual legend for Live,
-  Premiere, and Replay indicators without reducing schedule readability.
+- Programming Grid exports must use the XML `Live` value as the only special
+  status highlight. All live programmes use the same color and a compact Live
+  legend; Premiere and Replay are not highlighted.
 - Optional client identity entered for Pre Logs or Post Logs must be included
   in generated deliverables and omitted completely when left blank.
 - Every multi-file upload area must support reliable click selection and

@@ -9,7 +9,6 @@ from backend.api.xmltv import download_programming_grid
 from backend.services.xmltv.programming_grid import (
     LIVE_BACKGROUND,
     GRID_LEGEND_LABELS,
-    _live_color,
     _show_color,
     generate_programming_grid,
 )
@@ -48,7 +47,7 @@ def test_programming_grid_creates_a_pdf():
 
     assert content.startswith(b"%PDF")
     assert len(content) > 1_000
-    assert GRID_LEGEND_LABELS == ("Live", "Premiere", "Replay")
+    assert GRID_LEGEND_LABELS == ("Live",)
 
 
 def test_equal_show_titles_use_the_same_light_background():
@@ -57,13 +56,6 @@ def test_equal_show_titles_use_the_same_light_background():
 
     assert first.hexval() == repeated.hexval()
     assert first.hexval() != LIVE_BACKGROUND.hexval()
-
-
-def test_different_live_shows_use_different_dark_backgrounds():
-    buenos_dias = _live_color("Buenos Días Wall Street")
-    pulso = _live_color("Pulso Del Mercado")
-
-    assert buenos_dias.hexval() != pulso.hexval()
 
 
 def test_programming_grid_endpoint_uses_the_original_epg_upload():

@@ -21,21 +21,7 @@ BRAND_LOGO = (
     / "broadcast-tool-pro-logo.png"
 )
 LIVE_BACKGROUND = colors.HexColor("#7F1D1D")
-PREMIERE_MARKER = colors.HexColor("#D97706")
-REPLAY_MARKER = colors.HexColor("#64748B")
-GRID_LEGEND_LABELS = ("Live", "Premiere", "Replay")
-LIVE_COLORS = (
-    colors.HexColor("#7F1D1D"),
-    colors.HexColor("#78350F"),
-    colors.HexColor("#1E3A8A"),
-    colors.HexColor("#4C1D95"),
-    colors.HexColor("#064E3B"),
-    colors.HexColor("#831843"),
-    colors.HexColor("#164E63"),
-    colors.HexColor("#3F3F46"),
-    colors.HexColor("#713F12"),
-    colors.HexColor("#312E81"),
-)
+GRID_LEGEND_LABELS = ("Live",)
 SHOW_COLORS = (
     colors.HexColor("#DDEAFE"),
     colors.HexColor("#DCF5E8"),
@@ -97,12 +83,6 @@ def _show_color(title: str) -> colors.Color:
     normalized = " ".join(title.casefold().split())
     digest = sha256(normalized.encode("utf-8")).digest()
     return SHOW_COLORS[int.from_bytes(digest[:2], "big") % len(SHOW_COLORS)]
-
-
-def _live_color(title: str) -> colors.Color:
-    normalized = " ".join(title.casefold().split())
-    digest = sha256(normalized.encode("utf-8")).digest()
-    return LIVE_COLORS[int.from_bytes(digest[:2], "big") % len(LIVE_COLORS)]
 
 
 def _draw_logo(
@@ -237,7 +217,7 @@ def _draw_page(
 
             is_live = bool(programme.get("live"))
             pdf.setFillColor(
-                _live_color(programme["program_title"])
+                LIVE_BACKGROUND
                 if is_live
                 else _show_color(programme["program_title"])
             )
@@ -250,21 +230,6 @@ def _draw_page(
                 fill=1,
                 stroke=1,
             )
-            marker = None
-            if not is_live and programme.get("premiere"):
-                marker = PREMIERE_MARKER
-            elif not is_live and programme.get("previously_shown"):
-                marker = REPLAY_MARKER
-            if marker:
-                pdf.setFillColor(marker)
-                pdf.rect(
-                    x + 0.5,
-                    block_bottom,
-                    2.2,
-                    block_top - block_bottom,
-                    fill=1,
-                    stroke=0,
-                )
             if block_top - block_bottom >= 5:
                 pdf.setFillColor(colors.white if is_live else NAVY)
                 pdf.setFont("Helvetica-Bold", 5.5)
@@ -285,11 +250,7 @@ def _draw_page(
     )
     legend_x = left + 126
     legend_y = 13
-    legend = (
-        (GRID_LEGEND_LABELS[0], LIVE_BACKGROUND),
-        (GRID_LEGEND_LABELS[1], PREMIERE_MARKER),
-        (GRID_LEGEND_LABELS[2], REPLAY_MARKER),
-    )
+    legend = ((GRID_LEGEND_LABELS[0], LIVE_BACKGROUND),)
     pdf.setFont("Helvetica-Bold", 5.2)
     for label, fill in legend:
         pdf.setFillColor(fill)
