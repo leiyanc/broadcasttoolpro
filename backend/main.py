@@ -86,6 +86,14 @@ async def security_headers(request, call_next):
     )
     if request.url.path.startswith("/api/auth"):
         response.headers["Cache-Control"] = "no-store"
+    if (
+        os.getenv("BTP_ENV", "").lower() != "production"
+        and (
+            request.url.path.startswith("/static/")
+            or request.url.path in {"/", "/app"}
+        )
+    ):
+        response.headers["Cache-Control"] = "no-store"
     if os.getenv("BTP_ENV", "").lower() == "production":
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
