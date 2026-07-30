@@ -461,6 +461,14 @@ function renderOrganizations(organizations) {
   organizations.forEach((organization) => {
     const row = document.createElement("tr");
     adminCell(row, organization.name);
+    adminCell(
+      row,
+      organization.owner_email
+        ? `${organization.owner_name || "Account owner"}\n${
+          organization.owner_email
+        }`
+        : "No owner assigned",
+    );
     const planCell = adminCell(row, "");
     const plan = adminSelect(
       ["professional", "enterprise"],
@@ -479,6 +487,10 @@ function renderOrganizations(organizations) {
       organization.subscription.status,
     );
     subscriptionStatusCell.replaceChildren(subscriptionStatus);
+    adminCell(
+      row,
+      organization.entitlements.access.active ? "Enabled" : "Blocked",
+    );
     const billingCycleCell = adminCell(row, "");
     const billingCycle = adminSelect(
       ["monthly", "annual"],
@@ -518,9 +530,9 @@ function renderOrganizations(organizations) {
     );
     adminCell(
       row,
-      organization.subscription.payment_waived
+      organization.entitlements.access.ends_at
         ? new Date(
-          organization.subscription.waiver_expires_at,
+          organization.entitlements.access.ends_at,
         ).toLocaleDateString()
         : "—",
     );

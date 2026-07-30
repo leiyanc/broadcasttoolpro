@@ -129,7 +129,8 @@ class EntitlementStore:
                 subscription = connection.execute(
                     """
                     SELECT status, current_period_end, provider,
-                           payment_waived, waiver_expires_at
+                           payment_waived, waiver_expires_at,
+                           cancel_at_period_end
                     FROM subscriptions
                     WHERE organization_id = ?
                     """,
@@ -155,6 +156,14 @@ class EntitlementStore:
             access_ends_at = trial_ends_at
         elif subscription:
             access_active = subscription["status"] == "active"
+            if subscription["cancel_at_period_end"]:
+                access_ends_at = subscription["current_period_end"]
+                if (
+                    not access_ends_at
+                    or datetime.fromisoformat(access_ends_at)
+                    <= datetime.now(timezone.utc)
+                ):
+                    access_active = False
             if subscription["payment_waived"]:
                 access_type = "complimentary"
                 access_ends_at = subscription["waiver_expires_at"]

@@ -132,7 +132,35 @@ class AdminStore:
                     COUNT(DISTINCT workspaces.id) AS workspace_count,
                     COUNT(DISTINCT channels.id) AS channel_count,
                     COUNT(DISTINCT organization_memberships.user_id)
-                        AS member_count
+                        AS member_count,
+                    (
+                        SELECT users.display_name
+                        FROM organization_memberships AS owner_membership
+                        JOIN users
+                          ON users.id = owner_membership.user_id
+                        WHERE owner_membership.organization_id =
+                              organizations.id
+                        ORDER BY
+                            CASE owner_membership.role
+                                WHEN 'owner' THEN 0 ELSE 1
+                            END,
+                            owner_membership.created_at
+                        LIMIT 1
+                    ) AS owner_name,
+                    (
+                        SELECT users.email
+                        FROM organization_memberships AS owner_membership
+                        JOIN users
+                          ON users.id = owner_membership.user_id
+                        WHERE owner_membership.organization_id =
+                              organizations.id
+                        ORDER BY
+                            CASE owner_membership.role
+                                WHEN 'owner' THEN 0 ELSE 1
+                            END,
+                            owner_membership.created_at
+                        LIMIT 1
+                    ) AS owner_email
                 FROM organizations
                 LEFT JOIN workspaces
                     ON workspaces.organization_id = organizations.id

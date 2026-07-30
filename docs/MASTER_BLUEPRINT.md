@@ -145,6 +145,14 @@ A future provider integration must
 use webhooks as the authoritative source for payment status and must be
 idempotent, auditable, and isolated from broadcast-processing workflows.
 
+Cancellation is distinct from organization suspension and request rejection.
+An immediately canceled subscription blocks product modules while preserving
+the user identity, organization, configuration, and history. A subscription
+marked to cancel at period end remains usable through its recorded period end
+and is blocked automatically afterward. The Super Admin organization view must
+show the account owner, organization status, subscription status, effective
+product access, and access end date as separate fields.
+
 ## Account Access and Trial Lifecycle
 
 Account creation supports two distinct commercial paths:
