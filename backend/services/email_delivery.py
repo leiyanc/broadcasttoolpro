@@ -2,6 +2,7 @@ import html
 import os
 from dataclasses import dataclass
 from typing import Protocol
+from urllib.parse import urljoin
 
 from backend.services.email_outbox import (
     EmailOutboxStore,
@@ -57,13 +58,40 @@ class AmazonSesProvider:
         body = "<br>".join(
             html.escape(line) for line in message["body_text"].splitlines()
         )
+        application_url = os.getenv("BTP_APPLICATION_URL", "").strip()
+        logo_url = (
+            urljoin(
+                f"{application_url.rstrip('/')}/",
+                "/static/assets/broadcast-tool-pro-logo.png",
+            )
+            if application_url
+            else ""
+        )
+        brand_header = (
+            f'<img src="{html.escape(logo_url, quote=True)}" '
+            'alt="Broadcast Tool Pro" width="240" '
+            'style="display:block;width:240px;max-width:100%;height:auto;'
+            'border:0;outline:none;text-decoration:none">'
+            if logo_url
+            else (
+                '<div style="color:#1765ff;font-size:24px;font-weight:700">'
+                "Broadcast Tool Pro</div>"
+            )
+        )
         return (
-            "<div style=\"font-family:Arial,sans-serif;color:#102842;"
-            "line-height:1.6;max-width:640px\">"
-            "<h2 style=\"color:#1765ff\">Broadcast Tool Pro</h2>"
-            f"<p>{body}</p>"
-            "<p style=\"color:#60728c;font-size:12px\">"
-            "All Your Broadcast Needs. One Place.</p></div>"
+            '<div style="margin:0;padding:24px;background:#f4f7fb">'
+            '<table role="presentation" width="100%" cellspacing="0" '
+            'cellpadding="0" border="0" style="max-width:640px;margin:0 auto;'
+            'background:#ffffff;border:1px solid #dbe4f0;border-radius:12px">'
+            '<tr><td style="padding:28px 32px 20px">'
+            f"{brand_header}</td></tr>"
+            '<tr><td style="padding:0 32px 28px;font-family:Arial,sans-serif;'
+            'color:#102842;font-size:15px;line-height:1.65">'
+            f"<p style=\"margin:0\">{body}</p>"
+            '<p style="margin:28px 0 0;padding-top:18px;border-top:1px solid '
+            '#e5ebf3;color:#60728c;font-size:12px">'
+            "All Your Broadcast Needs. One Place.</p>"
+            "</td></tr></table></div>"
         )
 
     def send(self, message: dict) -> str | None:

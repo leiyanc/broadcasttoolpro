@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from backend.services.email_delivery import EmailDeliveryService
+from backend.services.email_delivery import (
+    AmazonSesProvider,
+    EmailDeliveryService,
+)
 from backend.services.email_outbox import EmailOutboxStore
 from backend.services.tenant_store import TenantStore
 
@@ -69,3 +72,28 @@ def test_failed_email_is_requeued_without_losing_the_error():
             message["last_error"] == "SES unavailable"
             for message in messages
         )
+
+
+def test_email_html_uses_the_branded_logo(monkeypatch):
+    monkeypatch.setenv(
+        "BTP_APPLICATION_URL",
+        "https://broadcast-tool-pro-staging.onrender.com/app",
+    )
+
+    content = AmazonSesProvider._html_body({"body_text": "Hello\nWorld"})
+
+    assert (
+        "https://broadcast-tool-pro-staging.onrender.com/"
+        "static/assets/broadcast-tool-pro-logo.png"
+    ) in content
+    assert 'alt="Broadcast Tool Pro"' in content
+    assert "Hello<br>World" in content
+
+
+def test_email_html_keeps_a_text_brand_fallback(monkeypatch):
+    monkeypatch.delenv("BTP_APPLICATION_URL", raising=False)
+
+    content = AmazonSesProvider._html_body({"body_text": "Hello"})
+
+    assert "Broadcast Tool Pro</div>" in content
+    assert "<img" not in content
