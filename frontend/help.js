@@ -314,6 +314,31 @@ const helpGuides = {
       tip: "Solo Owners y Admins pueden acceder a la información de facturación.",
     },
   },
+  privacy: {
+    section: null,
+    en: {
+      title: "Privacy & Data Requests",
+      summary: "Request access, correction, export, deletion, or clarification about retention of eligible account information.",
+      steps: [
+        "Choose Report a Problem from this guide.",
+        "Select the privacy request type that matches the action you need.",
+        "Describe the affected account or organization information without including passwords or confidential source files.",
+        "Follow the request from My Support Requests while the administrator verifies ownership and scope.",
+      ],
+      tip: "Deletion applies only to eligible data and requires identity, authorization, retention, and legal review.",
+    },
+    es: {
+      title: "Privacidad y solicitudes de datos",
+      summary: "Solicita acceso, corrección, exportación, eliminación o información sobre la retención de datos elegibles de la cuenta.",
+      steps: [
+        "Selecciona Reportar un problema desde esta guía.",
+        "Elige el tipo de solicitud de privacidad correspondiente.",
+        "Describe los datos de cuenta u organización afectados sin incluir contraseñas ni archivos confidenciales.",
+        "Sigue la solicitud desde Mis solicitudes mientras se verifican la identidad y el alcance.",
+      ],
+      tip: "La eliminación solo aplica a datos elegibles y requiere revisar identidad, autorización, retención y obligaciones legales.",
+    },
+  },
 };
 
 let helpCurrentGuide = "getting_started";
@@ -420,9 +445,13 @@ function helpRenderGuide(guideKey = helpCurrentGuide) {
   helpCurrentGuide = guideKey;
   helpGuideSelect.value = guideKey;
   helpTitle.textContent = content.title;
-  helpFooter.textContent = language === "es"
-    ? "¿Necesitas más ayuda? Contacta al administrador e incluye el módulo y el mensaje de error exacto."
-    : "Need more assistance? Contact your platform administrator and include the module name and the exact error message.";
+  helpFooter.textContent = guideKey === "privacy"
+    ? (language === "es"
+      ? "Las solicitudes se revisan antes de exportar o eliminar información."
+      : "Requests are reviewed before any information is exported or deleted.")
+    : (language === "es"
+      ? "¿Necesitas más ayuda? Contacta al administrador e incluye el módulo y el mensaje de error exacto."
+      : "Need more assistance? Contact your platform administrator and include the module name and the exact error message.");
   helpTranslateSupportUi(language);
   const summary = document.createElement("p");
   summary.className = "help-summary";
@@ -511,6 +540,11 @@ helpReportButton.addEventListener("click", () => {
   helpSupportForm.classList.remove("is-hidden");
   helpSupportModule.value = helpGuides[helpCurrentGuide]?.en.title
     || "Platform";
+  if (helpCurrentGuide === "privacy") {
+    helpCategory.value = "privacy";
+  } else if (helpCategory.value === "privacy") {
+    helpCategory.value = "technical";
+  }
   helpSupportMessage.textContent = "";
   helpSupportMessage.classList.remove("is-error");
   updateHelpSupportFields();

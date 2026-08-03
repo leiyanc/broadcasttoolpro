@@ -232,6 +232,8 @@ def test_secure_account_interface_is_present():
     assert '<option value="privacy">Privacy or data request</option>' in html
     assert 'id="help-request-type"' in html
     assert '"Account & Privacy"' in help_javascript
+    assert 'title: "Privacy & Data Requests"' in help_javascript
+    assert 'helpCurrentGuide === "privacy"' in help_javascript
     assert 'id="admin-email-attempt-body"' in html
     assert 'id="admin-suppression-body"' in html
     assert 'id="admin-email-event-body"' in html
