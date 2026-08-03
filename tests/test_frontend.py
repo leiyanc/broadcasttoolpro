@@ -224,6 +224,9 @@ def test_secure_account_interface_is_present():
     assert "Payment received" in admin_javascript
     assert "Complimentary access" in admin_javascript
     assert "payment_confirmed" in admin_javascript
+    assert "Ends on date" in admin_javascript
+    assert "lifecycle_note" in admin_javascript
+    assert "subscription_events" in admin_javascript
     assert "/api/admin/incidents/" in admin_javascript
     assert "openAdminTicket" in admin_javascript
     assert 'id="admin-ticket-panel"' in html

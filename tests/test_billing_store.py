@@ -52,11 +52,49 @@ def test_subscription_status_and_cycle_can_be_updated():
             billing_cycle="annual",
             current_period_end=period_end,
             cancel_at_period_end=True,
+            lifecycle_note="Annual access scheduled to end.",
         )
 
         assert result["status"] == "trialing"
         assert result["billing_cycle"] == "annual"
         assert result["cancel_at_period_end"] is True
+        events = billing.subscription_events(organization["id"])
+        assert len(events) == 1
+        assert events[0]["details"] == "Annual access scheduled to end."
+
+
+def test_complimentary_extension_updates_the_enforced_expiration():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Pilot Network",
+            slug=None,
+            plan="enterprise",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        original_end = datetime.now(timezone.utc) + timedelta(days=30)
+        extended_end = datetime.now(timezone.utc) + timedelta(days=60)
+        billing.create_complimentary_subscription(
+            organization["id"],
+            expires_at=original_end,
+            reason="Initial pilot",
+            waived_by_user_id="admin-user",
+        )
+
+        result = billing.update_subscription(
+            organization["id"],
+            status="active",
+            billing_cycle=None,
+            current_period_end=extended_end,
+            cancel_at_period_end=True,
+            lifecycle_note="Pilot extended after review.",
+        )
+
+        assert result["waiver_expires_at"] == extended_end.isoformat()
+        assert result["current_period_end"] == extended_end.isoformat()
 
 
 def test_billing_routes_are_registered():

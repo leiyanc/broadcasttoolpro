@@ -75,6 +75,20 @@ class BillingStore:
 
                 CREATE INDEX IF NOT EXISTS idx_invoices_organization
                     ON invoices(organization_id, invoice_date DESC);
+
+                CREATE TABLE IF NOT EXISTS subscription_events (
+                    id TEXT PRIMARY KEY,
+                    organization_id TEXT NOT NULL,
+                    actor_user_id TEXT,
+                    event_type TEXT NOT NULL,
+                    details TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (organization_id)
+                        REFERENCES organizations(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_subscription_events_org
+                    ON subscription_events(organization_id, created_at DESC);
             """)
             columns = {
                 row["name"]
@@ -320,6 +334,8 @@ class BillingStore:
         billing_cycle: str | None,
         current_period_end: datetime | None,
         cancel_at_period_end: bool | None,
+        lifecycle_note: str | None = None,
+        actor_user_id: str | None = None,
     ) -> dict:
         self.ensure_subscription(organization_id)
         assignments: list[str] = []
@@ -337,7 +353,14 @@ class BillingStore:
                     tzinfo=timezone.utc
                 )
             assignments.append("current_period_end = ?")
-            values.append(current_period_end.astimezone(timezone.utc).isoformat())
+            normalized_end = current_period_end.astimezone(
+                timezone.utc
+            ).isoformat()
+            values.append(normalized_end)
+            current = self.get_subscription(organization_id)
+            if current["payment_waived"]:
+                assignments.append("waiver_expires_at = ?")
+                values.append(normalized_end)
         if cancel_at_period_end is not None:
             assignments.append("cancel_at_period_end = ?")
             values.append(int(cancel_at_period_end))
@@ -355,7 +378,48 @@ class BillingStore:
                 """,
                 values,
             )
+            details = (lifecycle_note or "").strip() or (
+                "Subscription lifecycle settings updated."
+            )
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, actor_user_id, event_type,
+                    details, created_at
+                ) VALUES (?, ?, ?, 'subscription_updated', ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    actor_user_id,
+                    details,
+                    _utc_now(),
+                ),
+            )
         return self.get_subscription(organization_id)
+
+    def subscription_events(
+        self,
+        organization_id: str,
+        limit: int = 20,
+    ) -> list[dict]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT subscription_events.*
+                FROM subscription_events
+                WHERE subscription_events.organization_id = ?
+                ORDER BY subscription_events.created_at DESC
+                LIMIT ?
+                """,
+                (organization_id, min(max(limit, 1), 100)),
+            ).fetchall()
+        events = [dict(row) for row in rows]
+        for event in events:
+            event["actor_name"] = (
+                "Administrator" if event["actor_user_id"] else "System"
+            )
+        return events
 
     def list_invoices(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:

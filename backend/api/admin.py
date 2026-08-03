@@ -312,6 +312,9 @@ def admin_organizations(_: dict = Depends(superuser)):
                 "subscription": billing_store.get_subscription(
                     organization["id"]
                 ),
+                "subscription_events": billing_store.subscription_events(
+                    organization["id"], 5
+                ),
             }
             for organization in organizations
         ]
@@ -322,12 +325,13 @@ def admin_organizations(_: dict = Depends(superuser)):
 def update_subscription(
     organization_id: str,
     request: SubscriptionAdminUpdate,
-    _: dict = Depends(superuser),
+    administrator: dict = Depends(superuser),
 ):
     try:
         return billing_store.update_subscription(
             organization_id,
             **request.model_dump(),
+            actor_user_id=administrator["id"],
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=exc.args[0]) from exc

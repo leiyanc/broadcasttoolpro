@@ -600,6 +600,9 @@ async function saveOrganization(context) {
     billingCycle,
     traffic,
     monitoring,
+    accessEnd,
+    endAccess,
+    lifecycleNote,
     button,
     rowStatus,
   } = context;
@@ -624,6 +627,11 @@ async function saveOrganization(context) {
         body: JSON.stringify({
           status: subscriptionStatus.value,
           billing_cycle: billingCycle.value,
+          current_period_end: accessEnd.value
+            ? `${accessEnd.value}T23:59:59Z`
+            : null,
+          cancel_at_period_end: endAccess.checked,
+          lifecycle_note: lifecycleNote.value.trim() || null,
         }),
       },
     );
@@ -733,14 +741,33 @@ function renderOrganizations(organizations) {
       row,
       organization.subscription.payment_waived ? "Waived" : "Paid",
     );
-    adminCell(
-      row,
-      organization.entitlements.access.ends_at
-        ? new Date(
-          organization.entitlements.access.ends_at,
-        ).toLocaleDateString()
-        : "—",
+    const accessEndCell = adminCell(row, "");
+    const accessEnd = document.createElement("input");
+    accessEnd.type = "date";
+    accessEnd.value = organization.subscription.current_period_end
+      ? organization.subscription.current_period_end.slice(0, 10)
+      : "";
+    accessEndCell.replaceChildren(accessEnd);
+    const endAccessCell = adminCell(row, "");
+    const endAccess = addonToggle(
+      organization.subscription.cancel_at_period_end,
+      organization.subscription.cancel_at_period_end
+        ? "Ends on date"
+        : "No scheduled end",
     );
+    endAccessCell.replaceChildren(endAccess.control);
+    const lifecycleNoteCell = adminCell(row, "");
+    const lifecycleNote = document.createElement("input");
+    lifecycleNote.type = "text";
+    lifecycleNote.maxLength = 500;
+    lifecycleNote.placeholder = "Reason for this change";
+    const latestLifecycleEvent = document.createElement("small");
+    latestLifecycleEvent.className = "admin-row-status";
+    const latestEvent = organization.subscription_events?.[0];
+    latestLifecycleEvent.textContent = latestEvent
+      ? `${latestEvent.actor_name || "System"}: ${latestEvent.details}`
+      : "No lifecycle changes recorded";
+    lifecycleNoteCell.replaceChildren(lifecycleNote, latestLifecycleEvent);
     const actionCell = adminCell(row, "");
     const button = document.createElement("button");
     button.className = "button button-secondary admin-save";
@@ -759,6 +786,9 @@ function renderOrganizations(organizations) {
       billingCycle,
       traffic.input,
       monitoring.input,
+      accessEnd,
+      endAccess.input,
+      lifecycleNote,
     ].forEach((control) => {
       control.addEventListener("change", () => {
         if (control === plan) {
@@ -770,6 +800,9 @@ function renderOrganizations(organizations) {
               ? "Included"
               : (addon.input.checked ? "Enabled" : "Disabled");
           }
+        } else if (control === endAccess.input) {
+          endAccess.control.querySelector("span").textContent =
+            control.checked ? "Ends on date" : "No scheduled end";
         } else if (control.type === "checkbox") {
           control.closest("label").querySelector("span").textContent =
             control.checked ? "Enabled" : "Disabled";
@@ -785,6 +818,9 @@ function renderOrganizations(organizations) {
       billingCycle,
       traffic: traffic.input,
       monitoring: monitoring.input,
+      accessEnd,
+      endAccess: endAccess.input,
+      lifecycleNote,
       button,
       rowStatus,
     }));
