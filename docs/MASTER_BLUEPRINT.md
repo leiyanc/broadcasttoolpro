@@ -296,11 +296,18 @@ The Stage 1 security baseline now includes:
 - Organization-scoped report history and artifact downloads; every archived
   Pre Log and Post Log records its owning organization and generating user,
   and cross-organization report access returns no artifact
+- Request identifiers and structured operational logging without recording
+  credentials, tokens, query strings, uploaded content, or request bodies
+- Process-local rate limits on login, password recovery, trial registration,
+  access requests, and web bootstrap. This has no external infrastructure
+  cost and is intentionally scoped to the single-worker Stage 1 deployment;
+  a shared limiter becomes necessary only when the service scales to multiple
+  workers or instances
 
-The provider-neutral email outbox is connected to Amazon SES and remains
-disabled until production environment variables and AWS credentials are
-configured. Infrastructure-level request limiting remains a commercial-launch
-requirement.
+The provider-neutral email outbox is connected to Amazon SES. Delivery is
+controlled through production environment variables and least-privilege AWS
+credentials. The Stage 1 request limiter runs within the existing application
+process; infrastructure-level limiting remains a future scaling requirement.
 
 The Stage 1 implementation includes a cost-free SQLite backup foundation:
 

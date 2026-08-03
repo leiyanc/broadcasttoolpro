@@ -1,11 +1,13 @@
 import asyncio
 import os
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -26,6 +28,7 @@ from backend.api.email_events import router as email_events_router
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
 from backend.services.email_delivery import email_delivery_service
+from backend.core.operations import logger, request_rate_limiter
 
 
 @asynccontextmanager
@@ -45,7 +48,7 @@ async def lifespan(_: FastAPI):
                         manifest=backup,
                     )
             except Exception:
-                pass
+                logger.exception("background_backup_failed")
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=60 * 60)
             except TimeoutError:
@@ -56,7 +59,7 @@ async def lifespan(_: FastAPI):
             try:
                 await asyncio.to_thread(email_delivery_service.deliver_due)
             except Exception:
-                pass
+                logger.exception("background_email_delivery_failed")
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=30)
             except TimeoutError:
@@ -78,7 +81,57 @@ app = FastAPI(
 
 @app.middleware("http")
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    request_id = uuid.uuid4().hex
+    started_at = time.perf_counter()
+    client_key = request.client.host if request.client else "unknown"
+    allowed, retry_after = request_rate_limiter.check(
+        method=request.method,
+        path=request.url.path,
+        client_key=client_key,
+    )
+    if not allowed:
+        logger.warning(
+            "request_rate_limited request_id=%s method=%s path=%s client=%s",
+            request_id,
+            request.method,
+            request.url.path,
+            client_key,
+        )
+        response = JSONResponse(
+            status_code=429,
+            content={
+                "detail": (
+                    "Too many requests. Please wait before trying again."
+                )
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+    else:
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                "request_failed request_id=%s method=%s path=%s client=%s",
+                request_id,
+                request.method,
+                request.url.path,
+                client_key,
+            )
+            raise
+
+    duration_ms = (time.perf_counter() - started_at) * 1000
+    log = logger.warning if response.status_code >= 400 else logger.info
+    log(
+        "request_completed request_id=%s method=%s path=%s status=%s "
+        "duration_ms=%.2f client=%s",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+        client_key,
+    )
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "same-origin"
