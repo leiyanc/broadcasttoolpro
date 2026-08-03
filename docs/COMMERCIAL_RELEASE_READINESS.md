@@ -35,7 +35,7 @@ accounts. It must not yet be presented as the final paid production service.
 | Billing | Payment, invoices, cancellation, refunds, and failed-payment ownership are defined | **Blocking** | Approve provider and operating procedure, or document a controlled manual contract process |
 | Support | Customers can submit and follow support requests; Super Admin can reply and resolve | Ready | Help Center and Control Panel workflow |
 | Privacy | Retention, deletion, and customer data-request procedure are operational | **Blocking** | Approve owner, response process, and retention schedule |
-| Product | Pilot acceptance test succeeds with representative customer files | In progress | Complete second tester feedback and close release-blocking findings |
+| Product | Pilot acceptance test succeeds with representative customer files | In progress | Complete [`PILOT_ACCEPTANCE.md`](PILOT_ACCEPTANCE.md) for the second tester and close release-blocking findings |
 
 ## Required Production Evidence
 
@@ -53,6 +53,9 @@ The release record must contain:
 
 The rollback runbook and isolated rehearsal are defined in
 [`ROLLBACK.md`](ROLLBACK.md).
+
+The controlled external evaluation procedure and severity standard are defined
+in [`PILOT_ACCEPTANCE.md`](PILOT_ACCEPTANCE.md).
 
 ## Staging Smoke Test
 
