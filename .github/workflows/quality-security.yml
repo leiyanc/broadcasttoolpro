@@ -1,0 +1,62 @@
+name: Quality and Security
+
+on:
+  push:
+    branches:
+      - feature/xmltv-generator
+      - main
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 13 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Application tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run complete test suite
+        env:
+          BTP_ENV: test
+          BTP_DATA_DIR: ${{ runner.temp }}/broadcast-tool-pro-tests
+        run: python -m pytest -q -p no:cacheprovider
+
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install audit tooling
+        run: python -m pip install -r requirements-dev.txt
+      - name: Audit production dependencies
+        run: python -m pip_audit -r requirements.txt

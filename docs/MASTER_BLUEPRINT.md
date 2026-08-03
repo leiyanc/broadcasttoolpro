@@ -280,7 +280,6 @@ Commercial launch still requires:
 - Error logging and operational alerts
 - Automated backups and a tested restoration procedure
 - Temporary-file cleanup
-- Dependency and security update procedures
 
 The Stage 1 security baseline now includes:
 
@@ -303,6 +302,10 @@ The Stage 1 security baseline now includes:
   cost and is intentionally scoped to the single-worker Stage 1 deployment;
   a shared limiter becomes necessary only when the service scales to multiple
   workers or instances
+- GitHub Actions quality gates that run the complete test suite and a
+  production-dependency vulnerability audit on every change and every week
+- Weekly Python dependency review and monthly GitHub Actions review through
+  Dependabot, with staging verification and no automatic merging
 
 The provider-neutral email outbox is connected to Amazon SES. Delivery is
 controlled through production environment variables and least-privilege AWS

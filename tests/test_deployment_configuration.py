@@ -17,7 +17,7 @@ def test_render_staging_blueprint_is_isolated_and_persistent():
     assert "sizeGB: 1" in blueprint
     assert "initialDeployHook: python -m tools.bootstrap_admin" in blueprint
     assert "BTP_EMAIL_PROVIDER" in blueprint
-    assert "value: disabled" in blueprint
+    assert "value: ses" in blueprint
 
 
 def test_deployment_documentation_lists_required_secrets():

@@ -28,8 +28,8 @@
   and can be used once.
 - Creating a new recovery token invalidates older unused tokens.
 - Completing recovery revokes all existing sessions.
-- Recovery messages are queued in the email outbox. Commercial launch requires
-  connecting and monitoring an email delivery provider.
+- Recovery messages are queued in the email outbox and delivered through
+  Amazon SES. Delivery failures, bounces, and complaints remain observable.
 
 ## Production Configuration
 
@@ -60,12 +60,20 @@ hosting provider's secret-variable manager, not uploaded as a file.
 
 ## Operational Requirements
 
-- Keep application and dependency security updates current.
+- Every push and pull request must pass the complete automated test suite and
+  the production-dependency vulnerability audit in GitHub Actions.
+- Dependabot checks Python packages weekly and GitHub Actions monthly. Updates
+  are reviewed and tested; they are never merged automatically.
+- Review critical vulnerability notices within one business day, high-severity
+  notices within seven days, and routine dependency updates monthly.
+- Apply dependency changes on staging first. Confirm authentication, exports,
+  backups, email, and organization isolation before a commercial deployment.
 - Restrict access to the database, OAuth files, encryption key, and backups.
 - Review rejected sign-ins and temporary locks in the Control Panel.
-- Amazon SES is the transactional email provider. Verify the sending domain,
-  enable DKIM, SPF, and DMARC, request SES production access, and monitor
-  bounces and complaints before enabling customer delivery.
+- Amazon SES is the transactional email provider. The verified staging
+  environment may deliver only to verified sandbox recipients. Commercial
+  customer delivery requires SES production access, DKIM, SPF, DMARC, and
+  monitored bounces and complaints.
 - Configure the SES notification topic to use the HTTPS endpoint
   `/api/email-events/amazon-sns`. The endpoint verifies the SNS signature,
   certificate URL, signature version, and exact configured topic ARN before it
@@ -74,8 +82,11 @@ hosting provider's secret-variable manager, not uploaded as a file.
   any other topic are rejected.
 - Use the standard AWS credential chain. Never place AWS access keys in source
   code or commit them to the repository.
-- Add infrastructure-level request limiting before public launch; the current
-  database-backed account lock protects individual accounts but does not
-  replace edge-level abuse protection.
+- Stage 1 applies process-local request limits to sensitive public account
+  routes in addition to database-backed account locks. Move limiting to a
+  shared edge or data service before adding multiple workers or instances.
+- Every application response includes a request identifier. Operational logs
+  record method, path, status, duration, and client address without recording
+  credentials, tokens, query strings, request bodies, or uploaded content.
 - Test login, logout, password recovery, organization suspension, and Super
   Admin access before every commercial release.
