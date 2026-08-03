@@ -380,8 +380,12 @@ function renderAccessRequests(requests) {
     planCell.appendChild(plan);
     row.appendChild(planCell);
     const paymentCell = document.createElement("td");
-    const waived = addonToggle(false, "Waive payment");
-    paymentCell.appendChild(waived.control);
+    const payment = adminSelect(
+      ["Select payment status", "Payment received", "Complimentary access"],
+      "Select payment status",
+    );
+    payment.setAttribute("aria-label", `Payment approval for ${request.id}`);
+    paymentCell.appendChild(payment);
     row.appendChild(paymentCell);
     const expirationCell = document.createElement("td");
     const expiration = document.createElement("input");
@@ -400,11 +404,10 @@ function renderAccessRequests(requests) {
     reason.disabled = true;
     reasonCell.appendChild(reason);
     row.appendChild(reasonCell);
-    waived.input.addEventListener("change", () => {
-      expiration.disabled = !waived.input.checked;
-      reason.disabled = !waived.input.checked;
-      waived.control.querySelector("span").textContent =
-        waived.input.checked ? "Waived" : "Paid";
+    payment.addEventListener("change", () => {
+      const complimentary = payment.value === "Complimentary access";
+      expiration.disabled = !complimentary;
+      reason.disabled = !complimentary;
     });
     const actionCell = document.createElement("td");
     const actionGroup = document.createElement("div");
@@ -436,9 +439,15 @@ function renderAccessRequests(requests) {
         adminAccessMessage.textContent = "Creating customer account…";
         adminAccessMessage.classList.remove("is-error");
         try {
-          if (waived.input.checked && !reason.value.trim()) {
+          if (payment.value === "Select payment status") {
             throw new Error(
-              "Enter an internal reason for waived payment.",
+              "Select Payment received or Complimentary access.",
+            );
+          }
+          const complimentary = payment.value === "Complimentary access";
+          if (complimentary && !reason.value.trim()) {
+            throw new Error(
+              "Enter an internal reason for complimentary access.",
             );
           }
           const result = await adminRequest(
@@ -447,11 +456,12 @@ function renderAccessRequests(requests) {
               method: "POST",
               body: JSON.stringify({
                 plan: plan.value,
-                waive_payment: waived.input.checked,
-                access_expires_at: waived.input.checked
+                payment_confirmed: payment.value === "Payment received",
+                waive_payment: complimentary,
+                access_expires_at: complimentary
                   ? `${expiration.value}T23:59:59Z`
                   : null,
-                waiver_reason: waived.input.checked
+                waiver_reason: complimentary
                   ? reason.value.trim()
                   : null,
               }),

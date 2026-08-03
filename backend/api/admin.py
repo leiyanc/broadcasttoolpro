@@ -137,6 +137,15 @@ def approve_access_request(
         access_request = access_request_store.get(request_id)
         if access_request["status"] != "pending":
             raise ValueError("Only a pending request can be approved.")
+        if request.payment_confirmed and request.waive_payment:
+            raise ValueError(
+                "Payment cannot be both confirmed and waived."
+            )
+        if not request.payment_confirmed and not request.waive_payment:
+            raise ValueError(
+                "Confirm that payment was received or approve "
+                "complimentary access."
+            )
         if request.waive_payment:
             if request.access_expires_at is None:
                 raise ValueError(

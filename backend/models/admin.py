@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class OrganizationAdminUpdate(BaseModel):
@@ -25,6 +25,16 @@ class IncidentMessageCreate(BaseModel):
 
 class AccessRequestApproval(BaseModel):
     plan: Literal["professional", "enterprise"]
+    payment_confirmed: bool = False
     waive_payment: bool = False
     access_expires_at: datetime | None = None
     waiver_reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def require_payment_decision(self):
+        if self.payment_confirmed == self.waive_payment:
+            raise ValueError(
+                "Confirm payment or approve complimentary access, "
+                "but not both."
+            )
+        return self

@@ -2,7 +2,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
+from pydantic import ValidationError
+
 from backend.main import app
+from backend.models.admin import AccessRequestApproval
 from backend.services.access_request_store import AccessRequestStore
 from backend.services.billing_store import BillingStore
 from backend.services.email_outbox import EmailOutboxStore
@@ -80,6 +84,36 @@ def test_access_request_and_activation_routes_are_registered():
     assert "/api/admin/access-requests" in paths
     assert "/api/admin/access-requests/{request_id}/approve" in paths
     assert "/api/admin/access-requests/{request_id}/reject" in paths
+
+
+def test_access_approval_represents_paid_and_complimentary_decisions():
+    paid = AccessRequestApproval(
+        plan="professional",
+        payment_confirmed=True,
+    )
+    complimentary = AccessRequestApproval(
+        plan="enterprise",
+        waive_payment=True,
+        access_expires_at=(
+            datetime.now(timezone.utc) + timedelta(days=30)
+        ),
+        waiver_reason="Controlled industry pilot",
+    )
+
+    assert paid.payment_confirmed is True
+    assert paid.waive_payment is False
+    assert complimentary.payment_confirmed is False
+    assert complimentary.waive_payment is True
+
+    with pytest.raises(ValidationError):
+        AccessRequestApproval(plan="professional")
+
+    with pytest.raises(ValidationError):
+        AccessRequestApproval(
+            plan="enterprise",
+            payment_confirmed=True,
+            waive_payment=True,
+        )
 
 
 def test_complimentary_enterprise_access_expires_automatically():

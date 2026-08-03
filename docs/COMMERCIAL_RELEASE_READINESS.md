@@ -31,8 +31,8 @@ accounts. It must not yet be presented as the final paid production service.
 | Email | Sending domain, DKIM, and controlled SES delivery are verified | Ready for staging | Verified domain and staging delivery |
 | Email | SES production access and bounce/complaint event handling are operational | **Blocking** | Obtain production access and verify signed SNS events end to end |
 | Domain | Production domain and HTTPS are connected without changing staging | **Blocking** | Create a separate production service and connect final domain only there |
-| Billing | Published prices and server-side entitlements agree | Ready for manual pilots | Reverify plan catalog before launch |
-| Billing | Payment, invoices, cancellation, refunds, and failed-payment ownership are defined | **Blocking** | Approve provider and operating procedure, or document a controlled manual contract process |
+| Billing | Published prices and server-side entitlements agree | Ready for manual pilots | Paid activation requires explicit payment confirmation; complimentary access requires an expiration and reason |
+| Billing | Payment, invoices, cancellation, refunds, and failed-payment ownership are defined | Partially ready | Controlled pilot activation is defined in [`MANUAL_BILLING_OPERATIONS.md`](MANUAL_BILLING_OPERATIONS.md); integrated collection and the final refund/cancellation process remain blocking for self-service commercial launch |
 | Support | Customers can submit and follow support requests; Super Admin can reply and resolve | Ready | Help Center and Control Panel workflow |
 | Privacy | Retention, deletion, and customer data-request procedure are operational | Partially ready | Intake and controlled handling are defined in [`DATA_PRIVACY_OPERATIONS.md`](DATA_PRIVACY_OPERATIONS.md); approve the final post-closure retention schedule before launch |
 | Product | Pilot acceptance test succeeds with representative customer files | In progress | Complete [`PILOT_ACCEPTANCE.md`](PILOT_ACCEPTANCE.md) for the second tester and close release-blocking findings |
