@@ -30,7 +30,7 @@ services:
       - key: BTP_TEMP_RETENTION_HOURS
         value: "24"
       - key: BTP_EMAIL_PROVIDER
-        value: disabled
+        value: ses
       - key: BTP_APPLICATION_URL
         sync: false
       - key: BTP_INITIAL_ORGANIZATION_NAME
