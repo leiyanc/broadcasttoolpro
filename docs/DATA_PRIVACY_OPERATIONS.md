@@ -17,6 +17,10 @@ of information involved. Operational source files are not attached
 automatically. Requests from people who cannot sign in must first be matched to
 an existing organization contact through the public Request Access workflow.
 
+Privacy requests are classified under `Account & Privacy` regardless of which
+product module was open when the Help Center was launched. They must not be
+misclassified as an XMLTV, Traffic, or HLS product defect.
+
 ## Supported Actions
 
 - **Access:** describe the applicable account and operational information held.

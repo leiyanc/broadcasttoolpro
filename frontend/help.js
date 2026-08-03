@@ -63,6 +63,10 @@ function updateHelpSupportFields() {
   const isPrivacy = category === "privacy";
   const showError = ["technical", "validation", "export"].includes(category);
 
+  helpSupportModule.value = isPrivacy
+    ? "Account & Privacy"
+    : (helpGuides[helpCurrentGuide]?.en.title || "Platform");
+
   helpFormTitle.textContent = isBilling
     ? (spanish ? "Solicitud de facturación" : "Billing Request")
     : (isAccount

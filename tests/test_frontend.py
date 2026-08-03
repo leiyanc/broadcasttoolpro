@@ -210,6 +210,7 @@ def test_secure_account_interface_is_present():
     ) >= 2
     auth_javascript = (FRONTEND_DIR / "auth.js").read_text()
     admin_javascript = (FRONTEND_DIR / "admin.js").read_text()
+    help_javascript = (FRONTEND_DIR / "help.js").read_text()
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
     assert "/api/auth/email-preferences" in auth_javascript
@@ -230,6 +231,7 @@ def test_secure_account_interface_is_present():
     assert 'id="admin-email-metrics"' in html
     assert '<option value="privacy">Privacy or data request</option>' in html
     assert 'id="help-request-type"' in html
+    assert '"Account & Privacy"' in help_javascript
     assert 'id="admin-email-attempt-body"' in html
     assert 'id="admin-suppression-body"' in html
     assert 'id="admin-email-event-body"' in html
