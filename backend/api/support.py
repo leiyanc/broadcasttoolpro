@@ -40,6 +40,7 @@ def create_support_request(
             "urgent": "critical",
         }[request.priority],
         priority=request.priority,
+        request_type=request.request_type,
         summary=request.summary,
         details=request.details,
         error_message=request.error_message,

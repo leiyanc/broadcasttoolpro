@@ -1,6 +1,9 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
+from pydantic import ValidationError
+
 from backend.main import app
 from backend.models.support import SupportRequestCreate
 from backend.services.admin_store import AdminStore
@@ -98,8 +101,21 @@ def test_privacy_data_request_is_a_supported_category():
         module="Account",
         category="privacy",
         priority="normal",
+        request_type="export",
         summary="Export my organization data",
         details="Please provide an export of applicable account information.",
     )
 
     assert request.category == "privacy"
+    assert request.request_type == "export"
+
+
+def test_privacy_data_request_requires_a_structured_type():
+    with pytest.raises(ValidationError):
+        SupportRequestCreate(
+            module="Account",
+            category="privacy",
+            priority="normal",
+            summary="Review my organization data",
+            details="Please review the applicable account information.",
+        )

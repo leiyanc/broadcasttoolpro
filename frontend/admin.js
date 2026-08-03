@@ -512,6 +512,15 @@ async function openAdminTicket(incidentId) {
         incident.module,
       ),
     );
+    if (incident.request_type) {
+      adminTicketDetails.appendChild(
+        adminTicketItem(
+          "Privacy request type",
+          incident.request_type.replaceAll("_", " "),
+          incident.created_at,
+        ),
+      );
+    }
     if (incident.error_message) {
       adminTicketDetails.appendChild(
         adminTicketItem(

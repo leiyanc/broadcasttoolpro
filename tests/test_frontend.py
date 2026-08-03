@@ -229,6 +229,7 @@ def test_secure_account_interface_is_present():
     assert "/api/admin/backups" in admin_javascript
     assert 'id="admin-email-metrics"' in html
     assert '<option value="privacy">Privacy or data request</option>' in html
+    assert 'id="help-request-type"' in html
     assert 'id="admin-email-attempt-body"' in html
     assert 'id="admin-suppression-body"' in html
     assert 'id="admin-email-event-body"' in html

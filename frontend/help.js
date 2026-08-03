@@ -44,6 +44,13 @@ const helpDetailsLabel = document.querySelector("#help-details-label");
 const helpErrorLabel = document.querySelector("#help-error-label");
 const helpErrorField = document.querySelector("#help-error-field");
 const helpCategory = document.querySelector("#help-category");
+const helpRequestTypeField = document.querySelector(
+  "#help-request-type-field",
+);
+const helpRequestTypeLabel = document.querySelector(
+  "#help-request-type-label",
+);
+const helpRequestType = document.querySelector("#help-request-type");
 const helpPrivacy = document.querySelector("#help-privacy");
 const helpSubmitButton = document.querySelector("#help-submit-button");
 const helpPreferenceKey = "broadcastToolPro.helpLanguage";
@@ -67,6 +74,9 @@ function updateHelpSupportFields() {
     ? (spanish ? "Detalles de la solicitud" : "Request details")
     : (spanish ? "¿Qué ocurrió?" : "What happened?");
   helpErrorField.classList.toggle("is-hidden", !showError);
+  helpRequestTypeField.classList.toggle("is-hidden", !isPrivacy);
+  helpRequestType.required = isPrivacy;
+  helpRequestType.disabled = !isPrivacy;
   if (!showError) helpSupportForm.elements.error_message.value = "";
 }
 
@@ -320,6 +330,9 @@ function helpTranslateSupportUi(language) {
   helpRequestsBack.textContent = spanish ? "Volver" : "Back";
   helpCategoryLabel.textContent = spanish ? "Categoría" : "Category";
   helpPriorityLabel.textContent = spanish ? "Prioridad" : "Priority";
+  helpRequestTypeLabel.textContent = spanish
+    ? "Tipo de solicitud"
+    : "Request Type";
   helpSummaryLabel.textContent = spanish
     ? "Descripción breve"
     : "Short description";
@@ -357,11 +370,29 @@ function helpTranslateSupportUi(language) {
   const priorityLabels = spanish
     ? { low: "Baja", normal: "Normal", high: "Alta", urgent: "Urgente" }
     : { low: "Low", normal: "Normal", high: "High", urgent: "Urgent" };
+  const requestTypeLabels = spanish
+    ? {
+        access: "Acceder a mis datos",
+        correction: "Corregir mis datos",
+        export: "Exportar mis datos",
+        deletion: "Eliminar datos elegibles",
+        retention: "Consulta sobre retención",
+      }
+    : {
+        access: "Access my data",
+        correction: "Correct my data",
+        export: "Export my data",
+        deletion: "Delete eligible data",
+        retention: "Retention question",
+      };
   document.querySelectorAll("#help-category option").forEach((option) => {
     option.textContent = categoryLabels[option.value];
   });
   document.querySelectorAll("#help-priority option").forEach((option) => {
     option.textContent = priorityLabels[option.value];
+  });
+  document.querySelectorAll("#help-request-type option").forEach((option) => {
+    option.textContent = requestTypeLabels[option.value];
   });
 }
 
@@ -497,6 +528,7 @@ helpSupportForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(payload),
     });
     helpSupportForm.reset();
+    updateHelpSupportFields();
     helpSupportModule.value = helpGuides[helpCurrentGuide]?.en.title
       || "Platform";
     helpSupportMessage.textContent =

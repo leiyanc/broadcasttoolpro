@@ -50,6 +50,7 @@ class AdminStore:
                 "reporter_user_id": "TEXT",
                 "category": "TEXT",
                 "priority": "TEXT",
+                "request_type": "TEXT",
                 "error_message": "TEXT",
                 "resolution": "TEXT",
             }
@@ -220,6 +221,7 @@ class AdminStore:
         category: str | None = None,
         severity: str,
         priority: str | None = None,
+        request_type: str | None = None,
         summary: str,
         details: str | None = None,
         error_message: str | None = None,
@@ -230,9 +232,9 @@ class AdminStore:
                 """
                 INSERT INTO incidents (
                     id, organization_id, reporter_user_id, module, category,
-                    severity, priority, status, summary, details,
+                    severity, priority, request_type, status, summary, details,
                     error_message, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
                 """,
                 (
                     incident_id,
@@ -242,6 +244,7 @@ class AdminStore:
                     category,
                     severity,
                     priority,
+                    request_type,
                     summary,
                     details,
                     error_message,
