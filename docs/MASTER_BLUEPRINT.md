@@ -281,6 +281,13 @@ Commercial launch still requires:
 - Automated backups and a tested restoration procedure
 - Temporary-file cleanup
 
+Commercial promotion is governed by
+[`COMMERCIAL_RELEASE_READINESS.md`](COMMERCIAL_RELEASE_READINESS.md). The
+current decision is **staging pilot ready, not commercial production ready**.
+Technical readiness, legal approval, payment operations, production email,
+external alerting, and customer-data procedures are independent gates; a
+successful deployment does not silently approve any of them.
+
 The Stage 1 security baseline now includes:
 
 - Scrypt password hashing with unique salts

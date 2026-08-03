@@ -12,8 +12,9 @@ and deployment testing. Local development remains independent.
 - One 1 GB persistent disk
 - One Uvicorn worker
 - SQLite and report history under the mounted data directory
-- Automatic deploys disabled
-- Transactional email disabled until the provider grants production access
+- Automatic application-code deploys disabled; Blueprint configuration changes
+  may still synchronize and trigger a service update
+- Transactional email enabled for controlled SES sandbox recipients
 - No custom domain during initial verification
 
 The service uses its Render-provided `onrender.com` address. The production
@@ -30,6 +31,7 @@ The initial staging environment was deployed and verified on July 30, 2026:
 - Initial Super Admin authentication verified
 - Super Admin organization plan verified as Enterprise
 - Public health, privacy, terms, and email-policy routes verified
+- SES sandbox delivery verified for controlled recipients
 
 No credentials or customer operational data are recorded in this document.
 
@@ -61,6 +63,11 @@ environment because it is no longer needed.
 8. Remove the initial administrator password environment variable.
 9. Keep automatic deploys disabled. Promote changes manually only after tests.
 
+Before any commercial production promotion, complete every blocking gate in
+[`COMMERCIAL_RELEASE_READINESS.md`](COMMERCIAL_RELEASE_READINESS.md) and attach
+the exact commit, successful CI run, smoke-test result, backup evidence,
+approver, and rollback target to the release record.
+
 ## Data and isolation
 
 `BTP_DATA_DIR` controls the database and generated-report location. Staging
@@ -75,10 +82,21 @@ introduced.
 
 ## Email
 
-Staging begins with `BTP_EMAIL_PROVIDER=disabled`. Email remains queued and
-auditable without external delivery. After provider production approval, add
-the SES variables through Render's secret manager and configure the signed SNS
-event endpoint. Never commit provider credentials.
+Staging uses `BTP_EMAIL_PROVIDER=ses` with credentials stored only in Render's
+secret manager. Delivery remains restricted by the provider's sandbox rules;
+commercial customer delivery cannot begin until SES production access is
+approved. The signed SNS event endpoint must be configured before production
+so bounces and complaints remain actionable. Never commit provider
+credentials.
+
+## Blueprint synchronization
+
+`autoDeployTrigger: off` prevents ordinary source changes from being deployed
+without review. Render may nevertheless synchronize a changed `render.yaml`
+through the connected Blueprint and update the service. Treat every Blueprint
+change as deployment-impacting, review the Events page after it is pushed, and
+run the staging smoke test when synchronization completes. The **Deployed**
+status in Render is the successful live state for that service.
 
 ## Rollback
 

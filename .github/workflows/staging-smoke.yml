@@ -1,0 +1,27 @@
+name: Staging Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: Deployment origin to inspect
+        required: true
+        default: https://broadcast-tool-pro-staging.onrender.com
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Read-only deployment checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Verify deployment health and trust pages
+        run: python -m tools.release_readiness "${{ inputs.deployment_url }}"
