@@ -326,6 +326,13 @@ recovery. This adds no monitoring subscription during the pilot stage. It must
 be replaced or supplemented when contractual response times, multiple services,
 or on-call routing justify dedicated observability.
 
+Application rollback is separated from database recovery. Every production
+candidate records a known-good Git revision and proves that revision can boot
+with isolated data before promotion. Render deployment rollback preserves the
+persistent disk and is followed by smoke, authentication, tenant-isolation,
+entitlement, report-ownership, and email checks. Database restoration remains
+reserved for verified corruption or data loss.
+
 The Stage 1 implementation includes a cost-free SQLite backup foundation:
 
 - Automatic verified backups every 24 hours

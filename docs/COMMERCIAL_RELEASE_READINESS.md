@@ -25,7 +25,7 @@ accounts. It must not yet be presented as the final paid production service.
 | Recovery | Encrypted off-server backup and isolated restore drill pass | Ready | Verified SQLite backup, checksum, integrity, and recovery drill |
 | Operations | Application health reports database backup, email, and temporary-storage status | Ready | Public `/health` endpoint |
 | Operations | Actionable alerting reaches the operator when health or requests fail | Implemented; activation pending | Merge the scheduled smoke workflow into the default branch, observe a scheduled run, and verify owner notifications |
-| Operations | Rollback procedure is tested against the intended production service | **Blocking** | Perform and record one production-candidate rollback rehearsal |
+| Operations | Rollback procedure is tested against the intended production service | Partially ready | Isolated code rollback is rehearsed; perform and record the Render procedure on the production candidate |
 | Legal | Privacy Policy, Terms, and Email Policy are publicly accessible | Draft ready | Routes exist and are linked publicly |
 | Legal | Policies receive jurisdiction-appropriate professional review | **Blocking** | Legal review required before accepting paid customers |
 | Email | Sending domain, DKIM, and controlled SES delivery are verified | Ready for staging | Verified domain and staging delivery |
@@ -50,6 +50,9 @@ The release record must contain:
    downloads, support requests, and transactional email.
 6. The production configuration review, excluding all secret values.
 7. The named release approver, approval time, and rollback target.
+
+The rollback runbook and isolated rehearsal are defined in
+[`ROLLBACK.md`](ROLLBACK.md).
 
 ## Staging Smoke Test
 
