@@ -52,6 +52,9 @@ def record_report(
     filename: str,
     media_type: str,
     content: bytes,
+    organization_id: str | None = None,
+    workspace_id: str | None = None,
+    created_by: str | None = None,
 ) -> str:
     report_id = str(uuid4())
     extension = Path(filename).suffix.lower()
@@ -67,8 +70,9 @@ def record_report(
             INSERT INTO report_history (
                 id, report_type, client_name, channel_name, product,
                 agency, asset_ids, start_date, end_date, output_format,
-                filename, media_type, file_path, created_at, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                filename, media_type, file_path, created_at, created_by,
+                organization_id, workspace_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 report_id,
@@ -85,22 +89,25 @@ def record_report(
                 media_type,
                 str(file_path),
                 created_at,
-                "local-user",
+                created_by,
+                organization_id,
+                workspace_id,
             ),
         )
     return report_id
 
 
-def list_reports(limit: int = 100) -> list[dict]:
+def list_reports(organization_id: str, limit: int = 100) -> list[dict]:
     safe_limit = min(max(limit, 1), 500)
     with _connection() as connection:
         rows = connection.execute(
             """
             SELECT * FROM report_history
+            WHERE organization_id = ?
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (safe_limit,),
+            (organization_id, safe_limit),
         ).fetchall()
 
     private_fields = {
@@ -122,11 +129,14 @@ def list_reports(limit: int = 100) -> list[dict]:
     ]
 
 
-def get_report(report_id: str) -> dict | None:
+def get_report(report_id: str, organization_id: str) -> dict | None:
     with _connection() as connection:
         row = connection.execute(
-            "SELECT * FROM report_history WHERE id = ?",
-            (report_id,),
+            """
+            SELECT * FROM report_history
+            WHERE id = ? AND organization_id = ?
+            """,
+            (report_id, organization_id),
         ).fetchone()
     if row is None:
         return None

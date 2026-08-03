@@ -28,10 +28,12 @@ def test_report_history_records_and_retrieves_artifacts():
                 filename="certification.pdf",
                 media_type="application/pdf",
                 content=b"report",
+                organization_id="organization-a",
+                created_by="user-a",
             )
 
-            saved = report_history.get_report(report_id)
-            reports = report_history.list_reports()
+            saved = report_history.get_report(report_id, "organization-a")
+            reports = report_history.list_reports("organization-a")
 
             assert saved is not None
             assert saved["client_name"] == "Example Client"
@@ -39,6 +41,11 @@ def test_report_history_records_and_retrieves_artifacts():
             assert Path(saved["file_path"]).read_bytes() == b"report"
             assert reports[0]["id"] == report_id
             assert "file_path" not in reports[0]
+            assert (
+                report_history.get_report(report_id, "organization-b")
+                is None
+            )
+            assert report_history.list_reports("organization-b") == []
         finally:
             report_history.DATA_DIR = original_data_dir
             report_history.REPORTS_DIR = original_reports_dir

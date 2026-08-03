@@ -293,6 +293,9 @@ The Stage 1 security baseline now includes:
 - Revocation of every active session after password recovery
 - Security event auditing visible to the Super Admin
 - Production-only secure cookies, HSTS, and standard browser security headers
+- Organization-scoped report history and artifact downloads; every archived
+  Pre Log and Post Log records its owning organization and generating user,
+  and cross-organization report access returns no artifact
 
 The provider-neutral email outbox is connected to Amazon SES and remains
 disabled until production environment variables and AWS credentials are

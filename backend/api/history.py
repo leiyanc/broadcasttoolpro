@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
 from backend.services.report_history import get_report, list_reports
-from backend.api.auth import require_active_organization
+from backend.api.auth import access_for_user, require_active_organization
 
 
 router = APIRouter(
@@ -15,15 +15,23 @@ router = APIRouter(
 
 
 @router.get("")
-def report_history(limit: int = 100):
+def report_history(
+    limit: int = 100,
+    user: dict = Depends(require_active_organization),
+):
+    organization_id = access_for_user(user)["organization"]["id"]
     return {
-        "reports": list_reports(limit),
+        "reports": list_reports(organization_id, limit),
     }
 
 
 @router.get("/{report_id}/download")
-def download_historical_report(report_id: str):
-    report = get_report(report_id)
+def download_historical_report(
+    report_id: str,
+    user: dict = Depends(require_active_organization),
+):
+    organization_id = access_for_user(user)["organization"]["id"]
+    report = get_report(report_id, organization_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found.")
 

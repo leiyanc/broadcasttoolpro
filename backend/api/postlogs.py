@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend.api.prelogs import _filtered_events
-from backend.api.auth import require_module
+from backend.api.auth import access_for_user, current_user, require_module
 from backend.services.traffic.playlist import parse_playlist_file
 from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
@@ -141,7 +141,9 @@ async def export_postlog(
     logo_file: UploadFile | None = File(None),
     output_format: str = Form("xlsx"),
     client_name: str | None = Form(None),
+    user: dict = Depends(current_user),
 ):
+    report_owner = access_for_user(user) if isinstance(user, dict) else None
     try:
         _, _, matches = await _filtered_events(
             as_run_files,
@@ -291,6 +293,10 @@ async def export_postlog(
         filename=filename,
         media_type=media_type,
         content=content,
+        organization_id=(
+            report_owner["organization"]["id"] if report_owner else None
+        ),
+        created_by=user["id"] if isinstance(user, dict) else None,
     )
     return Response(
         content=content,

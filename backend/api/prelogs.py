@@ -15,7 +15,12 @@ from backend.services.traffic.playlist import (
     inspect_playlist,
     parse_playlist_file,
 )
-from backend.api.auth import current_user, is_trial_user, require_module
+from backend.api.auth import (
+    access_for_user,
+    current_user,
+    is_trial_user,
+    require_module,
+)
 
 
 router = APIRouter(
@@ -162,6 +167,7 @@ async def export_prelog(
     user: dict = Depends(current_user),
 ):
     is_trial = is_trial_user(user)
+    report_owner = access_for_user(user) if isinstance(user, dict) else None
     if is_trial and output_format != "pdf":
         raise HTTPException(
             status_code=403,
@@ -245,6 +251,10 @@ async def export_prelog(
         filename=filename,
         media_type=media_type,
         content=content,
+        organization_id=(
+            report_owner["organization"]["id"] if report_owner else None
+        ),
+        created_by=user["id"] if isinstance(user, dict) else None,
     )
     return Response(
         content=content,
