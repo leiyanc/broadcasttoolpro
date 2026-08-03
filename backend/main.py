@@ -28,6 +28,7 @@ from backend.api.email_events import router as email_events_router
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
 from backend.services.email_delivery import email_delivery_service
+from backend.services.storage_cleanup import storage_cleanup
 from backend.core.operations import logger, request_rate_limiter
 
 
@@ -65,11 +66,27 @@ async def lifespan(_: FastAPI):
             except TimeoutError:
                 continue
 
+    async def storage_cleanup_loop():
+        while not stop_event.is_set():
+            try:
+                await asyncio.to_thread(storage_cleanup.run)
+            except Exception:
+                logger.exception("background_storage_cleanup_failed")
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=60 * 60)
+            except TimeoutError:
+                continue
+
     backup_task = asyncio.create_task(backup_loop())
     email_delivery_task = asyncio.create_task(email_delivery_loop())
+    storage_cleanup_task = asyncio.create_task(storage_cleanup_loop())
     yield
     stop_event.set()
-    await asyncio.gather(backup_task, email_delivery_task)
+    await asyncio.gather(
+        backup_task,
+        email_delivery_task,
+        storage_cleanup_task,
+    )
 
 
 app = FastAPI(
@@ -208,4 +225,5 @@ def health():
         "email_delivery": (
             "enabled" if email_delivery_service.is_enabled() else "disabled"
         ),
+        "temporary_storage": storage_cleanup.status()["status"],
     }

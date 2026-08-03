@@ -27,6 +27,8 @@ services:
         value: /opt/render/project/src/data/backups
       - key: BTP_BACKUP_RETENTION_DAYS
         value: "14"
+      - key: BTP_TEMP_RETENTION_HOURS
+        value: "24"
       - key: BTP_EMAIL_PROVIDER
         value: disabled
       - key: BTP_APPLICATION_URL

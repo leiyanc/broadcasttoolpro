@@ -324,6 +324,11 @@ The Stage 1 implementation includes a cost-free SQLite backup foundation:
 - A 4 GB operating target and 5 GB hard Drive-usage ceiling with recycling of
   the oldest Broadcast Tool Pro backup sets
 - A tested download, decryption, checksum, and SQLite-integrity recovery path
+- An isolated recovery drill that restores a verified backup into a temporary
+  database and proves the live database path was never touched
+- Hourly cleanup of application-owned technical working files after 24 hours,
+  explicitly excluding customer reports, verified backups, the active
+  database, and pre-restore safety copies
 
 The initial Google Drive recovery path is appropriate for the pre-revenue
 stage. It must be replaced with organization-owned managed storage when
