@@ -639,6 +639,28 @@
             id="admin-email-message"
             aria-live="polite"
           ></p>
+          <h4 class="admin-subheading">Recent Delivery Attempts</h4>
+          <p class="history-status" id="admin-email-attempt-status">
+            No delivery attempts recorded.
+          </p>
+          <div
+            class="table-scroll is-hidden"
+            id="admin-email-attempt-table"
+          >
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Recipient</th>
+                  <th>Message</th>
+                  <th>Status</th>
+                  <th>Last Error</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-email-attempt-body"></tbody>
+            </table>
+          </div>
           <h4 class="admin-subheading">Suppressed Recipients</h4>
           <p class="history-status" id="admin-suppression-status">
             No suppressed recipients.

@@ -228,9 +228,11 @@ def test_secure_account_interface_is_present():
     assert 'id="run-backup-button"' in html
     assert "/api/admin/backups" in admin_javascript
     assert 'id="admin-email-metrics"' in html
+    assert 'id="admin-email-attempt-body"' in html
     assert 'id="admin-suppression-body"' in html
     assert 'id="admin-email-event-body"' in html
     assert "/api/admin/email-health" in admin_javascript
+    assert "/api/admin/email-outbox/" in admin_javascript
     assert "/api/admin/email-suppressions/" in admin_javascript
 
 

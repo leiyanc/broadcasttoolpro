@@ -23,6 +23,15 @@ const adminAccessStatus = document.querySelector("#admin-access-status");
 const adminAccessMessage = document.querySelector("#admin-access-message");
 const adminEmailMetrics = document.querySelector("#admin-email-metrics");
 const adminEmailMessage = document.querySelector("#admin-email-message");
+const adminEmailAttemptStatus = document.querySelector(
+  "#admin-email-attempt-status",
+);
+const adminEmailAttemptTable = document.querySelector(
+  "#admin-email-attempt-table",
+);
+const adminEmailAttemptBody = document.querySelector(
+  "#admin-email-attempt-body",
+);
 const adminSuppressionStatus = document.querySelector(
   "#admin-suppression-status",
 );
@@ -200,6 +209,59 @@ function renderEmailHealth(health) {
     small.textContent = label;
     item.append(strong, small);
     adminEmailMetrics.appendChild(item);
+  });
+
+  const attempts = health.recent_attempts || [];
+  adminEmailAttemptBody.replaceChildren();
+  adminEmailAttemptStatus.textContent = attempts.length
+    ? `${attempts.length} recent delivery attempt(s).`
+    : "No delivery attempts recorded.";
+  adminEmailAttemptTable.classList.toggle("is-hidden", attempts.length === 0);
+  attempts.forEach((attempt) => {
+    const row = document.createElement("tr");
+    adminCell(row, new Date(attempt.created_at).toLocaleString());
+    adminCell(row, attempt.recipient_email);
+    adminCell(row, attempt.subject);
+    adminCell(
+      row,
+      `${attempt.status.replaceAll("_", " ")} · ${attempt.attempts} attempt(s)`,
+    );
+    adminCell(row, attempt.last_error || "—");
+    const actionCell = adminCell(row, "");
+    if (["queued", "failed"].includes(attempt.status)) {
+      const retryButton = document.createElement("button");
+      retryButton.className = "button button-secondary admin-save";
+      retryButton.type = "button";
+      retryButton.textContent = "Retry";
+      retryButton.addEventListener("click", async () => {
+        if (!window.confirm(
+          `Retry delivery to ${attempt.recipient_email}? Confirm the address `
+          + "is authorized to receive email before continuing.",
+        )) {
+          return;
+        }
+        retryButton.disabled = true;
+        adminEmailMessage.textContent = "Queueing delivery retry…";
+        adminEmailMessage.classList.remove("is-error", "is-success");
+        try {
+          const result = await adminRequest(
+            `/api/admin/email-outbox/${encodeURIComponent(attempt.id)}/retry`,
+            { method: "POST" },
+          );
+          adminEmailMessage.textContent = result.detail;
+          adminEmailMessage.classList.add("is-success");
+          await loadEmailHealth();
+        } catch (error) {
+          adminEmailMessage.textContent = error.message;
+          adminEmailMessage.classList.add("is-error");
+          retryButton.disabled = false;
+        }
+      });
+      actionCell.replaceChildren(retryButton);
+    } else {
+      actionCell.textContent = "—";
+    }
+    adminEmailAttemptBody.appendChild(row);
   });
 
   adminSuppressionBody.replaceChildren();

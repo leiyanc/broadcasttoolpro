@@ -378,6 +378,61 @@ class EmailOutboxStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def recent_delivery_attempts(self, limit: int = 100) -> list[dict]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, organization_id, recipient_email, template_code,
+                       subject, scheduled_for, status, attempts, last_error,
+                       provider_message_id, sent_at, created_at
+                FROM email_outbox
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (min(max(limit, 1), 500),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def retry_delivery(self, message_id: str) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError("Email message not found.")
+            if row["status"] not in {"queued", "failed"}:
+                raise ValueError(
+                    "Only queued or failed messages can be retried."
+                )
+            suppression = connection.execute(
+                """
+                SELECT reason FROM email_suppressions
+                WHERE recipient_email = ?
+                """,
+                (row["recipient_email"],),
+            ).fetchone()
+            if suppression is not None:
+                raise ValueError(
+                    "Remove the recipient suppression before retrying."
+                )
+            connection.execute(
+                """
+                UPDATE email_outbox
+                SET status = 'queued', attempts = 0, scheduled_for = ?,
+                    last_error = NULL, provider_message_id = NULL,
+                    sent_at = NULL
+                WHERE id = ?
+                """,
+                (now, message_id),
+            )
+            retried = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+        return dict(retried)
+
     def preferences_for(self, recipient_email: str) -> dict:
         normalized = recipient_email.strip().lower()
         with self._connection() as connection:

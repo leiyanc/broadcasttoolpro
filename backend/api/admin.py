@@ -67,7 +67,33 @@ def email_health(_: dict = Depends(superuser)):
         "sns_configured": bool(
             os.getenv("BTP_SES_SNS_TOPIC_ARN", "").strip()
         ),
+        "recent_attempts": email_outbox_store.recent_delivery_attempts(),
         **email_suppression_store.health_summary(),
+    }
+
+
+@router.post("/email-outbox/{message_id}/retry")
+def retry_email_delivery(
+    message_id: str,
+    _: dict = Depends(superuser),
+):
+    try:
+        message = email_outbox_store.retry_delivery(message_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "message": {
+            "id": message["id"],
+            "recipient_email": message["recipient_email"],
+            "status": message["status"],
+            "scheduled_for": message["scheduled_for"],
+        },
+        "detail": (
+            "Delivery queued for immediate retry. Confirm the recipient "
+            "is verified while Amazon SES remains in sandbox."
+        ),
     }
 
 

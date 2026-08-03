@@ -74,6 +74,28 @@ def test_failed_email_is_requeued_without_losing_the_error():
         )
 
 
+def test_super_admin_can_inspect_and_retry_failed_delivery():
+    with TemporaryDirectory() as directory:
+        outbox, _ = _outbox(directory)
+        messages = outbox.claim_pending()
+        for message in messages:
+            outbox.mark_delivery_failure(
+                message["id"],
+                "Address not verified",
+                maximum_attempts=1,
+            )
+
+        attempt = outbox.recent_delivery_attempts()[0]
+        assert attempt["status"] == "failed"
+        assert attempt["last_error"] == "Address not verified"
+
+        retried = outbox.retry_delivery(attempt["id"])
+
+        assert retried["status"] == "queued"
+        assert retried["attempts"] == 0
+        assert retried["last_error"] is None
+
+
 def test_email_html_uses_the_branded_logo(monkeypatch):
     monkeypatch.setenv(
         "BTP_APPLICATION_URL",

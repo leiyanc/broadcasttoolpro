@@ -487,6 +487,15 @@ restricted to sandbox operation.
 - Suppression removal requires an explicit administrative action.
 - Delivery, bounce, complaint, reject, and send events are retained for
   operational review.
+- Super Administrators can inspect recent delivery attempts by recipient,
+  status, attempt count, and exact last error without exposing message bodies
+  or provider credentials.
+- Queued or failed messages can be explicitly retried after recipient
+  eligibility is confirmed. Suppressed recipients remain blocked until an
+  administrator removes the suppression.
+- While Amazon SES remains in sandbox, every external test recipient must be
+  verified in SES. Production launch remains blocked until SES production
+  access is approved.
 - Production integration must authenticate provider event notifications before
   recording them.
 - Amazon SNS notifications are accepted only after cryptographic signature

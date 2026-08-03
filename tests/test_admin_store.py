@@ -94,4 +94,5 @@ def test_super_admin_routes_are_registered():
     assert "/api/admin/incidents/{incident_id}" in paths
     assert "/api/admin/backups" in paths
     assert "/api/admin/email-health" in paths
+    assert "/api/admin/email-outbox/{message_id}/retry" in paths
     assert "/api/admin/email-suppressions/{recipient_email}" in paths
