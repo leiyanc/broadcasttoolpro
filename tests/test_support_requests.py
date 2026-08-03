@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from backend.main import app
+from backend.models.support import SupportRequestCreate
 from backend.services.admin_store import AdminStore
 from backend.services.identity_store import IdentityStore
 from backend.services.tenant_store import TenantStore
@@ -90,3 +91,15 @@ def test_support_routes_are_registered():
     assert "/api/support/requests/{incident_id}/reopen" in paths
     assert "/api/admin/incidents/{incident_id}" in paths
     assert "/api/admin/incidents/{incident_id}/messages" in paths
+
+
+def test_privacy_data_request_is_a_supported_category():
+    request = SupportRequestCreate(
+        module="Account",
+        category="privacy",
+        priority="normal",
+        summary="Export my organization data",
+        details="Please provide an export of applicable account information.",
+    )
+
+    assert request.category == "privacy"

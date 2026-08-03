@@ -11,6 +11,7 @@ class SupportRequestCreate(BaseModel):
         "export",
         "billing",
         "account",
+        "privacy",
         "other",
     ]
     priority: Literal["low", "normal", "high", "urgent"] = "normal"

@@ -53,14 +53,17 @@ function updateHelpSupportFields() {
   const category = helpCategory.value;
   const isBilling = category === "billing";
   const isAccount = category === "account";
+  const isPrivacy = category === "privacy";
   const showError = ["technical", "validation", "export"].includes(category);
 
   helpFormTitle.textContent = isBilling
     ? (spanish ? "Solicitud de facturación" : "Billing Request")
     : (isAccount
       ? (spanish ? "Solicitud de cuenta" : "Account Request")
-      : (spanish ? "Reportar un problema" : "Report a Problem"));
-  helpDetailsLabel.textContent = isBilling || isAccount
+      : (isPrivacy
+        ? (spanish ? "Solicitud de privacidad y datos" : "Privacy & Data Request")
+        : (spanish ? "Reportar un problema" : "Report a Problem")));
+  helpDetailsLabel.textContent = isBilling || isAccount || isPrivacy
     ? (spanish ? "Detalles de la solicitud" : "Request details")
     : (spanish ? "¿Qué ocurrió?" : "What happened?");
   helpErrorField.classList.toggle("is-hidden", !showError);
@@ -339,6 +342,7 @@ function helpTranslateSupportUi(language) {
         export: "Exportación o reporte",
         billing: "Facturación",
         account: "Acceso a la cuenta",
+        privacy: "Privacidad o solicitud de datos",
         other: "Otro",
       }
     : {
@@ -347,6 +351,7 @@ function helpTranslateSupportUi(language) {
         export: "Export or report",
         billing: "Billing",
         account: "Account access",
+        privacy: "Privacy or data request",
         other: "Other",
       };
   const priorityLabels = spanish
