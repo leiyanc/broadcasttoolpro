@@ -7,9 +7,12 @@ on:
         description: Deployment origin to inspect
         required: true
         default: https://broadcast-tool-pro-staging.onrender.com
+  schedule:
+    - cron: "7,37 * * * *"
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   smoke-test:
@@ -23,5 +26,73 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+      - name: Install certificate authority bundle
+        run: python -m pip install certifi==2026.7.22
       - name: Verify deployment health and trust pages
-        run: python -m tools.release_readiness "${{ inputs.deployment_url }}"
+        id: smoke
+        continue-on-error: true
+        env:
+          MANUAL_URL: ${{ inputs.deployment_url }}
+        run: |
+          deployment_url="${MANUAL_URL:-https://broadcast-tool-pro-staging.onrender.com}"
+          for attempt in 1 2 3; do
+            if python -m tools.release_readiness "$deployment_url"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+          exit 1
+      - name: Record or resolve availability incident
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+        with:
+          script: |
+            const title = "[Monitoring] Broadcast Tool Pro staging unavailable";
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: "open", per_page: 100 }
+            );
+            const incident = issues.find(
+              issue => !issue.pull_request && issue.title === title
+            );
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const checkedAt = new Date().toISOString();
+            if (process.env.SMOKE_OUTCOME !== "success") {
+              const body = [
+                "The external staging smoke test failed after three attempts.",
+                "",
+                `Observed: ${checkedAt}`,
+                `Workflow evidence: ${runUrl}`,
+                "",
+                "Check Render service events, application logs, `/health`, and the latest deployment."
+              ].join("\n");
+              if (incident) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: incident.number, body
+                });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body });
+              }
+            } else if (incident) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: incident.number,
+                body: `Staging recovered at ${checkedAt}. Evidence: ${runUrl}`
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: incident.number,
+                state: "closed",
+                state_reason: "completed"
+              });
+            }
+      - name: Fail workflow when staging is unavailable
+        if: steps.smoke.outcome != 'success'
+        run: exit 1

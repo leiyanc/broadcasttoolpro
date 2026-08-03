@@ -319,6 +319,13 @@ controlled through production environment variables and least-privilege AWS
 credentials. The Stage 1 request limiter runs within the existing application
 process; infrastructure-level limiting remains a future scaling requirement.
 
+Stage 1 external availability monitoring uses a scheduled GitHub Actions smoke
+test at 30-minute intervals. It runs outside Render, retries transient failures,
+opens one deduplicated GitHub incident, and closes that incident after verified
+recovery. This adds no monitoring subscription during the pilot stage. It must
+be replaced or supplemented when contractual response times, multiple services,
+or on-call routing justify dedicated observability.
+
 The Stage 1 implementation includes a cost-free SQLite backup foundation:
 
 - Automatic verified backups every 24 hours
