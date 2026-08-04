@@ -30,9 +30,11 @@ duplicates. A later successful check records recovery and closes the issue.
 GitHub notification preferences determine which owners receive email or mobile
 notifications for the issue.
 
-Scheduled GitHub workflows run only from the repository's default branch.
-This monitor is implemented but is not considered active until the workflow is
-merged into the default branch and one scheduled run is observed.
+Scheduled GitHub workflows run only from the repository's default branch. The
+monitor is active on the current default branch. Three external scheduled runs
+completed successfully on August 3–4, 2026, including run `30912982408` after
+the staging service recovered from its earlier memory-limit restart. GitHub
+issue notifications remain the Stage 1 operator-alert channel.
 
 ## Incident Response
 

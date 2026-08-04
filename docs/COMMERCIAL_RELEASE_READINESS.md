@@ -24,7 +24,7 @@ accounts. It must not yet be presented as the final paid production service.
 | Security | Authentication, organization isolation, permissions, and secure cookies are enforced | Ready for staging | Reverify with production configuration before launch |
 | Recovery | Encrypted off-server backup and isolated restore drill pass | Ready | Verified SQLite backup, checksum, integrity, and recovery drill |
 | Operations | Application health reports database backup, email, and temporary-storage status | Ready | Public `/health` endpoint |
-| Operations | Actionable alerting reaches the operator when health or requests fail | Implemented; activation pending | Merge the scheduled smoke workflow into the default branch, observe a scheduled run, and verify owner notifications |
+| Operations | Actionable alerting reaches the operator when health or requests fail | Ready for staging | Scheduled external smoke runs succeeded on August 3–4, 2026; failures create one deduplicated GitHub incident and recovery closes it |
 | Operations | Rollback procedure is tested against the intended production service | Partially ready | Isolated code rollback is rehearsed; perform and record the Render procedure on the production candidate |
 | Legal | Privacy Policy, Terms, and Email Policy are publicly accessible | Draft ready | Routes exist and are linked publicly |
 | Legal | Policies receive jurisdiction-appropriate professional review | **Blocking** | Legal review required before accepting paid customers |
