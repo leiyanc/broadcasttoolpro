@@ -19,6 +19,18 @@ customer-specific logic or expose operational source files.
 Do not record passwords, access tokens, customer media, or confidential source
 data in this document.
 
+### Current External Retest
+
+- Tester reference: Pilot Tester 2
+- Organization: Amagi
+- Test date: August 4, 2026
+- Staging URL: `https://broadcast-tool-pro-staging.onrender.com`
+- Deployed commit: `c05a86c`
+- Result: Passed with findings; corrective release deployed and external
+  confirmation pending
+- Quality and Security: Passed for `c05a86c`
+- Staging smoke test: Passed on August 4, 2026
+
 ## Severity
 
 - **Blocking:** prevents sign-in, processing, export, tenant isolation, or safe
@@ -109,7 +121,15 @@ data in this document.
 
 | ID | Module | Severity | Summary | Evidence | Status |
 |---|---|---|---|---|---|
-| PILOT-001 |  |  |  |  | Open |
+| PILOT-001 | XMLTV Validator | Major | Bare ampersands were not reported clearly. | Tester 2 feedback | Implemented in `33f74da`; retest pending |
+| PILOT-002 | XMLTV Repair | Major | Bare ampersands were not repaired safely. | Tester 2 feedback | Implemented in `33f74da`; retest pending |
+| PILOT-003 | Post Logs | Major | Amagi Tarima CSV full date-times were not recognized. | Tester 2 feedback and representative Tarima CSV | Implemented in `9d28a0d`; retest pending |
+| PILOT-004 | HLS Monitoring | Major | SCTE-35 break durations and continuation cues were not summarized clearly. | Tester 2 feedback | Implemented in `33f74da`; retest pending |
+
+The corrective release also includes bounded HLS monitoring resource use in
+`4d908be`, obsolete module badge removal in `f0e3169`, and the dependency
+security correction in `c05a86c`. Automated regression, dependency audit,
+application health, and public trust-page checks passed before retest.
 
 ## Acceptance
 
