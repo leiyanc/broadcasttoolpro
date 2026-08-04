@@ -22,13 +22,13 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260804-1" defer></script>
+    <script src="/static/i18n.js?v=20260804-2" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260730-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
     <script src="/static/billing.js?v=20260728-5" defer></script>
     <script src="/static/help.js?v=20260728-6" defer></script>
-    <script src="/static/app.js?v=20260727-8" defer></script>
+    <script src="/static/app.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-validator.js?v=20260728-3" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-1" defer></script>
     <script src="/static/prelog-filter.js?v=20260728-3" defer></script>
@@ -1043,26 +1043,26 @@
 
           <div>
 
-            <p class="eyebrow">
+            <p class="eyebrow" data-i18n="generator.eyebrow">
               XMLTV GENERATOR
             </p>
 
-            <h2>
+            <h2 data-i18n="generator.title">
               Create XMLTV File
             </h2>
 
           </div>
 
           <details class="download-menu">
-            <summary>Download Template</summary>
+            <summary data-i18n="generator.template.download">Download Template</summary>
             <div class="download-menu-options">
               <a href="/api/xmltv/template/excel">
                 <strong>Excel (.xlsx)</strong>
-                <small>Recommended · Includes instructions and examples</small>
+                <small data-i18n="generator.template.excelCopy">Recommended · Includes instructions and examples</small>
               </a>
               <a href="/api/xmltv/template/csv">
                 <strong>CSV (.csv)</strong>
-                <small>Headers only</small>
+                <small data-i18n="generator.template.csvCopy">Headers only</small>
               </a>
             </div>
           </details>
@@ -1075,7 +1075,7 @@
 
             <label>
 
-              <span>Channel Name</span>
+              <span data-i18n="generator.channelName">Channel Name</span>
 
               <input
                 name="channel_name"
@@ -1088,7 +1088,7 @@
 
             <label>
 
-              <span>Channel ID</span>
+              <span data-i18n="generator.channelId">Channel ID</span>
 
               <input
                 name="channel_id"
@@ -1101,7 +1101,7 @@
 
             <label>
 
-              <span>Channel Time Zone</span>
+              <span data-i18n="generator.timezone">Channel Time Zone</span>
 
               <select
                 name="channel_timezone"
@@ -1137,20 +1137,17 @@
 
             <label>
 
-              <span>Primary Language</span>
+              <span data-i18n="generator.primaryLanguage">Primary Language</span>
 
               <select
                 name="primary_language"
                 required
               >
-                <option
-                  value="es"
-                  selected
-                >
+                <option value="es" selected data-i18n="common.spanish">
                   Spanish
                 </option>
 
-                <option value="en">
+                <option value="en" data-i18n="common.english">
                   English
                 </option>
 
@@ -1160,20 +1157,17 @@
 
             <label>
 
-              <span>Original Language</span>
+              <span data-i18n="generator.originalLanguage">Original Language</span>
 
               <select
                 name="original_language"
                 required
               >
-                <option
-                  value="es"
-                  selected
-                >
+                <option value="es" selected data-i18n="common.spanish">
                   Spanish
                 </option>
 
-                <option value="en">
+                <option value="en" data-i18n="common.english">
                   English
                 </option>
 
@@ -1183,7 +1177,7 @@
 
             <label>
 
-              <span>Rating System</span>
+              <span data-i18n="generator.ratingSystem">Rating System</span>
 
               <select
                 name="rating_system"
@@ -1202,17 +1196,17 @@
 
             <label>
 
-              <span>Timestamp Format</span>
+              <span data-i18n="generator.timestampFormat">Timestamp Format</span>
 
               <select
                 name="timestamp_format"
                 required
               >
-                <option value="iso8601" selected>
+                <option value="iso8601" selected data-i18n="generator.timestampIso">
                   ISO 8601 — Broad Compatibility
                 </option>
 
-                <option value="xmltv">
+                <option value="xmltv" data-i18n="generator.timestampCompact">
                   XMLTV Compact
                 </option>
 
@@ -1239,11 +1233,11 @@
               ↑
             </span>
 
-            <strong id="file-title">
+            <strong id="file-title" data-i18n="generator.dropTitle">
               Drop your schedule here
             </strong>
 
-            <small id="file-subtitle">
+            <small id="file-subtitle" data-i18n="generator.dropCopy">
               or click to choose an .xlsx or .csv file
             </small>
 
@@ -1261,11 +1255,11 @@
 
             <span>
 
-              <strong>
+              <strong data-i18n="generator.authorize">
                 Authorize Suggested Corrections
               </strong>
 
-              <small id="authorization-message">
+              <small id="authorization-message" data-i18n="generator.authorizeCopy">
                 Allow Broadcast Tool Pro to apply safe corrections before
                 generating the XMLTV file.
               </small>
@@ -1281,7 +1275,7 @@
               id="validate-button"
               type="button"
             >
-              Validate Schedule
+              <span data-i18n="generator.validate">Validate Schedule</span>
             </button>
 
             <button
@@ -1289,7 +1283,7 @@
               id="generate-button"
               type="submit"
             >
-              Generate XMLTV
+              <span data-i18n="generator.generate">Generate XMLTV</span>
             </button>
 
           </div>
@@ -1313,7 +1307,7 @@
 
           <div>
 
-            <h3 id="result-title">
+            <h3 id="result-title" data-i18n="generator.resultReady">
               Schedule Ready
             </h3>
 
@@ -1333,13 +1327,13 @@
               class="template-guidance is-hidden"
               id="xmltv-template-guidance"
             >
-              <strong>Need a compatible schedule?</strong>
-              <span>
+              <strong data-i18n="generator.guidanceTitle">Need a compatible schedule?</strong>
+              <span data-i18n="generator.guidanceCopy">
                 Start with the official Broadcast Tool Pro template to avoid
                 column, sheet, date, and formatting errors.
               </span>
-              <a href="/api/xmltv/template/excel">Download Excel Template</a>
-              <a href="/api/xmltv/template/csv">Download CSV Template</a>
+              <a href="/api/xmltv/template/excel" data-i18n="generator.guidanceExcel">Download Excel Template</a>
+              <a href="/api/xmltv/template/csv" data-i18n="generator.guidanceCsv">Download CSV Template</a>
             </aside>
 
           </div>
@@ -1349,23 +1343,24 @@
         <section class="epg-preview is-hidden" id="epg-preview">
           <div class="section-heading preview-heading">
             <div>
-              <p class="eyebrow">EPG PREVIEW</p>
-              <h3>Schedule Timeline</h3>
+              <p class="eyebrow" data-i18n="preview.eyebrow">EPG PREVIEW</p>
+              <h3 data-i18n="preview.title">Schedule Timeline</h3>
               <p class="section-copy" id="epg-preview-summary"></p>
             </div>
             <div class="epg-preview-filters">
               <label>
-                <span>Broadcast Date</span>
+                <span data-i18n="preview.broadcastDate">Broadcast Date</span>
                 <select id="epg-preview-date">
-                  <option value="">All dates</option>
+                  <option value="" data-i18n="preview.allDates">All dates</option>
                 </select>
               </label>
               <label>
-                <span>Search</span>
+                <span data-i18n="preview.search">Search</span>
                 <input
                   id="epg-preview-search"
                   type="search"
                   placeholder="Title, episode, genre…"
+                  data-i18n-placeholder="preview.searchPlaceholder"
                 />
               </label>
             </div>
@@ -1376,15 +1371,15 @@
             <table class="preview-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Duration</th>
-                  <th>Programme</th>
-                  <th>Episode</th>
-                  <th>Genre</th>
-                  <th>Rating</th>
-                  <th>Flags</th>
+                  <th data-i18n="preview.date">Date</th>
+                  <th data-i18n="preview.start">Start</th>
+                  <th data-i18n="preview.end">End</th>
+                  <th data-i18n="preview.duration">Duration</th>
+                  <th data-i18n="preview.programme">Programme</th>
+                  <th data-i18n="preview.episode">Episode</th>
+                  <th data-i18n="preview.genre">Genre</th>
+                  <th data-i18n="preview.rating">Rating</th>
+                  <th data-i18n="preview.flags">Flags</th>
                 </tr>
               </thead>
               <tbody id="epg-preview-body"></tbody>
@@ -1394,16 +1389,16 @@
 
           <div class="programming-grid-export">
             <div>
-              <p class="eyebrow">OPTIONAL PDF EXPORT</p>
-              <h3>Programming Grid</h3>
-              <p class="section-copy">
+              <p class="eyebrow" data-i18n="grid.eyebrow">OPTIONAL PDF EXPORT</p>
+              <h3 data-i18n="grid.title">Programming Grid</h3>
+              <p class="section-copy" data-i18n="grid.copy">
                 Create one visual schedule page per week from this validated
                 EPG. The PDF is generated only when requested.
               </p>
             </div>
             <div class="programming-grid-controls">
               <label>
-                <span>Channel Logo (Optional PNG or JPG)</span>
+                <span data-i18n="grid.logo">Channel Logo (Optional PNG or JPG)</span>
                 <input
                   id="programming-grid-logo"
                   type="file"
@@ -1415,7 +1410,7 @@
                 id="programming-grid-button"
                 type="button"
               >
-                Download Programming Grid
+                <span data-i18n="grid.download">Download Programming Grid</span>
               </button>
             </div>
           </div>

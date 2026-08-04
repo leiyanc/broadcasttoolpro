@@ -75,6 +75,10 @@ terminology remain in English.
   validation behavior.
 - Report-language controls remain independent because a user may operate the
   interface in one language and deliver a report in another.
+- The XMLTV Generator and Programming Grid localize their complete operating
+  surfaces, including validation states, EPG preview metrics, filters, and
+  download feedback. Source metadata, XMLTV language fields, and report
+  language selections remain independent and are never translated implicitly.
 
 ## Commercial Packaging
 

@@ -74,6 +74,37 @@ def test_public_and_authenticated_interfaces_share_language_preference():
     assert "navigator.language" in javascript
 
 
+def test_xmltv_generator_and_programming_grid_are_localized_independently():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    application_javascript = (FRONTEND_DIR / "app.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in [
+        "generator.title",
+        "generator.channelName",
+        "generator.validate",
+        "generator.generate",
+        "preview.title",
+        "preview.broadcastDate",
+        "grid.title",
+        "grid.download",
+    ]:
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert 'data-i18n-placeholder="preview.searchPlaceholder"' in html
+    assert 'window.addEventListener("btp:languagechange"' in application_javascript
+    assert 'uiText("generator.validating"' in application_javascript
+    assert '"preview.summary"' in application_javascript
+    assert '"grid.download"' in application_javascript
+
+    # Export language remains an explicit workflow setting and is not coupled
+    # to the global interface preference.
+    assert 'id="prelog-report-language"' in html
+    assert 'id="postlog-report-language"' in html
+    assert 'id="hls-report-language"' in html
+
+
 def test_home_returns_frontend():
     landing_response = home()
     application_response = application()

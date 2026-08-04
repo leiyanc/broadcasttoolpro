@@ -36,6 +36,14 @@ const programmingGridLogo = document.querySelector(
 
 let latestSchedule = [];
 
+function uiText(key, fallback, values = {}) {
+  const template = window.BTPi18n?.t(key, fallback) ?? fallback;
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    template,
+  );
+}
+
 const fallbackValidation = (message, ruleId = "REQUEST") => ({
   score: 0,
   critical: 1,
@@ -64,8 +72,14 @@ function normalizeResult(payload, responseOk = true) {
   const message = typeof detail === "string"
     ? detail
     : responseOk
-      ? "The server returned an incomplete validation response."
-      : "The server could not process the schedule.";
+      ? uiText(
+          "generator.serverIncomplete",
+          "The server returned an incomplete validation response.",
+        )
+      : uiText(
+          "generator.serverProcessError",
+          "The server could not process the schedule.",
+        );
 
   return {
     success: false,
@@ -84,7 +98,11 @@ function updateFileLabel() {
   const file = fileInput.files[0];
   if (!file) return;
   fileTitle.textContent = file.name;
-  fileSubtitle.textContent = `${(file.size / 1024).toFixed(1)} KB — ready to validate`;
+  fileSubtitle.textContent = uiText(
+    "generator.fileReady",
+    "{size} KB — ready to validate",
+    { size: (file.size / 1024).toFixed(1) },
+  );
   latestSchedule = [];
   epgPreview.classList.add("is-hidden");
   programmingGridStatus.textContent = "";
@@ -120,9 +138,9 @@ function programmeEpisode(programme) {
 
 function programmeFlags(programme) {
   return [
-    programme.live ? "Live" : "",
-    programme.new ? "New" : "",
-    programme.premiere ? "Premiere" : "",
+    programme.live ? uiText("preview.live", "Live") : "",
+    programme.new ? uiText("preview.new", "New") : "",
+    programme.premiere ? uiText("preview.premiere", "Premiere") : "",
   ].filter(Boolean).join(", ") || "—";
 }
 
@@ -168,7 +186,10 @@ function renderEpgPreview() {
       ),
       "preview-time",
     );
-    addPreviewCell(row, programme.duration || "Calculated");
+    addPreviewCell(
+      row,
+      programme.duration || uiText("preview.calculated", "Calculated"),
+    );
     addPreviewCell(row, programme.program_title, "programme-title");
     addPreviewCell(row, programmeEpisode(programme));
     addPreviewCell(row, programme.genre);
@@ -179,19 +200,34 @@ function renderEpgPreview() {
 
   epgPreviewStats.replaceChildren();
   for (const value of [
-    `${filtered.length} Programmes`,
-    `${new Set(filtered.map((item) => item.air_date)).size} Dates`,
-    `${new Set(filtered.map((item) => item.genre).filter(Boolean)).size} Genres`,
+    uiText("preview.metricProgrammes", "{count} Programmes", {
+      count: filtered.length,
+    }),
+    uiText("preview.metricDates", "{count} Dates", {
+      count: new Set(filtered.map((item) => item.air_date)).size,
+    }),
+    uiText("preview.metricGenres", "{count} Genres", {
+      count: new Set(filtered.map((item) => item.genre).filter(Boolean)).size,
+    }),
   ]) {
     const metric = document.createElement("span");
     metric.textContent = value;
     epgPreviewStats.appendChild(metric);
   }
   epgPreviewStatus.textContent = filtered.length > visible.length
-    ? `Showing the first ${visible.length} of ${filtered.length} programmes.`
+    ? uiText(
+        "preview.showingFirst",
+        "Showing the first {visible} of {total} programmes.",
+        { visible: visible.length, total: filtered.length },
+      )
     : filtered.length
-      ? `${filtered.length} programme${filtered.length === 1 ? "" : "s"} shown.`
-      : "No programmes match the selected preview filters.";
+      ? uiText("preview.shown", "{count} programme(s) shown.", {
+          count: filtered.length,
+        })
+      : uiText(
+          "preview.noMatches",
+          "No programmes match the selected preview filters.",
+        );
 }
 
 function showEpgPreview(programmes) {
@@ -207,7 +243,7 @@ function showEpgPreview(programmes) {
   epgPreviewDate.replaceChildren();
   const allDates = document.createElement("option");
   allDates.value = "";
-  allDates.textContent = "All dates";
+  allDates.textContent = uiText("preview.allDates", "All dates");
   epgPreviewDate.appendChild(allDates);
   for (const date of dates) {
     const option = document.createElement("option");
@@ -216,11 +252,15 @@ function showEpgPreview(programmes) {
     epgPreviewDate.appendChild(option);
   }
   epgPreviewSearch.value = "";
-  epgPreviewSummary.textContent = (
-    `Previewing ${latestSchedule.length} programmes in ` +
-    `${form.elements.channel_timezone.options[
-      form.elements.channel_timezone.selectedIndex
-    ].text}.`
+  epgPreviewSummary.textContent = uiText(
+    "preview.summary",
+    "Previewing {count} programmes in {timezone}.",
+    {
+      count: latestSchedule.length,
+      timezone: form.elements.channel_timezone.options[
+        form.elements.channel_timezone.selectedIndex
+      ].text,
+    },
   );
   epgPreview.classList.remove("is-hidden");
   renderEpgPreview();
@@ -277,24 +317,47 @@ function showResult(result) {
   resultIcon.textContent = success ? "✓" : "!";
   resultTitle.textContent = success
     ? suggestedFixes
-      ? "Schedule ready for review"
-      : "Schedule ready to generate"
-    : "Schedule needs attention";
+      ? uiText("generator.readyReview", "Schedule ready for review")
+      : uiText("generator.readyGenerate", "Schedule ready to generate")
+    : uiText("generator.needsAttention", "Schedule needs attention");
   resultMessage.textContent = success
     ? suggestedFixes
       ? (
-          `${normalized.programmes_imported || 0} programmes are valid. Review and ` +
-          `authorize ${suggestedFixes} suggested corrections.`
+          uiText(
+            "generator.validReview",
+            "{count} programmes are valid. Review and authorize {fixes} suggested corrections.",
+            {
+              count: normalized.programmes_imported || 0,
+              fixes: suggestedFixes,
+            },
+          )
         )
-      : `${normalized.programmes_imported || 0} programmes were imported successfully.`
-    : "Correct the blocking issues before generating XMLTV.";
+      : uiText(
+          "generator.importSuccess",
+          "{count} programmes were imported successfully.",
+          { count: normalized.programmes_imported || 0 },
+        )
+    : uiText(
+        "generator.correctBlocking",
+        "Correct the blocking issues before generating XMLTV.",
+      );
   resultMetrics.replaceChildren();
   for (const text of [
-    `Score ${validation.score ?? 0}/100`,
-    `${validation.critical ?? 0} Critical`,
-    `${validation.errors ?? 0} Errors`,
-    `${validation.warnings ?? 0} Warnings`,
-    `${suggestedFixes} Suggested fixes`,
+    uiText("generator.metricScore", "Score {score}/100", {
+      score: validation.score ?? 0,
+    }),
+    uiText("generator.metricCritical", "{count} Critical", {
+      count: validation.critical ?? 0,
+    }),
+    uiText("generator.metricErrors", "{count} Errors", {
+      count: validation.errors ?? 0,
+    }),
+    uiText("generator.metricWarnings", "{count} Warnings", {
+      count: validation.warnings ?? 0,
+    }),
+    uiText("generator.metricFixes", "{count} Suggested fixes", {
+      count: suggestedFixes,
+    }),
   ]) {
     const metric = document.createElement("span");
     metric.textContent = text;
@@ -303,16 +366,33 @@ function showResult(result) {
 
   issueList.replaceChildren();
   for (const issue of issues.slice(0, 8)) {
-    const row = issue.row ? ` (row ${issue.row})` : "";
-    appendListItem(`${issue.rule_id || "VALIDATION"}: ${issue.message || "Unknown issue"}${row}`);
+    const row = issue.row
+      ? ` (${uiText("generator.issueRow", "row {row}", { row: issue.row })})`
+      : "";
+    appendListItem(
+      `${issue.rule_id || "VALIDATION"}: ${
+        issue.message || uiText("generator.unknownIssue", "Unknown issue")
+      }${row}`,
+    );
   }
   for (const fix of fixSummary) {
-    appendListItem(`Suggested: ${fix.count || 0} × ${fix.message || "Correction"}`);
+    appendListItem(uiText(
+      "generator.suggested",
+      "Suggested: {count} × {message}",
+      {
+        count: fix.count || 0,
+        message: fix.message || uiText("generator.correction", "Correction"),
+      },
+    ));
   }
 
   authorizationPanel.classList.toggle("is-hidden", suggestedFixes === 0);
   authorizationMessage.textContent = suggestedFixes
-    ? `Apply ${suggestedFixes} safe corrections only to the generated XMLTV.`
+    ? uiText(
+        "generator.applyFixes",
+        "Apply {count} safe corrections only to the generated XMLTV.",
+        { count: suggestedFixes },
+      )
     : "";
   if (suggestedFixes === 0) {
     acceptAutoFixes.checked = false;
@@ -326,7 +406,7 @@ async function validateSchedule() {
   if (!data) return false;
 
   validateButton.disabled = true;
-  validateButton.textContent = "Validating…";
+  validateButton.textContent = uiText("generator.validating", "Validating…");
 
   try {
     const response = await fetch("/api/xmltv/import", {
@@ -348,14 +428,17 @@ async function validateSchedule() {
         warnings: 0,
         issues: [{
           rule_id: "CONNECTION",
-          message: "The server could not process the schedule.",
+          message: uiText(
+            "generator.serverProcessError",
+            "The server could not process the schedule.",
+          ),
         }],
       },
     });
     return false;
   } finally {
     validateButton.disabled = false;
-    validateButton.textContent = "Validate Schedule";
+    validateButton.textContent = uiText("generator.validate", "Validate Schedule");
   }
 }
 
@@ -395,7 +478,10 @@ form.elements.channel_timezone.addEventListener("change", () => {
 programmingGridButton.addEventListener("click", async () => {
   if (!latestSchedule.length) {
     programmingGridStatus.textContent = (
-      "Validate the EPG before creating the Programming Grid."
+      uiText(
+        "grid.validateFirst",
+        "Validate the EPG before creating the Programming Grid.",
+      )
     );
     return;
   }
@@ -412,7 +498,7 @@ programmingGridButton.addEventListener("click", async () => {
   }
 
   programmingGridButton.disabled = true;
-  programmingGridButton.textContent = "Creating PDF…";
+  programmingGridButton.textContent = uiText("generator.creatingPdf", "Creating PDF…");
   programmingGridStatus.textContent = "";
 
   try {
@@ -424,7 +510,7 @@ programmingGridButton.addEventListener("click", async () => {
       const error = await response.json();
       showResult(normalizeResult(error, false));
       programmingGridStatus.textContent = (
-        "The Programming Grid could not be created."
+        uiText("grid.createError", "The Programming Grid could not be created.")
       );
       return;
     }
@@ -441,15 +527,25 @@ programmingGridButton.addEventListener("click", async () => {
     link.remove();
     URL.revokeObjectURL(url);
     programmingGridStatus.textContent = (
-      `${link.download} downloaded successfully.`
+      uiText(
+        "generator.downloadSuccess",
+        "{filename} was downloaded successfully.",
+        { filename: link.download },
+      )
     );
   } catch {
     programmingGridStatus.textContent = (
-      "The server could not create the Programming Grid."
+      uiText(
+        "grid.serverError",
+        "The server could not create the Programming Grid.",
+      )
     );
   } finally {
     programmingGridButton.disabled = false;
-    programmingGridButton.textContent = "Download Programming Grid";
+    programmingGridButton.textContent = uiText(
+      "grid.download",
+      "Download Programming Grid",
+    );
   }
 });
 
@@ -461,7 +557,7 @@ form.addEventListener("submit", async (event) => {
   if (!data) return;
 
   generateButton.disabled = true;
-  generateButton.textContent = "Generating…";
+  generateButton.textContent = uiText("generator.generating", "Generating…");
 
   try {
     const response = await fetch("/api/xmltv/generate", {
@@ -489,8 +585,12 @@ form.addEventListener("submit", async (event) => {
 
     resultPanel.classList.remove("is-hidden", "is-error");
     resultIcon.textContent = "✓";
-    resultTitle.textContent = "XMLTV generated";
-    resultMessage.textContent = `${link.download} was downloaded successfully.`;
+    resultTitle.textContent = uiText("generator.generated", "XMLTV generated");
+    resultMessage.textContent = uiText(
+      "generator.downloadSuccess",
+      "{filename} was downloaded successfully.",
+      { filename: link.download },
+    );
     resultMetrics.replaceChildren();
     issueList.replaceChildren();
   } catch {
@@ -504,12 +604,26 @@ form.addEventListener("submit", async (event) => {
         warnings: 0,
         issues: [{
           rule_id: "CONNECTION",
-          message: "The server could not generate the XMLTV file.",
+          message: uiText(
+            "generator.serverGenerateError",
+            "The server could not generate the XMLTV file.",
+          ),
         }],
       },
     });
   } finally {
     generateButton.disabled = false;
-    generateButton.textContent = "Generate XMLTV";
+    generateButton.textContent = uiText("generator.generate", "Generate XMLTV");
   }
+});
+
+window.addEventListener("btp:languagechange", () => {
+  validateButton.textContent = uiText("generator.validate", "Validate Schedule");
+  generateButton.textContent = uiText("generator.generate", "Generate XMLTV");
+  programmingGridButton.textContent = uiText(
+    "grid.download",
+    "Download Programming Grid",
+  );
+  if (fileInput.files[0]) updateFileLabel();
+  if (latestSchedule.length) showEpgPreview(latestSchedule);
 });
