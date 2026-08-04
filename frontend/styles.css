@@ -75,6 +75,42 @@ body {
   gap: 10px;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.language-select select {
+  min-width: 62px;
+  min-height: 40px;
+  padding: 0 26px 0 12px;
+  color: var(--navy);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.language-select select:hover,
+.language-select select:focus-visible {
+  border-color: var(--blue);
+}
+
+.operations-rail a i,
+.operations-assurance b {
+  font: inherit;
+}
+
 .theme-toggle {
   min-height: 40px;
   display: inline-flex;

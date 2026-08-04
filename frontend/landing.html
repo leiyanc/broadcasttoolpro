@@ -12,7 +12,8 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/landing.css?v=20260728-1" />
+    <link rel="stylesheet" href="/static/landing.css?v=20260804-1" />
+    <script src="/static/i18n.js?v=20260804-1" defer></script>
     <script src="/static/landing.js?v=20260728-1" defer></script>
   </head>
   <body>
@@ -33,16 +34,23 @@
         <span></span><span></span>
       </button>
       <nav class="landing-nav" id="landing-nav" aria-label="Main navigation">
-        <a href="#platform">Platform</a>
-        <a href="#products">Products</a>
-        <a href="#operations">Operations</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#roadmap">Roadmap</a>
+        <a href="#platform" data-i18n="landing.nav.platform">Platform</a>
+        <a href="#products" data-i18n="landing.nav.products">Products</a>
+        <a href="#operations" data-i18n="landing.nav.operations">Operations</a>
+        <a href="#pricing" data-i18n="landing.nav.pricing">Pricing</a>
+        <a href="#roadmap" data-i18n="landing.nav.roadmap">Roadmap</a>
       </nav>
       <div class="landing-header-actions">
-        <a class="landing-login" href="/app?mode=signin">Sign In</a>
+        <label class="language-select landing-language-select">
+          <span class="visually-hidden" data-i18n="language.label">Language</span>
+          <select data-language-select aria-label="Language">
+            <option value="en">EN</option>
+            <option value="es">ES</option>
+          </select>
+        </label>
+        <a class="landing-login" href="/app?mode=signin" data-i18n="landing.signIn">Sign In</a>
         <a class="landing-button landing-button-small" href="/app?mode=create">
-          Request Access
+          <span data-i18n="landing.requestAccess">Request Access</span>
         </a>
       </div>
     </header>
@@ -54,15 +62,15 @@
             <span></span>
             BROADCAST OPERATIONS PLATFORM
           </p>
-          <h1>Every broadcast workflow. One operating layer.</h1>
-          <p class="landing-lead">
+          <h1 data-i18n="landing.hero.title">Every broadcast workflow. One operating layer.</h1>
+          <p class="landing-lead" data-i18n="landing.hero.copy">
             Automate programming, traffic, XMLTV, stream validation, monitoring,
             and reporting without stitching together spreadsheets and scripts.
           </p>
           <div class="landing-hero-actions">
-            <a class="landing-button" href="#products">Explore the Platform</a>
+            <a class="landing-button" href="#products" data-i18n="landing.hero.explore">Explore the Platform</a>
             <a class="landing-button landing-button-outline" href="/app?mode=trial">
-              Start Free Trial
+              <span data-i18n="landing.hero.trial">Start Free Trial</span>
             </a>
             <a class="landing-text-link" href="#workflow">
               See how it works <span>→</span>
@@ -122,8 +130,8 @@
       <section class="landing-section landing-products" id="products">
         <div class="landing-section-heading">
           <p class="landing-kicker"><span></span>PRODUCT SUITES</p>
-          <h2>Built around the work broadcasters actually do.</h2>
-          <p>
+          <h2 data-i18n="landing.products.title">Built around the work broadcasters actually do.</h2>
+          <p data-i18n="landing.products.copy">
             Specialized tools share one secure workspace, one operating model,
             and one consistent path from source file to final deliverable.
           </p>

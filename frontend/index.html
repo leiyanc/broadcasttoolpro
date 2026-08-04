@@ -21,7 +21,8 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260730-1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
+    <script src="/static/i18n.js?v=20260804-1" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260730-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
@@ -50,6 +51,13 @@
       </a>
 
       <div class="header-actions">
+        <label class="language-select">
+          <span class="visually-hidden" data-i18n="language.label">Language</span>
+          <select data-language-select aria-label="Language">
+            <option value="en">EN</option>
+            <option value="es">ES</option>
+          </select>
+        </label>
         <button
           class="theme-toggle"
           id="theme-toggle"
@@ -62,7 +70,7 @@
         </button>
         <span class="status-pill">
           <span class="status-dot"></span>
-          All Systems Operational
+          <span data-i18n="header.status">All Systems Operational</span>
         </span>
         <button
           class="account-pill is-hidden"
@@ -87,8 +95,8 @@
             alt="Broadcast Tool Pro"
           />
           <p class="eyebrow">SECURE PLATFORM ACCESS</p>
-          <h1>Welcome to Broadcast Tool Pro.</h1>
-          <p>
+          <h1 data-i18n="auth.welcome">Welcome to Broadcast Tool Pro.</h1>
+          <p data-i18n="auth.welcomeCopy">
             Sign in to access your organization's channels, workflows,
             reports, and settings.
           </p>
@@ -138,7 +146,7 @@
               role="tab"
               aria-selected="true"
             >
-              Sign In
+              <span data-i18n="auth.signIn">Sign In</span>
             </button>
             <button
               id="show-trial-tab"
@@ -146,7 +154,7 @@
               role="tab"
               aria-selected="false"
             >
-              Request Access
+              <span data-i18n="auth.requestAccess">Request Access</span>
             </button>
             <button
               id="show-free-trial-tab"
@@ -154,22 +162,22 @@
               role="tab"
               aria-selected="false"
             >
-              Free Trial
+              <span data-i18n="auth.freeTrial">Free Trial</span>
             </button>
           </div>
 
         <form class="auth-card is-hidden" id="login-form">
-          <p class="eyebrow">ACCOUNT LOGIN</p>
-          <h2>Sign In</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.accountLogin">ACCOUNT LOGIN</p>
+          <h2 data-i18n="auth.signIn">Sign In</h2>
+          <p class="auth-copy" data-i18n="auth.signInCopy">
             Use the account assigned to your organization.
           </p>
           <label>
-            <span>Email Address</span>
+            <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
           <label>
-            <span>Password</span>
+            <span data-i18n="auth.password">Password</span>
             <input
               name="password"
               type="password"
@@ -184,19 +192,19 @@
               value="true"
             />
             <span>
-              <strong>Remember me</strong>
-              <small>Keep this account signed in for 30 days.</small>
+              <strong data-i18n="auth.remember">Remember me</strong>
+              <small data-i18n="auth.rememberCopy">Keep this account signed in for 30 days.</small>
             </span>
           </label>
           <button class="button button-primary" type="submit">
-            Sign In
+            <span data-i18n="auth.signIn">Sign In</span>
           </button>
           <button
             class="text-link auth-text-button"
             id="show-password-reset"
             type="button"
           >
-            Forgot your password?
+            <span data-i18n="auth.forgot">Forgot your password?</span>
           </button>
           <p class="auth-message" id="login-message"></p>
         </form>
@@ -257,42 +265,43 @@
         </form>
 
         <form class="auth-card is-hidden" id="access-request-form">
-          <p class="eyebrow">PAID ACCOUNT ACCESS</p>
-          <h2>Request Access</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.paidAccess">PAID ACCOUNT ACCESS</p>
+          <h2 data-i18n="auth.requestAccess">Request Access</h2>
+          <p class="auth-copy" data-i18n="auth.requestCopy">
             Tell us who you are. We will review your workflow and assign a
             Professional or Enterprise account separately from the free trial.
           </p>
           <label>
-            <span>Organization Name</span>
+            <span data-i18n="auth.organization">Organization Name</span>
             <input name="organization_name" required minlength="2" />
           </label>
           <label>
-            <span>Your Name</span>
+            <span data-i18n="auth.name">Your Name</span>
             <input name="contact_name" required minlength="2" />
           </label>
           <label>
-            <span>Email Address</span>
+            <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
           <label>
-            <span>What would you like to accomplish? (Optional)</span>
+            <span data-i18n="auth.goal">What would you like to accomplish? (Optional)</span>
             <textarea
               name="message"
               rows="4"
               maxlength="2000"
               placeholder="Channels, workflows, formats, or operational needs"
+              data-i18n-placeholder="auth.goalPlaceholder"
             ></textarea>
           </label>
           <button class="button button-primary" type="submit">
-            Submit Access Request
+            <span data-i18n="auth.submitRequest">Submit Access Request</span>
           </button>
           <button
             class="text-link auth-text-button"
             id="show-free-trial-link"
             type="button"
           >
-            Prefer to evaluate first? Start a 7-Day Free Trial
+            <span data-i18n="auth.tryTrial">Prefer to evaluate first? Start a 7-Day Free Trial</span>
           </button>
           <p class="auth-message" id="access-request-message"></p>
         </form>
@@ -925,30 +934,30 @@
         <aside class="operations-rail" aria-label="Platform areas">
           <div>
             <span class="rail-signal" aria-hidden="true"></span>
-            <p>OPERATIONS DESK</p>
+            <p data-i18n="home.desk">OPERATIONS DESK</p>
           </div>
-          <a href="#generator"><span>01</span>Programming</a>
-          <a href="#prelog"><span>02</span>Traffic</a>
-          <a href="#hls-validator"><span>03</span>Streaming QC</a>
-          <a href="#report-history"><span>04</span>Reports</a>
+          <a href="#generator"><span>01</span><i data-i18n="home.programming">Programming</i></a>
+          <a href="#prelog"><span>02</span><i data-i18n="home.traffic">Traffic</i></a>
+          <a href="#hls-validator"><span>03</span><i data-i18n="home.streaming">Streaming QC</i></a>
+          <a href="#report-history"><span>04</span><i data-i18n="home.reports">Reports</i></a>
         </aside>
 
         <div class="operations-canvas">
           <div class="operations-intro">
             <div>
               <p class="eyebrow">BROADCAST OPERATIONS PLATFORM</p>
-              <h1 id="operations-title">
+              <h1 id="operations-title" data-i18n="home.title">
                 Control every broadcast workflow.
               </h1>
-              <p class="hero-copy">
+              <p class="hero-copy" data-i18n="home.copy">
                 One accountable workspace for programming, traffic,
                 validation, monitoring, and operational reporting.
               </p>
             </div>
             <div class="operations-assurance" aria-label="Platform assurance">
-              <span><i></i>Secure workspace</span>
-              <span><i></i>Role-based access</span>
-              <span><i></i>Audit-ready exports</span>
+              <span><i></i><b data-i18n="home.secure">Secure workspace</b></span>
+              <span><i></i><b data-i18n="home.roles">Role-based access</b></span>
+              <span><i></i><b data-i18n="home.audit">Audit-ready exports</b></span>
             </div>
           </div>
 
@@ -960,7 +969,7 @@
                 </svg>
               </span>
               <strong>XMLTV Generator</strong>
-              <small>Create compliant XMLTV files</small>
+              <small data-i18n="module.generator.copy">Create compliant XMLTV files</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
             <a href="#validator">
@@ -971,7 +980,7 @@
                 </svg>
               </span>
               <strong>XMLTV Validator</strong>
-              <small>Inspect syntax and schedule integrity</small>
+              <small data-i18n="module.validator.copy">Inspect syntax and schedule integrity</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
             <a href="#repair">
@@ -981,7 +990,7 @@
                 </svg>
               </span>
               <strong>XMLTV Repair</strong>
-              <small>Apply controlled, traceable corrections</small>
+              <small data-i18n="module.repair.copy">Apply controlled, traceable corrections</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
             <a href="#prelog">
@@ -992,7 +1001,7 @@
                 </svg>
               </span>
               <strong>Pre-Logs</strong>
-              <small>Select and document planned airings</small>
+              <small data-i18n="module.prelog.copy">Select and document planned airings</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
             <a href="#postlog">
@@ -1003,7 +1012,7 @@
                 </svg>
               </span>
               <strong>Post-Logs</strong>
-              <small>Certify broadcast occurrences</small>
+              <small data-i18n="module.postlog.copy">Certify broadcast occurrences</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
             <a href="#hls-validator">
@@ -1014,7 +1023,7 @@
                 </svg>
               </span>
               <strong>HLS Validator</strong>
-              <small>Validate stream delivery and signals</small>
+              <small data-i18n="module.hls.copy">Validate stream delivery and signals</small>
               <span class="module-arrow" aria-hidden="true">→</span>
             </a>
           </nav>

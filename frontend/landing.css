@@ -32,6 +32,18 @@ a {
   color: inherit;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .landing-header {
   position: sticky;
   z-index: 50;
@@ -84,6 +96,25 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
+}
+
+.landing-language-select select {
+  min-width: 60px;
+  min-height: 40px;
+  padding: 0 25px 0 11px;
+  color: var(--landing-ink);
+  background: var(--landing-panel);
+  border: 1px solid var(--landing-line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.landing-language-select select:hover,
+.landing-language-select select:focus-visible {
+  border-color: var(--landing-cyan);
 }
 
 .landing-button {

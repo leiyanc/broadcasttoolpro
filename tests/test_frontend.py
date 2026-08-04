@@ -14,6 +14,7 @@ def test_frontend_files_exist():
     assert (FRONTEND_DIR / "landing.html").is_file()
     assert (FRONTEND_DIR / "landing.css").is_file()
     assert (FRONTEND_DIR / "landing.js").is_file()
+    assert (FRONTEND_DIR / "i18n.js").is_file()
     assert (FRONTEND_DIR / "index.html").is_file()
     assert (FRONTEND_DIR / "styles.css").is_file()
     assert (FRONTEND_DIR / "app.js").is_file()
@@ -51,6 +52,26 @@ def test_frontend_supports_persistent_light_and_dark_modes():
     assert (
         FRONTEND_DIR / "assets" / "broadcast-tool-pro-logo.png"
     ).is_file()
+
+
+def test_public_and_authenticated_interfaces_share_language_preference():
+    app_html = (FRONTEND_DIR / "index.html").read_text()
+    landing_html = (FRONTEND_DIR / "landing.html").read_text()
+    javascript = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert "/static/i18n.js" in app_html
+    assert "/static/i18n.js" in landing_html
+    assert app_html.count("data-language-select") >= 1
+    assert landing_html.count("data-language-select") >= 1
+    assert 'data-i18n="auth.signIn"' in app_html
+    assert 'data-i18n="home.title"' in app_html
+    assert 'data-i18n="landing.hero.title"' in landing_html
+    assert "broadcastToolPro.language" in javascript
+    assert 'new Set(["en", "es"])' in javascript
+    assert 'document.documentElement.lang = language' in javascript
+    assert 'new CustomEvent("btp:languagechange"' in javascript
+    assert "localStorage.setItem" in javascript
+    assert "navigator.language" in javascript
 
 
 def test_home_returns_frontend():

@@ -57,6 +57,25 @@ require a manual date.
 - Report archive
 - Billing and subscriptions
 
+### Interface Localization
+
+The product interface supports English and international Spanish. Internal
+code, APIs, database fields, technical documentation, and canonical product
+terminology remain in English.
+
+- A single language preference is shared by the public landing page and the
+  authenticated application.
+- The first visit may use the browser language; an explicit user selection is
+  remembered and takes precedence afterward.
+- Language is represented by `EN` and `ES`, not national flags.
+- Translation keys are centralized so modules can be localized incrementally
+  without duplicating business logic.
+- Interface localization is strictly presentational. It must not alter source
+  data, XMLTV output, Excel workbooks, PDFs, report language selections, or
+  validation behavior.
+- Report-language controls remain independent because a user may operate the
+  interface in one language and deliver a report in another.
+
 ## Commercial Packaging
 
 Broadcast Tool Pro will launch with one primary commercial plan. A three-tier
