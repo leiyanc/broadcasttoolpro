@@ -1,6 +1,7 @@
 from backend.main import app
 from backend.services.hls.validator import (
     HlsValidationError,
+    _https_context,
     _validate_public_url,
     inspect_mpegts_scte35,
     validate_hls,
@@ -40,6 +41,12 @@ segment100.ts
 #EXTINF:8,
 segment101.ts
 """
+
+
+def test_hls_monitor_reuses_tls_context():
+    _https_context.cache_clear()
+
+    assert _https_context() is _https_context()
 
 
 def test_hls_report_timestamp_label_uses_utc():

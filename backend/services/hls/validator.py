@@ -2,6 +2,7 @@ import ipaddress
 import socket
 import ssl
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
@@ -14,7 +15,7 @@ from urllib.request import (
 
 
 MAX_PLAYLIST_SIZE = 2 * 1024 * 1024
-MAX_SEGMENT_INSPECTION_SIZE = 512 * 1024
+MAX_SEGMENT_INSPECTION_SIZE = 256 * 1024
 MAX_VARIANTS_TO_INSPECT = 10
 
 
@@ -27,7 +28,9 @@ class _NoRedirects(HTTPRedirectHandler):
         return None
 
 
+@lru_cache(maxsize=1)
 def _https_context() -> ssl.SSLContext:
+    """Reuse the process TLS context during bounded stream monitoring."""
     context = ssl.create_default_context()
     verify_paths = ssl.get_default_verify_paths()
 

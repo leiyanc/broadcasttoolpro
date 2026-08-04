@@ -285,6 +285,9 @@ bootstrap.
 - Use a free or low-cost transactional email tier when email delivery is
   connected.
 - Limit HLS monitoring duration and allow only controlled concurrency.
+- Reuse network security resources across HLS polling cycles and keep MPEG-TS
+  inspection samples bounded so a monitoring session cannot progressively
+  exhaust the web-service memory allocation.
 - Do not introduce Redis, Celery, Kubernetes, dedicated media storage, or
   multiple application services at this stage.
 
