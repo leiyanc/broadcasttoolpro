@@ -27,8 +27,10 @@ preserve valid named and numeric XML entities and document every correction.
 
 Generic Traffic imports must not depend on a customer filename. Operational
 date resolution follows this order: an explicit date supplied by the user,
-an embedded date or date-time in the source, and finally a date detected in
-the filename. If none is available, the interface may require a manual date.
+an embedded date or full event date-time in the source, and finally a date
+detected in the filename. CSV and XLSX readers must accept the same full
+event date-time representation. If no date is available, the interface may
+require a manual date.
 
 ### Streaming Quality Control
 

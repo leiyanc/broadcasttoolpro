@@ -330,10 +330,33 @@ def parse_playlist_events(
     detected = structure["detected_columns"]
     headers = structure["_raw_headers"]
 
+    if not detected["time"] or not detected["asset_id"]:
+        raise ValueError(
+            "Time and Asset ID columns must be mapped before filtering."
+        )
+
+    time_index = headers.index(detected["time"])
+    embedded_event_datetime = next(
+        (
+            parsed
+            for row in structure["_raw_rows"]
+            if time_index < len(row)
+            and (parsed := _excel_datetime(row[time_index])) is not None
+        ),
+        None,
+    )
     selected_date = (
         _parse_date(operational_date)
         if isinstance(operational_date, str) and operational_date.strip()
-        else metadata["date"] or _date_from_filename(filename)
+        else (
+            metadata["date"]
+            or (
+                embedded_event_datetime.date().isoformat()
+                if embedded_event_datetime is not None
+                else None
+            )
+            or _date_from_filename(filename)
+        )
     )
     if not selected_date:
         raise ValueError(
@@ -341,12 +364,6 @@ def parse_playlist_events(
             "A manual date is required."
         )
 
-    if not detected["time"] or not detected["asset_id"]:
-        raise ValueError(
-            "Time and Asset ID columns must be mapped before filtering."
-        )
-
-    time_index = headers.index(detected["time"])
     asset_index = headers.index(detected["asset_id"])
     duration_index = (
         headers.index(detected["duration"])
@@ -385,10 +402,26 @@ def parse_playlist_events(
         if time_index >= len(row) or asset_index >= len(row):
             continue
 
+        full_datetime = _excel_datetime(row[time_index])
         parsed_time = _parse_time(row[time_index])
         asset_id = row[asset_index].strip()
 
-        if not parsed_time or not asset_id:
+        if (full_datetime is None and not parsed_time) or not asset_id:
+            continue
+
+        duration = (
+            _amagi_duration(row[duration_index])
+            if duration_index is not None and duration_index < len(row)
+            else None
+        )
+        if full_datetime is not None:
+            events.append(PlaylistEvent(
+                channel_name=metadata["channel_name"],
+                air_datetime=full_datetime.replace(tzinfo=timezone_info),
+                duration=duration,
+                asset_id=asset_id,
+                source_row=structure["header_row"] + offset,
+            ))
             continue
 
         event_time = time.fromisoformat(parsed_time)
@@ -406,11 +439,6 @@ def parse_playlist_events(
 
         previous_raw_seconds = raw_seconds
         previous_absolute_seconds = absolute_seconds
-        duration = (
-            row[duration_index].strip() or None
-            if duration_index is not None and duration_index < len(row)
-            else None
-        )
         events.append(PlaylistEvent(
             channel_name=metadata["channel_name"],
             air_datetime=base_date + timedelta(seconds=absolute_seconds),
@@ -424,6 +452,10 @@ def parse_playlist_events(
         for key, value in structure.items()
         if key not in {"_raw_rows", "_raw_headers"}
     }
+    if events:
+        public_structure["metadata"]["date"] = min(
+            event.air_datetime for event in events
+        ).date().isoformat()
     return public_structure, events
 
 
@@ -978,6 +1010,12 @@ def _xml_playlist_date(
 
 
 def _date_from_filename(filename: str) -> str | None:
+    iso_date = compile(r"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)")
+    iso_match = iso_date.search(Path(filename).stem)
+    if iso_match:
+        year, month, day = iso_match.groups()
+        return _parse_date(f"{year}-{month}-{day}")
+
     compact_date = compile(r"(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)")
     filename_match = compact_date.search(Path(filename).stem)
     if filename_match:

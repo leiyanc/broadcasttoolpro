@@ -76,6 +76,8 @@ data in this document.
   common structural detection rather than a customer filename.
 - [ ] Generic CSV sources accept either an explicit operational date or an
   embedded date-time before falling back to the filename.
+- [ ] Equivalent Amagi CSV and XLSX exports produce the same internal event
+  dates, times, durations, and asset IDs.
 - [ ] Click selection and drag-and-drop behave consistently.
 - [ ] Each selected asset produces an independent certification.
 - [ ] Dates, times, durations, channel, optional client data, and branding are

@@ -718,3 +718,42 @@ def test_csv_as_run_accepts_manual_date_and_embedded_datetime():
 
     assert manual_events[0].air_datetime.date().isoformat() == "2026-07-20"
     assert embedded_events[0].air_datetime.date().isoformat() == "2026-07-21"
+
+
+def test_amagi_csv_as_run_uses_full_event_datetimes_and_spaced_headers():
+    content = (
+        b"Playlist, Item ID, Asset Name, Title, Type, Segment ID,"
+        b" Mini Playlist Name, Headend Start Time, Playlist Start Time,"
+        b" Duration Played, Scheduled Duration, Status, User Data, Audios,"
+        b" Subtitles, Parameters\n"
+        b"4097,2,ta_spot,ta_spot,clip,1,,2026-07-27 06:00:15,"
+        b"2026-07-27 06:00:15:00,00:00:30:02,00:00:30:02,normal,,,,\n"
+    )
+
+    structure, events = parse_playlist_file(
+        "generic-name.csv",
+        content,
+        "America/New_York",
+    )
+
+    assert structure["metadata"]["date"] == "2026-07-27"
+    assert len(events) == 1
+    assert events[0].asset_id == "ta_spot"
+    assert events[0].air_datetime.isoformat() == "2026-07-27T06:00:15-04:00"
+    assert events[0].duration == "00:00:30"
+
+
+def test_iso_date_is_detected_from_generic_as_run_filename():
+    content = (
+        b"Asset ID,Start Time,Duration\n"
+        b"ta_spot,06:00:15,00:00:30\n"
+    )
+
+    structure, events = parse_playlist_file(
+        "asrun_2026-07-27_channel_001.csv",
+        content,
+        "America/New_York",
+    )
+
+    assert structure["metadata"]["date"] == "2026-07-27"
+    assert events[0].air_datetime.date().isoformat() == "2026-07-27"
