@@ -7,7 +7,7 @@ from backend.services.hls.validator import (
 )
 from backend.api.hls import download_hls_report
 from backend.services.hls.report import generate_hls_report
-from backend.services.hls.report import _timestamp_label
+from backend.services.hls.report import _scte_summary, _timestamp_label
 
 
 MASTER_PLAYLIST = """#EXTM3U
@@ -232,6 +232,25 @@ def sample_report() -> dict:
             "message": "An unmatched CUE-IN marker was detected.",
         }],
     }
+
+
+def test_scte_summary_does_not_count_continuations_or_duplicate_signaling():
+    summary = _scte_summary({"triggers": [
+        {
+            "type": "SCTE-35 DATERANGE",
+            "id": "break-100",
+            "duration": 30,
+            "ad_trigger": True,
+        },
+        {"type": "CUE-OUT", "duration": 30},
+        {"type": "CUE-OUT-CONT", "duration": 8},
+        {"type": "CUE-OUT-CONT", "duration": 16},
+        {"type": "CUE-IN", "duration": None},
+    ]})
+
+    assert summary["break_count"] == 1
+    assert summary["total_planned_duration"] == 30
+    assert summary["continuation_count"] == 2
 
 
 def test_hls_pdf_report_is_branded_and_downloadable():

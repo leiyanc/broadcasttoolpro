@@ -182,6 +182,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert "pollHlsMonitor" in javascript
     assert "hlsSeenTriggers" in javascript
     assert "/api/hls/report/pdf" in javascript
+    assert "summarizeScteBreaks" in javascript
+    assert "continuation_count" in javascript
 
 
 def test_secure_account_interface_is_present():

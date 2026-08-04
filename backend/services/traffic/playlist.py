@@ -152,6 +152,22 @@ def _parse_date(value: str) -> str | None:
         except ValueError:
             continue
 
+    datetime_formats = (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %I:%M:%S %p",
+    )
+    normalized = text.rstrip("Z")
+    for value_format in datetime_formats:
+        try:
+            return datetime.strptime(
+                normalized[:len(datetime.now().strftime(value_format))],
+                value_format,
+            ).date().isoformat()
+        except ValueError:
+            continue
+
     return None
 
 
@@ -306,13 +322,20 @@ def inspect_playlist(content: bytes) -> dict[str, Any]:
 def parse_playlist_events(
     content: bytes,
     source_timezone: str | None = None,
+    operational_date: str | None = None,
+    filename: str = "",
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     structure = _playlist_structure(content)
     metadata = structure["metadata"]
     detected = structure["detected_columns"]
     headers = structure["_raw_headers"]
 
-    if not metadata["date"]:
+    selected_date = (
+        _parse_date(operational_date)
+        if isinstance(operational_date, str) and operational_date.strip()
+        else metadata["date"] or _date_from_filename(filename)
+    )
+    if not selected_date:
         raise ValueError(
             "The playlist does not contain an embedded date. "
             "A manual date is required."
@@ -350,7 +373,7 @@ def parse_playlist_events(
             ) from exc
 
     base_date = datetime.strptime(
-        metadata["date"],
+        selected_date,
         "%Y-%m-%d",
     ).replace(tzinfo=timezone_info)
     previous_raw_seconds: int | None = None
@@ -1070,7 +1093,12 @@ def parse_playlist_file(
 ) -> tuple[dict[str, Any], list[PlaylistEvent]]:
     extension = Path(filename).suffix.lower()
     if extension == ".csv":
-        return parse_playlist_events(content, source_timezone)
+        return parse_playlist_events(
+            content,
+            source_timezone,
+            operational_date=operational_date,
+            filename=filename,
+        )
     if extension == ".xlsx":
         return parse_excel_playlist_events(content, source_timezone)
     if extension == ".json":

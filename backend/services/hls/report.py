@@ -64,6 +64,42 @@ RECOMMENDATIONS_ES = {
     "HLS-012": "Revise el pareo de marcadores CUE-OUT y CUE-IN.",
 }
 
+
+def _scte_summary(payload: dict) -> dict:
+    supplied = payload.get("scte35_summary") or {}
+    if supplied:
+        return supplied
+    triggers = list(payload.get("triggers") or [])
+    date_range_breaks = [
+        trigger for trigger in triggers
+        if (
+            trigger.get("type") == "SCTE-35 DATERANGE"
+            and trigger.get("ad_trigger") is not False
+        )
+    ]
+    cue_out_breaks = [
+        trigger for trigger in triggers
+        if trigger.get("type") == "CUE-OUT"
+    ]
+    breaks = date_range_breaks or cue_out_breaks
+    durations = []
+    for trigger in breaks:
+        try:
+            duration = float(trigger.get("duration"))
+        except (TypeError, ValueError):
+            continue
+        if duration > 0:
+            durations.append(duration)
+    return {
+        "break_count": max(len(date_range_breaks), len(cue_out_breaks)),
+        "continuation_count": sum(
+            trigger.get("type") == "CUE-OUT-CONT"
+            for trigger in triggers
+        ),
+        "durations_reported": len(durations),
+        "total_planned_duration": round(sum(durations), 3),
+    }
+
 SPANISH = {
     "platform": "Plataforma de Operaciones Broadcast",
     "title": "Reporte de Validacion HLS y Monitoreo SCTE-35",
@@ -346,6 +382,7 @@ def generate_hls_report(
 
     valid = bool(payload.get("valid"))
     status_color = SUCCESS if valid else DANGER
+    scte_summary = _scte_summary(payload)
     summary = [
         [
             translated("status", "Status"),
@@ -380,6 +417,18 @@ def generate_hls_report(
             ),
         ],
         [translated("triggers", "Unique Triggers"), str(payload.get("trigger_count", 0))],
+        [
+            "Pausas Publicitarias" if spanish else "Ad Breaks",
+            str(scte_summary.get("break_count", 0)),
+        ],
+        [
+            "Duracion Planificada Total" if spanish else "Total Planned Duration",
+            f'{scte_summary.get("total_planned_duration", 0)}s',
+        ],
+        [
+            "Marcadores de Continuacion" if spanish else "Continuation Markers",
+            str(scte_summary.get("continuation_count", 0)),
+        ],
         [translated("generated", "Generated"), str(payload.get("generated_at") or "")],
     ]
     if payload.get("monitoring_started_at") or payload.get("monitoring_ended_at"):

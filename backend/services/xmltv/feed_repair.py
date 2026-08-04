@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
+import re
 from typing import Any
 
 from lxml import etree
@@ -53,6 +54,31 @@ def _parse_xml(content: bytes) -> etree._Element:
     return root
 
 
+BARE_AMPERSAND = re.compile(
+    rb"&(?!amp;|lt;|gt;|apos;|quot;|#\d+;|#x[0-9A-Fa-f]+;)"
+)
+
+
+def _escape_bare_ampersands(
+    content: bytes,
+) -> tuple[bytes, list[RepairChange]]:
+    changes: list[RepairChange] = []
+    repaired_lines = []
+    for line_number, line in enumerate(content.splitlines(keepends=True), 1):
+        matches = list(BARE_AMPERSAND.finditer(line))
+        repaired_lines.append(BARE_AMPERSAND.sub(b"&amp;", line))
+        for _ in matches:
+            changes.append(RepairChange(
+                rule_id="REPAIR-005",
+                line=line_number,
+                field="XML Syntax",
+                original_value="&",
+                repaired_value="&amp;",
+                message="Escaped an unescaped ampersand in XML content.",
+            ))
+    return b"".join(repaired_lines), changes
+
+
 def _normalize_timestamp(value: str) -> str | None:
     compact = value.strip()
     formats = (
@@ -73,8 +99,8 @@ def _normalize_timestamp(value: str) -> str | None:
 
 
 def repair_xmltv(content: bytes) -> dict[str, Any]:
-    root = _parse_xml(content)
-    changes: list[RepairChange] = []
+    escaped_content, changes = _escape_bare_ampersands(content)
+    root = _parse_xml(escaped_content)
 
     for element in root.findall("channel") + root.findall("programme"):
         attributes = ("id",) if element.tag == "channel" else (

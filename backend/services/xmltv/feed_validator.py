@@ -75,10 +75,16 @@ def validate_xmltv(content: bytes) -> dict[str, Any]:
     try:
         root = etree.fromstring(content, parser=parser)
     except etree.XMLSyntaxError as exc:
+        message = f"XML is not well formed: {exc.msg}"
+        if "EntityRef" in exc.msg:
+            message = (
+                "XML is not well formed: an ampersand (&) must be "
+                "escaped as &amp; in XML text and attribute values."
+            )
         issues.append(ValidationIssue(
             rule_id="XMLTV-003",
             severity="critical",
-            message=f"XML is not well formed: {exc.msg}",
+            message=message,
             row=exc.lineno,
             field="XML Syntax",
         ))

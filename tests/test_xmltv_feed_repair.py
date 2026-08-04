@@ -94,3 +94,23 @@ def test_malformed_xml_cannot_be_repaired():
         assert "not well formed" in str(exc)
     else:
         raise AssertionError("Expected malformed XML to be rejected.")
+
+
+def test_bare_ampersand_is_repaired_without_changing_displayed_text():
+    content = b"""<tv>
+  <channel id="news"><display-name>News &amp; Analysis</display-name></channel>
+  <programme start="20260718120000 +0000" stop="20260718123000 +0000" channel="news">
+    <title>Markets & Business</title><desc>News & analysis</desc>
+    <category>News</category><episode-num system="assetID">markets</episode-num>
+    <rating system="VCHIP"><value>TV-G</value></rating>
+  </programme>
+</tv>"""
+    result = repair_xmltv(content)
+
+    assert result["repairable"] is True
+    assert sum(
+        change["rule_id"] == "REPAIR-005"
+        for change in result["changes"]
+    ) == 2
+    assert b"Markets &amp; Business" in result["xml"]
+    assert result["validation"]["valid"] is True

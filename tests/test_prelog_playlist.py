@@ -692,3 +692,29 @@ def test_json_txt_and_xml_as_runs_share_the_internal_model():
         event.air_datetime.isoformat() == "2026-07-20T13:28:12-04:00"
         for event in results
     )
+
+
+def test_csv_as_run_accepts_manual_date_and_embedded_datetime():
+    manual_content = (
+        b"Asset ID,Start Time,Duration\n"
+        b"spot-1,13:28:12,00:00:30\n"
+    )
+    _, manual_events = parse_playlist_file(
+        "generic.csv",
+        manual_content,
+        "America/New_York",
+        operational_date="2026-07-20",
+    )
+    embedded_content = (
+        b"Report Date,2026-07-21 00:00:00\n"
+        b"Asset ID,Start Time,Duration\n"
+        b"spot-2,14:00:00,00:00:30\n"
+    )
+    _, embedded_events = parse_playlist_file(
+        "generic.csv",
+        embedded_content,
+        "America/New_York",
+    )
+
+    assert manual_events[0].air_datetime.date().isoformat() == "2026-07-20"
+    assert embedded_events[0].air_datetime.date().isoformat() == "2026-07-21"

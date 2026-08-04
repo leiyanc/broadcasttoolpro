@@ -21,6 +21,15 @@ configuration, templates, profiles, and entitlements whenever possible.
 - As-Run processing
 - Broadcast reporting
 
+XMLTV validation must report unescaped ampersands as an actionable XML syntax
+error. XMLTV Repair may safely replace bare ampersands with `&amp;`, but it must
+preserve valid named and numeric XML entities and document every correction.
+
+Generic Traffic imports must not depend on a customer filename. Operational
+date resolution follows this order: an explicit date supplied by the user,
+an embedded date or date-time in the source, and finally a date detected in
+the filename. If none is available, the interface may require a manual date.
+
 ### Streaming Quality Control
 
 - Instant HLS validation
@@ -121,6 +130,12 @@ validated. Its planned capabilities are:
 - Closed-caption presence, continuity, and synchronization
 - Black-frame detection
 - Freeze-frame detection
+
+SCTE-35 monitoring reports must distinguish ad-break starts from continuation
+markers. Duplicate representations of the same break (for example DATERANGE
+and CUE-OUT signaling) must not inflate the summarized break count or planned
+duration. The complete trigger timeline remains available as technical
+evidence.
 
 Future enterprise expansion may include higher concurrency and retention, API
 access, SSO, contractual service levels, and additional identity controls.

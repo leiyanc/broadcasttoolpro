@@ -47,6 +47,16 @@ def test_malformed_xml_reports_source_line():
     assert issue["row"] == 2
 
 
+def test_unescaped_ampersand_has_actionable_validation_message():
+    result = validate_xmltv(
+        VALID_XMLTV.replace(b"Morning News", b"News & Analysis")
+    )
+
+    issue = result["validation"]["issues"][0]
+    assert result["valid"] is False
+    assert "escaped as &amp;" in issue["message"]
+
+
 def test_missing_attributes_unknown_channel_and_title_are_critical():
     xml = b"""<tv>
   <channel id="news"><display-name>News</display-name></channel>

@@ -53,6 +53,8 @@ data in this document.
 
 - [ ] Valid XMLTV produces a clear successful report.
 - [ ] Invalid XMLTV identifies actionable errors and warnings.
+- [ ] A bare ampersand is identified clearly and repaired as `&amp;` without
+  changing existing valid XML entities.
 - [ ] Repair changes only supported safe issues and documents every change.
 - [ ] Repaired XMLTV passes a new independent validation.
 - [ ] Trial downloads follow trial format and watermark restrictions.
@@ -72,6 +74,8 @@ data in this document.
 
 - [ ] Representative XLSX, CSV, XML, JSON, or TXT As-Run source imports using
   common structural detection rather than a customer filename.
+- [ ] Generic CSV sources accept either an explicit operational date or an
+  embedded date-time before falling back to the filename.
 - [ ] Click selection and drag-and-drop behave consistently.
 - [ ] Each selected asset produces an independent certification.
 - [ ] Dates, times, durations, channel, optional client data, and branding are
@@ -85,6 +89,8 @@ data in this document.
 - [ ] Unreachable URLs return an actionable error.
 - [ ] Monitoring stops automatically after 5, 10, or 15 minutes.
 - [ ] Monitoring records SCTE-35 observations without claiming repair.
+- [ ] SCTE-35 summary separates ad-break starts from continuation markers,
+  avoids duplicate break counting, and totals reported planned durations.
 - [ ] Bandwidth chart covers the exact monitoring start and end timestamps.
 - [ ] Branded PDF report clearly separates validation from monitoring evidence.
 - [ ] Monitoring access follows the assigned plan or add-on.

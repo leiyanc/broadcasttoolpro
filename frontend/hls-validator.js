@@ -189,6 +189,31 @@ function hlsTriggerKey(trigger) {
   ]);
 }
 
+function summarizeScteBreaks(triggers) {
+  const dateRangeBreaks = triggers.filter((trigger) => (
+    trigger.type === "SCTE-35 DATERANGE"
+    && trigger.ad_trigger !== false
+  ));
+  const cueOutBreaks = triggers.filter(
+    (trigger) => trigger.type === "CUE-OUT",
+  );
+  const breaks = dateRangeBreaks.length ? dateRangeBreaks : cueOutBreaks;
+  const knownDurations = breaks
+    .map((trigger) => Number(trigger.duration))
+    .filter((duration) => Number.isFinite(duration) && duration > 0);
+  return {
+    break_count: Math.max(dateRangeBreaks.length, cueOutBreaks.length),
+    continuation_count: triggers.filter(
+      (trigger) => trigger.type === "CUE-OUT-CONT",
+    ).length,
+    durations_reported: knownDurations.length,
+    total_planned_duration: knownDurations.reduce(
+      (total, duration) => total + duration,
+      0,
+    ),
+  };
+}
+
 function addMonitoredTriggers(result) {
   const variants = Array.isArray(result.variants) ? result.variants : [];
   const triggers = result.media?.triggers
@@ -216,6 +241,12 @@ function addMonitoredTriggers(result) {
     );
     hlsMonitorTriggerBody.prepend(row);
   });
+  const summary = summarizeScteBreaks(hlsMonitorTriggers);
+  hlsMonitorStatus.textContent = (
+    `${hlsPolls} inspections · ${summary.break_count} ad breaks · `
+    + `${summary.total_planned_duration}s planned · `
+    + `${summary.continuation_count} continuation markers`
+  );
   return added;
 }
 
@@ -417,6 +448,7 @@ function hlsReportPayload() {
     ),
     scte35_track_detected: Boolean(result.scte35_track_detected),
     trigger_count: triggers.length,
+    scte35_summary: summarizeScteBreaks(triggers),
     variants: hlsInitialVariants.length
       ? hlsInitialVariants
       : (result.variants || []),
