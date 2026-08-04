@@ -20,6 +20,25 @@ const repairResultMetrics = document.querySelector("#repair-result-metrics");
 const repairChangeList = document.querySelector("#repair-change-list");
 
 let repairPreviewComplete = false;
+let latestRepairPreview = null;
+
+function repairText(key, fallback, values = {}) {
+  const template = window.BTPi18n?.t(key, fallback) || fallback;
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, value),
+    template,
+  );
+}
+
+function localizeRepairChange(change) {
+  if (window.BTPi18n?.getLanguage() !== "es") {
+    return change.message || repairText("repair.unknownChange", "Unknown repair");
+  }
+  return repairText(
+    `repair.rule.${change.rule_id}`,
+    change.message || repairText("repair.unknownChange", "Unknown repair"),
+  );
+}
 
 function resetRepairState() {
   repairPreviewComplete = false;
@@ -29,20 +48,22 @@ function resetRepairState() {
   repairResultPanel.classList.add("is-hidden");
 }
 
-function updateRepairFileLabel() {
+function updateRepairFileLabel(reset = true) {
   const file = repairFileInput.files[0];
   if (!file) return;
 
   const isXml = file.name.toLowerCase().endsWith(".xml");
   repairFileInput.setCustomValidity(
-    isXml ? "" : "Choose a file with the .xml extension.",
+    isXml ? "" : repairText("repair.chooseXml", "Choose a file with the .xml extension."),
   );
   repairFileTitle.textContent = file.name;
   repairFileSubtitle.textContent = isXml
-    ? `${(file.size / 1024).toFixed(1)} KB — ready to analyze`
-    : "Only .xml files are supported.";
+    ? repairText("repair.fileReady", "{size} KB — ready to analyze", {
+        size: (file.size / 1024).toFixed(1),
+      })
+    : repairText("repair.onlyXml", "Only .xml files are supported.");
   repairDropZone.classList.toggle("is-invalid", !isXml);
-  resetRepairState();
+  if (reset) resetRepairState();
 }
 
 function repairFormData(includeAuthorization = false) {
@@ -70,40 +91,40 @@ function showRepairError(message) {
   repairResultPanel.classList.remove("is-hidden");
   repairResultPanel.classList.add("is-error");
   repairResultIcon.textContent = "!";
-  repairResultTitle.textContent = "XMLTV cannot be repaired safely";
+  repairResultTitle.textContent = repairText("repair.unsafe", "XMLTV cannot be repaired safely");
   repairResultMessage.textContent = message;
   repairResultMetrics.replaceChildren();
   repairChangeList.replaceChildren();
 }
 
 function showRepairPreview(result) {
+  latestRepairPreview = result;
   const changes = Array.isArray(result.changes) ? result.changes : [];
   const validation = result.validation?.validation || {};
 
   repairResultPanel.classList.remove("is-hidden", "is-error");
   repairResultIcon.textContent = "✓";
   repairResultTitle.textContent = changes.length
-    ? "Repairs ready for review"
-    : "No safe repairs are required";
+    ? repairText("repair.ready", "Repairs ready for review")
+    : repairText("repair.noneRequired", "No safe repairs are required");
   repairResultMessage.textContent = changes.length
-    ? (
-        `${changes.length} safe corrections were identified. ` +
-        "Review and authorize them before downloading."
-      )
-    : "The file does not contain issues that can be repaired automatically.";
+    ? repairText("repair.found", "{count} safe corrections were identified. Review and authorize them before downloading.", { count: changes.length })
+    : repairText("repair.noAutomatic", "The file does not contain issues that can be repaired automatically.");
 
   repairResultMetrics.replaceChildren();
-  addRepairMetric(`${changes.length} Suggested repairs`);
-  addRepairMetric(`Result score ${validation.score ?? 0}/100`);
-  addRepairMetric(`${validation.critical ?? 0} Remaining critical`);
-  addRepairMetric(`${validation.warnings ?? 0} Remaining warnings`);
+  addRepairMetric(repairText("repair.metricSuggested", "{count} Suggested repairs", { count: changes.length }));
+  addRepairMetric(repairText("repair.metricScore", "Result score {score}/100", { score: validation.score ?? 0 }));
+  addRepairMetric(repairText("repair.metricCritical", "{count} Remaining critical", { count: validation.critical ?? 0 }));
+  addRepairMetric(repairText("repair.metricWarnings", "{count} Remaining warnings", { count: validation.warnings ?? 0 }));
 
   repairChangeList.replaceChildren();
   for (const change of changes.slice(0, 20)) {
     const item = document.createElement("li");
-    const line = change.line ? ` (line ${change.line})` : "";
+    const line = change.line
+      ? ` (${repairText("repair.line", "line {line}", { line: change.line })})`
+      : "";
     item.textContent = (
-      `${change.rule_id}: ${change.message}${line}`
+      `${change.rule_id}: ${localizeRepairChange(change)}${line}`
     );
     repairChangeList.appendChild(item);
   }
@@ -111,7 +132,7 @@ function showRepairPreview(result) {
   repairPreviewComplete = true;
   repairAuthorizationPanel.classList.toggle("is-hidden", changes.length === 0);
   repairAuthorizationMessage.textContent = (
-    `Apply ${changes.length} reviewed corrections to the downloaded XMLTV.`
+    repairText("repair.applyCount", "Apply {count} reviewed corrections to the downloaded XMLTV.", { count: changes.length })
   );
   downloadRepairedButton.disabled = true;
   repairResultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -154,7 +175,7 @@ previewRepairsButton.addEventListener("click", async () => {
   if (!data || !repairForm.reportValidity()) return;
 
   previewRepairsButton.disabled = true;
-  previewRepairsButton.textContent = "Analyzing…";
+  previewRepairsButton.textContent = repairText("repair.analyzing", "Analyzing…");
 
   try {
     const response = await fetch("/api/xmltv/repair/preview", {
@@ -167,17 +188,17 @@ previewRepairsButton.addEventListener("click", async () => {
       showRepairError(
         typeof result.detail === "string"
           ? result.detail
-          : "The XMLTV file could not be analyzed.",
+          : repairText("repair.analyzeError", "The XMLTV file could not be analyzed."),
       );
       return;
     }
 
     showRepairPreview(result);
   } catch {
-    showRepairError("The server could not analyze the XMLTV file.");
+    showRepairError(repairText("repair.serverAnalyzeError", "The server could not analyze the XMLTV file."));
   } finally {
     previewRepairsButton.disabled = false;
-    previewRepairsButton.textContent = "Analyze Repairs";
+    previewRepairsButton.textContent = repairText("repair.analyze", "Analyze Repairs");
   }
 });
 
@@ -189,7 +210,7 @@ repairForm.addEventListener("submit", async (event) => {
   if (!data) return;
 
   downloadRepairedButton.disabled = true;
-  downloadRepairedButton.textContent = "Repairing…";
+  downloadRepairedButton.textContent = repairText("repair.repairing", "Repairing…");
 
   try {
     const response = await fetch("/api/xmltv/repair", {
@@ -202,7 +223,7 @@ repairForm.addEventListener("submit", async (event) => {
       showRepairError(
         typeof result.detail === "string"
           ? result.detail
-          : result.detail?.message || "XMLTV repair failed.",
+          : result.detail?.message || repairText("repair.failed", "XMLTV repair failed."),
       );
       return;
     }
@@ -219,12 +240,19 @@ repairForm.addEventListener("submit", async (event) => {
     link.remove();
     URL.revokeObjectURL(url);
 
-    repairResultTitle.textContent = "XMLTV repaired";
-    repairResultMessage.textContent = `${link.download} was downloaded successfully.`;
+    repairResultTitle.textContent = repairText("repair.repaired", "XMLTV repaired");
+    repairResultMessage.textContent = repairText("repair.downloadSuccess", "{filename} was downloaded successfully.", { filename: link.download });
   } catch {
-    showRepairError("The server could not repair the XMLTV file.");
+    showRepairError(repairText("repair.serverRepairError", "The server could not repair the XMLTV file."));
   } finally {
     downloadRepairedButton.disabled = false;
-    downloadRepairedButton.textContent = "Download Repaired XMLTV";
+    downloadRepairedButton.textContent = repairText("repair.download", "Download Repaired XMLTV");
   }
+});
+
+window.addEventListener("btp:languagechange", () => {
+  previewRepairsButton.textContent = repairText("repair.analyze", "Analyze Repairs");
+  downloadRepairedButton.textContent = repairText("repair.download", "Download Repaired XMLTV");
+  if (repairFileInput.files[0]) updateRepairFileLabel(false);
+  if (latestRepairPreview) showRepairPreview(latestRepairPreview);
 });

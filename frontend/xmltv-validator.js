@@ -20,18 +20,38 @@ const downloadValidatorHtmlReport = document.querySelector(
 );
 let latestValidatorReport = null;
 
+function validatorText(key, fallback, values = {}) {
+  const template = window.BTPi18n?.t(key, fallback) || fallback;
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, value),
+    template,
+  );
+}
+
+function localizeValidatorIssue(issue) {
+  if (window.BTPi18n?.getLanguage() !== "es") {
+    return issue.message || validatorText("validator.unknownIssue", "Unknown issue");
+  }
+  return validatorText(
+    `validator.rule.${issue.rule_id}`,
+    issue.message || validatorText("validator.unknownIssue", "Unknown issue"),
+  );
+}
+
 function updateValidatorFileLabel() {
   const file = xmltvFileInput.files[0];
   if (!file) return;
 
   const isXml = file.name.toLowerCase().endsWith(".xml");
   xmltvFileInput.setCustomValidity(
-    isXml ? "" : "Choose a file with the .xml extension.",
+    isXml ? "" : validatorText("validator.chooseXml", "Choose a file with the .xml extension."),
   );
   validatorFileTitle.textContent = file.name;
   validatorFileSubtitle.textContent = isXml
-    ? `${(file.size / 1024).toFixed(1)} KB — ready to validate`
-    : "Only .xml files are supported.";
+    ? validatorText("validator.fileReady", "{size} KB — ready to validate", {
+        size: (file.size / 1024).toFixed(1),
+      })
+    : validatorText("validator.onlyXml", "Only .xml files are supported.");
   validatorDropZone.classList.toggle("is-invalid", !isXml);
 }
 
@@ -43,9 +63,11 @@ function addValidatorMetric(text) {
 
 function addValidatorIssue(issue) {
   const item = document.createElement("li");
-  const row = issue.row ? ` (line ${issue.row})` : "";
+  const row = issue.row
+    ? ` (${validatorText("validator.line", "line {line}", { line: issue.row })})`
+    : "";
   item.textContent = (
-    `${issue.rule_id || "XMLTV"}: ${issue.message || "Unknown issue"}${row}`
+    `${issue.rule_id || "XMLTV"}: ${localizeValidatorIssue(issue)}${row}`
   );
   validatorIssueList.appendChild(item);
 }
@@ -154,7 +176,7 @@ function normalizeValidatorResponse(payload, responseOk) {
 
   const detail = payload && typeof payload.detail === "string"
     ? payload.detail
-    : "The server could not validate the XMLTV file.";
+    : validatorText("validator.serverError", "The server could not validate the XMLTV file.");
 
   return {
     valid: false,
@@ -182,23 +204,22 @@ function showValidatorResult(result) {
   validatorResultPanel.classList.toggle("is-error", !result.valid);
   validatorResultIcon.textContent = result.valid ? "✓" : "!";
   validatorResultTitle.textContent = result.valid
-    ? "XMLTV is valid"
-    : "XMLTV needs attention";
+    ? validatorText("validator.valid", "XMLTV is valid")
+    : validatorText("validator.attention", "XMLTV needs attention");
   validatorResultMessage.textContent = result.valid
-    ? (
-        `${countLabel(result.channels, "channel")} and ` +
-        `${countLabel(result.programmes, "programme")} ` +
-        "passed validation."
-      )
-    : "Review the reported issues before delivering this XMLTV file.";
+    ? validatorText("validator.passed", "{channels} channels and {programmes} programmes passed validation.", {
+        channels: result.channels ?? 0,
+        programmes: result.programmes ?? 0,
+      })
+    : validatorText("validator.reviewIssues", "Review the reported issues before delivering this XMLTV file.");
 
   validatorResultMetrics.replaceChildren();
-  addValidatorMetric(`Score ${validation.score ?? 0}/100`);
-  addValidatorMetric(`${validation.critical ?? 0} Critical`);
-  addValidatorMetric(`${validation.errors ?? 0} Errors`);
-  addValidatorMetric(`${validation.warnings ?? 0} Warnings`);
-  addValidatorMetric(countLabel(result.channels ?? 0, "Channel"));
-  addValidatorMetric(countLabel(result.programmes ?? 0, "Programme"));
+  addValidatorMetric(validatorText("validator.metricScore", "Score {score}/100", { score: validation.score ?? 0 }));
+  addValidatorMetric(validatorText("validator.metricCritical", "{count} Critical", { count: validation.critical ?? 0 }));
+  addValidatorMetric(validatorText("validator.metricErrors", "{count} Errors", { count: validation.errors ?? 0 }));
+  addValidatorMetric(validatorText("validator.metricWarnings", "{count} Warnings", { count: validation.warnings ?? 0 }));
+  addValidatorMetric(validatorText("validator.metricChannels", "{count} Channels", { count: result.channels ?? 0 }));
+  addValidatorMetric(validatorText("validator.metricProgrammes", "{count} Programmes", { count: result.programmes ?? 0 }));
 
   validatorIssueList.replaceChildren();
   for (const issue of issues.slice(0, 20)) {
@@ -310,7 +331,7 @@ validatorForm.addEventListener("submit", async (event) => {
   const data = new FormData();
   data.append("xmltv_file", xmltvFileInput.files[0]);
   validateXmltvButton.disabled = true;
-  validateXmltvButton.textContent = "Validating…";
+  validateXmltvButton.textContent = validatorText("validator.validating", "Validating…");
 
   try {
     const response = await fetch("/api/xmltv/validate", {
@@ -327,6 +348,12 @@ validatorForm.addEventListener("submit", async (event) => {
     );
   } finally {
     validateXmltvButton.disabled = false;
-    validateXmltvButton.textContent = "Validate XMLTV";
+    validateXmltvButton.textContent = validatorText("validator.validate", "Validate XMLTV");
   }
+});
+
+window.addEventListener("btp:languagechange", () => {
+  validateXmltvButton.textContent = validatorText("validator.validate", "Validate XMLTV");
+  if (xmltvFileInput.files[0]) updateValidatorFileLabel();
+  if (latestValidatorReport) showValidatorResult(latestValidatorReport);
 });

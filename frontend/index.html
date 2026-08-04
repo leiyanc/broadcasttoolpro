@@ -22,15 +22,15 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260804-2" defer></script>
+    <script src="/static/i18n.js?v=20260804-3" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260730-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
     <script src="/static/billing.js?v=20260728-5" defer></script>
     <script src="/static/help.js?v=20260728-6" defer></script>
     <script src="/static/app.js?v=20260804-1" defer></script>
-    <script src="/static/xmltv-validator.js?v=20260728-3" defer></script>
-    <script src="/static/xmltv-repair.js?v=20260804-1" defer></script>
+    <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
+    <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
     <script src="/static/prelog-filter.js?v=20260728-3" defer></script>
     <script
       src="/static/postlog-certification.js?v=20260726-4"
@@ -1429,12 +1429,12 @@
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">XMLTV VALIDATOR</p>
-            <h2>Validate XMLTV File</h2>
+            <p class="eyebrow" data-i18n="validator.eyebrow">XMLTV VALIDATOR</p>
+            <h2 data-i18n="validator.title">Validate XMLTV File</h2>
           </div>
         </div>
 
-        <p class="section-copy">
+        <p class="section-copy" data-i18n="validator.copy">
           Upload an existing XMLTV file to check its syntax, channels,
           timestamps, required attributes, titles, and programme durations.
         </p>
@@ -1453,10 +1453,10 @@
             />
 
             <span class="upload-icon">✓</span>
-            <strong id="validator-file-title">
+            <strong id="validator-file-title" data-i18n="validator.dropTitle">
               Drop your XMLTV file here
             </strong>
-            <small id="validator-file-subtitle">
+            <small id="validator-file-subtitle" data-i18n="validator.dropCopy">
               or click to choose an .xml file
             </small>
           </label>
@@ -1467,7 +1467,7 @@
               id="validate-xmltv-button"
               type="submit"
             >
-              Validate XMLTV
+              <span data-i18n="validator.validate">Validate XMLTV</span>
             </button>
           </div>
         </form>
@@ -1488,7 +1488,7 @@
 
           <div>
             <h3 id="validator-result-title">
-              XMLTV is valid
+              <span data-i18n="validator.valid">XMLTV is valid</span>
             </h3>
             <p id="validator-result-message"></p>
             <div
@@ -1505,31 +1505,31 @@
             >
               <details class="download-menu">
                 <summary class="button button-secondary">
-                  Download Report
+                  <span data-i18n="validator.downloadReport">Download Report</span>
                 </summary>
                 <div class="download-menu-list">
                   <button
                     id="download-validator-pdf-report"
                     type="button"
                   >
-                    <strong>PDF Report</strong>
-                    <small>Branded, presentation-ready report</small>
+                    <strong data-i18n="validator.pdfReport">PDF Report</strong>
+                    <small data-i18n="validator.pdfCopy">Branded, presentation-ready report</small>
                   </button>
                   <button
                     id="download-validator-html-report"
                     class="paid-download-option"
                     type="button"
                   >
-                    <strong>HTML Report</strong>
-                    <small>Share, print, or save as PDF</small>
+                    <strong data-i18n="validator.htmlReport">HTML Report</strong>
+                    <small data-i18n="validator.htmlCopy">Share, print, or save as PDF</small>
                   </button>
                   <button
                     id="download-validator-report"
                     class="paid-download-option"
                     type="button"
                   >
-                    <strong>JSON Report</strong>
-                    <small>Use with APIs and automation</small>
+                    <strong data-i18n="validator.jsonReport">JSON Report</strong>
+                    <small data-i18n="validator.jsonCopy">Use with APIs and automation</small>
                   </button>
                 </div>
               </details>
@@ -1545,12 +1545,12 @@
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">XMLTV REPAIR</p>
-            <h2>Repair XMLTV File</h2>
+            <p class="eyebrow" data-i18n="repair.eyebrow">XMLTV REPAIR</p>
+            <h2 data-i18n="repair.title">Repair XMLTV File</h2>
           </div>
         </div>
 
-        <p class="section-copy">
+        <p class="section-copy" data-i18n="repair.copy">
           Review safe corrections before applying them. Broadcast Tool Pro
           never modifies or downloads your XMLTV without authorization.
         </p>
@@ -1569,10 +1569,10 @@
             />
 
             <span class="upload-icon">↻</span>
-            <strong id="repair-file-title">
+            <strong id="repair-file-title" data-i18n="repair.dropTitle">
               Drop your XMLTV file here
             </strong>
-            <small id="repair-file-subtitle">
+            <small id="repair-file-subtitle" data-i18n="repair.dropCopy">
               or click to choose an .xml file
             </small>
           </label>
@@ -1586,8 +1586,8 @@
               type="checkbox"
             />
             <span>
-              <strong>Authorize Suggested Repairs</strong>
-              <small id="repair-authorization-message">
+              <strong data-i18n="repair.authorize">Authorize Suggested Repairs</strong>
+              <small id="repair-authorization-message" data-i18n="repair.authorizeCopy">
                 Apply the reviewed corrections to the downloaded XMLTV.
               </small>
             </span>
@@ -1599,7 +1599,7 @@
               id="preview-repairs-button"
               type="button"
             >
-              Analyze Repairs
+              <span data-i18n="repair.analyze">Analyze Repairs</span>
             </button>
             <button
               class="button button-primary"
@@ -1607,7 +1607,7 @@
               type="submit"
               disabled
             >
-              Download Repaired XMLTV
+              <span data-i18n="repair.download">Download Repaired XMLTV</span>
             </button>
           </div>
         </form>
@@ -1627,7 +1627,7 @@
           </div>
           <div>
             <h3 id="repair-result-title">
-              Repairs ready for review
+              <span data-i18n="repair.ready">Repairs ready for review</span>
             </h3>
             <p id="repair-result-message"></p>
             <div

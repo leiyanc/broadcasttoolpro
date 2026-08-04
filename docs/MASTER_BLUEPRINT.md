@@ -79,6 +79,10 @@ terminology remain in English.
   surfaces, including validation states, EPG preview metrics, filters, and
   download feedback. Source metadata, XMLTV language fields, and report
   language selections remain independent and are never translated implicitly.
+- XMLTV Validator and XMLTV Repair localize their upload, analysis, result,
+  authorization, and download surfaces. Known validation and repair rule IDs
+  provide controlled Spanish explanations while canonical backend messages,
+  XML content, repaired files, and report formats remain unchanged.
 
 ## Commercial Packaging
 

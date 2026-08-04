@@ -105,6 +105,36 @@ def test_xmltv_generator_and_programming_grid_are_localized_independently():
     assert 'id="hls-report-language"' in html
 
 
+def test_xmltv_validator_and_repair_localize_ui_without_mutating_exports():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    validator = (FRONTEND_DIR / "xmltv-validator.js").read_text()
+    repair = (FRONTEND_DIR / "xmltv-repair.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "validator.title",
+        "validator.validate",
+        "validator.downloadReport",
+        "repair.title",
+        "repair.analyze",
+        "repair.download",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert 'window.addEventListener("btp:languagechange"' in validator
+    assert 'window.addEventListener("btp:languagechange"' in repair
+    assert 'validator.rule.XMLTV-003' in translations
+    assert 'repair.rule.REPAIR-005' in translations
+
+    # Canonical XML and exported report formats remain untouched by the
+    # global interface preference.
+    assert 'application/pdf' in validator
+    assert 'application/json' in validator
+    assert 'text/html;charset=utf-8' in validator
+    assert 'link.download = match?.[1] || "xmltv-repaired.xml"' in repair
+
+
 def test_home_returns_frontend():
     landing_response = home()
     application_response = application()
