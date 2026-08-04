@@ -1543,12 +1543,6 @@ h1 {
   border-color: #7f1d1d;
 }
 
-[data-theme="dark"] .module-badge {
-  color: var(--signal);
-  background: var(--panel-muted);
-  border-color: var(--line);
-}
-
 [data-theme="dark"] .admin-metrics > div,
 [data-theme="dark"] .export-panel,
 [data-theme="dark"] .epg-preview {
@@ -1573,18 +1567,6 @@ h1 {
   margin: 8px 0 0;
   color: var(--muted);
   line-height: 1.6;
-}
-
-.module-badge {
-  padding: 6px 10px;
-  color: var(--blue);
-  background: var(--blue-light);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .drop-zone.is-invalid {
