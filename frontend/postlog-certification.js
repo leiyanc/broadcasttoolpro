@@ -49,6 +49,14 @@ const POSTLOG_FILTERS_KEY = "broadcastToolPro.postlogFilters";
 const PROFILE_DATABASE = "BroadcastToolPro";
 const PROFILE_STORE = "postlogProfiles";
 
+function postlogText(key, fallback, values = {}) {
+  let text = window.BTPi18n?.t(key, fallback) || fallback;
+  for (const [name, value] of Object.entries(values)) {
+    text = text.replaceAll(`{${name}}`, value);
+  }
+  return text;
+}
+
 function openProfileDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(PROFILE_DATABASE, 1);
@@ -87,7 +95,7 @@ async function refreshProfileList(selectedName = "") {
   postlogProfileSelect.replaceChildren();
   const empty = document.createElement("option");
   empty.value = "";
-  empty.textContent = "Choose a saved profile";
+  empty.textContent = postlogText("postlog.chooseProfile", "Choose a saved profile");
   postlogProfileSelect.appendChild(empty);
   for (const profile of profiles) {
     const option = document.createElement("option");
@@ -135,7 +143,7 @@ async function applyProfile(profile) {
 async function saveCurrentProfile() {
   const name = postlogProfileName.value.trim();
   if (!name) {
-    throw new Error("Enter a Profile Name first.");
+    throw new Error(postlogText("postlog.profileRequired", "Enter a Profile Name first."));
   }
   const existing = await profileByName(name);
   const logoFile = document.querySelector("#postlog-logo").files[0];
@@ -212,11 +220,11 @@ function handlePostlogFilesChanged() {
   const files = [...postlogFiles.files];
   if (!files.length) return;
   postlogFileTitle.textContent = (
-    files.length === 1 ? files[0].name : `${files.length} As-Run files selected`
+    files.length === 1 ? files[0].name : postlogText("postlog.filesSelected", `${files.length} As-Run files selected`, { count: files.length })
   );
-  postlogFileSubtitle.textContent = `${(
+  postlogFileSubtitle.textContent = postlogText("traffic.kbTotal", `${(
     files.reduce((total, file) => total + file.size, 0) / 1024
-  ).toFixed(1)} KB total`;
+  ).toFixed(1)} KB total`, { size: (files.reduce((total, file) => total + file.size, 0) / 1024).toFixed(1) });
   postlogsInspected = false;
   filterPostlogsButton.disabled = true;
   postlogSummary.classList.add("is-hidden");
@@ -253,8 +261,8 @@ if (postlogDropZone) {
       return supported.has(extension);
     });
     if (!files.length) {
-      postlogFileTitle.textContent = "Unsupported As-Run file";
-      postlogFileSubtitle.textContent = "Use CSV, XLSX, JSON, TXT, or XML.";
+      postlogFileTitle.textContent = postlogText("postlog.unsupported", "Unsupported As-Run file");
+      postlogFileSubtitle.textContent = postlogText("postlog.supported", "Use CSV, XLSX, JSON, TXT, or XML.");
       return;
     }
     const transfer = new DataTransfer();
@@ -280,7 +288,7 @@ inspectPostlogsButton.addEventListener("click", async () => {
     postlogForm.elements.source_timezone.value,
   );
   inspectPostlogsButton.disabled = true;
-  inspectPostlogsButton.textContent = "Inspecting…";
+  inspectPostlogsButton.textContent = postlogText("postlog.inspecting", "Inspecting…");
 
   try {
     const response = await fetch("/api/postlogs/options", {
@@ -298,8 +306,8 @@ inspectPostlogsButton.addEventListener("click", async () => {
     postlogMetric(postlogSummaryMetrics, `${result.events_received} Events`);
     postlogMetric(postlogSummaryMetrics, `${result.assets.length} Assets`);
     postlogSummaryMessage.textContent = (
-      `${result.channels.join(", ") || "Unknown channel"} · ` +
-      `${result.start_date || "Unknown"} to ${result.end_date || "Unknown"}`
+      `${result.channels.join(", ") || postlogText("traffic.unknownChannel", "Unknown channel")} · ` +
+      `${result.start_date || postlogText("traffic.unknown", "Unknown")} to ${result.end_date || postlogText("traffic.unknown", "Unknown")}`
     );
     postlogForm.elements.start_date.value = result.start_date || "";
     postlogForm.elements.end_date.value = result.end_date || "";
@@ -316,11 +324,11 @@ inspectPostlogsButton.addEventListener("click", async () => {
   } catch (error) {
     postlogSummary.classList.remove("is-hidden");
     postlogSummaryMessage.textContent = (
-      error.message || "The As-Run files could not be inspected."
+      error.message || postlogText("postlog.inspectError", "The As-Run files could not be inspected.")
     );
   } finally {
     inspectPostlogsButton.disabled = false;
-    inspectPostlogsButton.textContent = "Inspect As-Run";
+    inspectPostlogsButton.textContent = postlogText("postlog.inspect", "Inspect As-Run");
   }
 });
 
@@ -331,7 +339,7 @@ postlogForm.addEventListener("submit", async (event) => {
   appendPostlogFiles(data);
   appendPostlogFilters(data);
   filterPostlogsButton.disabled = true;
-  filterPostlogsButton.textContent = "Finding…";
+  filterPostlogsButton.textContent = postlogText("postlog.finding", "Finding…");
 
   try {
     const response = await fetch("/api/postlogs/filter", {
@@ -343,8 +351,8 @@ postlogForm.addEventListener("submit", async (event) => {
 
     postlogResult.classList.remove("is-hidden");
     postlogResultMessage.textContent = result.matching_events
-      ? "These actual airings will be included in the certification."
-      : "No actual airings match the selected filters.";
+      ? postlogText("postlog.reviewSelection", "These actual airings will be included in the certification.")
+      : postlogText("postlog.noMatches", "No actual airings match the selected filters.");
     postlogResultMetrics.replaceChildren();
     postlogMetric(postlogResultMetrics, `${result.matching_events} Airings`);
     postlogMetric(postlogResultMetrics, `${result.unique_assets} Assets`);
@@ -372,11 +380,11 @@ postlogForm.addEventListener("submit", async (event) => {
   } catch (error) {
     postlogResult.classList.remove("is-hidden");
     postlogResultMessage.textContent = (
-      error.message || "The actual airings could not be filtered."
+      error.message || postlogText("postlog.filterError", "The actual airings could not be filtered.")
     );
   } finally {
     filterPostlogsButton.disabled = false;
-    filterPostlogsButton.textContent = "Find Actual Airings";
+    filterPostlogsButton.textContent = postlogText("postlog.find", "Find Actual Airings");
   }
 });
 
@@ -408,7 +416,7 @@ exportPostlogButton.addEventListener("click", async () => {
   if (logo) data.append("logo_file", logo);
 
   exportPostlogButton.disabled = true;
-  exportPostlogButton.textContent = "Generating…";
+  exportPostlogButton.textContent = postlogText("traffic.generating", "Generating…");
   try {
     const response = await fetch("/api/postlogs/export", {
       method: "POST",
@@ -428,16 +436,16 @@ exportPostlogButton.addEventListener("click", async () => {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-    postlogExportStatus.textContent = `${filename} downloaded successfully.`;
+    postlogExportStatus.textContent = postlogText("traffic.downloadSuccess", `${filename} downloaded successfully.`, { filename });
     window.dispatchEvent(new CustomEvent("report-generated"));
   } catch (error) {
     postlogExportStatus.classList.add("is-error");
     postlogExportStatus.textContent = (
-      error.message || "The certification could not be generated."
+      error.message || postlogText("postlog.generateError", "The certification could not be generated.")
     );
   } finally {
     exportPostlogButton.disabled = false;
-    exportPostlogButton.textContent = "Download Certifications";
+    exportPostlogButton.textContent = postlogText("postlog.download", "Download Certifications");
   }
 });
 
@@ -498,4 +506,10 @@ updatePostlogMode();
 refreshProfileList().catch(() => {
   postlogProfileStatus.classList.add("is-error");
   postlogProfileStatus.textContent = "Saved profiles are unavailable.";
+});
+
+window.addEventListener("btp:languagechange", () => {
+  window.BTPi18n?.apply(document.querySelector("#postlog"));
+  refreshProfileList(postlogProfileSelect.value).catch(() => {});
+  if (postlogFiles.files.length) handlePostlogFilesChanged();
 });

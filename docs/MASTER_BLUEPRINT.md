@@ -83,6 +83,11 @@ terminology remain in English.
   authorization, and download surfaces. Known validation and repair rule IDs
   provide controlled Spanish explanations while canonical backend messages,
   XML content, repaired files, and report formats remain unchanged.
+- Pre-Logs and Post-Logs localize their upload, filtering, preview, profile,
+  certification, and download feedback surfaces. Their explicit report-language
+  selectors remain independent from the interface language, and switching the
+  interface never alters selected source files, filters, report content, or
+  export formats.
 
 ## Commercial Packaging
 

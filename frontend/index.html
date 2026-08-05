@@ -22,7 +22,7 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260804-3" defer></script>
+    <script src="/static/i18n.js?v=20260805-1" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260730-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
@@ -31,9 +31,9 @@
     <script src="/static/app.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
-    <script src="/static/prelog-filter.js?v=20260728-3" defer></script>
+    <script src="/static/prelog-filter.js?v=20260805-1" defer></script>
     <script
-      src="/static/postlog-certification.js?v=20260726-4"
+      src="/static/postlog-certification.js?v=20260805-1"
       defer
     ></script>
     <script src="/static/report-history.js?v=20260726-4" defer></script>
@@ -1648,12 +1648,12 @@
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">PRE LOGS</p>
-            <h2>Build Pre Log Selection</h2>
+            <p class="eyebrow" data-i18n="prelog.eyebrow">PRE LOGS</p>
+            <h2 data-i18n="prelog.title">Build Pre Log Selection</h2>
           </div>
         </div>
 
-        <p class="section-copy">
+        <p class="section-copy" data-i18n="prelog.copy">
           Upload one or more playlists, choose exactly which elements to
           include, and preview every scheduled occurrence before export.
         </p>
@@ -1672,10 +1672,10 @@
               required
             />
             <span class="upload-icon">+</span>
-            <strong id="prelog-file-title">
+            <strong id="prelog-file-title" data-i18n="prelog.dropTitle">
               Drop your playlist files here
             </strong>
-            <small id="prelog-file-subtitle">
+            <small id="prelog-file-subtitle" data-i18n="prelog.dropCopy">
               or click to choose .csv, .xml, or .txt files
             </small>
           </label>
@@ -1690,39 +1690,40 @@
 
           <div class="filter-grid">
             <label>
-              <span>Filter Type</span>
+              <span data-i18n="traffic.filterType">Filter Type</span>
               <select id="prelog-filter-mode" name="filter_mode">
-                <option value="all">All Elements</option>
-                <option value="prefix">Starts With Prefix</option>
-                <option value="exact">Exact Asset ID</option>
-                <option value="contains">Contains Text</option>
+                <option value="all" data-i18n="traffic.allElements">All Elements</option>
+                <option value="prefix" data-i18n="traffic.startsPrefix">Starts With Prefix</option>
+                <option value="exact" data-i18n="traffic.exactAsset">Exact Asset ID</option>
+                <option value="contains" data-i18n="traffic.containsText">Contains Text</option>
               </select>
             </label>
 
             <label class="filter-value-field is-hidden">
-              <span>Filter Values</span>
+              <span data-i18n="traffic.filterValues">Filter Values</span>
               <input
                 id="prelog-filter-value"
                 name="filter_value"
                 type="text"
                 list="prelog-filter-suggestions"
                 placeholder="Enter one or more values separated by commas"
+                data-i18n-placeholder="traffic.filterPlaceholder"
               />
               <datalist id="prelog-filter-suggestions"></datalist>
             </label>
 
             <label>
-              <span>Start Date</span>
+              <span data-i18n="traffic.startDate">Start Date</span>
               <input id="prelog-start-date" name="start_date" type="date" />
             </label>
 
             <label>
-              <span>End Date</span>
+              <span data-i18n="traffic.endDate">End Date</span>
               <input id="prelog-end-date" name="end_date" type="date" />
             </label>
 
             <label>
-              <span>Playlist Time Zone</span>
+              <span data-i18n="prelog.timezone">Playlist Time Zone</span>
               <select id="prelog-source-timezone" name="source_timezone">
                 <option value="America/New_York" selected>
                   Eastern Time — New York
@@ -1751,7 +1752,7 @@
             value="06:00:00"
           />
 
-          <p class="broadcast-day-note">
+          <p class="broadcast-day-note" data-i18n="traffic.broadcastDayNote">
             Broadcast days run from 06:00 through 05:59:59 the following day.
           </p>
 
@@ -1761,7 +1762,7 @@
               id="inspect-playlists-button"
               type="button"
             >
-              Inspect Playlists
+              <span data-i18n="prelog.inspect">Inspect Playlists</span>
             </button>
             <button
               class="button button-primary"
@@ -1769,7 +1770,7 @@
               type="submit"
               disabled
             >
-              Apply Filters
+              <span data-i18n="traffic.applyFilters">Apply Filters</span>
             </button>
           </div>
         </form>
@@ -1782,18 +1783,18 @@
         >
           <div class="result-icon" id="prelog-result-icon">✓</div>
           <div class="result-content">
-            <h3 id="prelog-result-title">Selection ready</h3>
+            <h3 id="prelog-result-title" data-i18n="prelog.selectionReady">Selection ready</h3>
             <p id="prelog-result-message"></p>
             <div class="result-metrics" id="prelog-result-metrics"></div>
             <div class="table-scroll">
               <table class="preview-table">
                 <thead>
                   <tr>
-                    <th>Channel</th>
-                    <th>Asset ID</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Duration</th>
+                    <th data-i18n="traffic.channel">Channel</th>
+                    <th data-i18n="traffic.assetId">Asset ID</th>
+                    <th data-i18n="traffic.date">Date</th>
+                    <th data-i18n="traffic.time">Time</th>
+                    <th data-i18n="traffic.duration">Duration</th>
                   </tr>
                 </thead>
                 <tbody id="prelog-preview-body"></tbody>
@@ -1805,14 +1806,14 @@
         <section class="export-panel is-hidden" id="prelog-export-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">EXPORT SETTINGS</p>
-              <h3>Generate Pre Log</h3>
+              <p class="eyebrow" data-i18n="traffic.exportSettings">EXPORT SETTINGS</p>
+              <h3 data-i18n="prelog.generate">Generate Pre Log</h3>
             </div>
           </div>
 
           <div class="filter-grid">
             <label>
-              <span>Client Name (Optional)</span>
+              <span data-i18n="traffic.clientOptional">Client Name (Optional)</span>
               <input
                 id="prelog-client-name"
                 type="text"
@@ -1820,7 +1821,7 @@
               />
             </label>
             <label>
-              <span>Channel Name</span>
+              <span data-i18n="traffic.channelName">Channel Name</span>
               <input
                 id="prelog-channel-name"
                 type="text"
@@ -1829,39 +1830,41 @@
               />
             </label>
             <label>
-              <span>Report Language</span>
+              <span data-i18n="traffic.reportLanguage">Report Language</span>
               <select id="prelog-report-language">
                 <option value="en">English</option>
                 <option value="es">Español</option>
               </select>
             </label>
             <label>
-              <span>Download Format</span>
+              <span data-i18n="traffic.downloadFormat">Download Format</span>
               <select id="prelog-output-format">
                 <option value="xlsx">Excel (.xlsx)</option>
                 <option value="pdf">PDF (.pdf)</option>
               </select>
             </label>
             <label>
-              <span>Product (Optional)</span>
+              <span data-i18n="traffic.productOptional">Product (Optional)</span>
               <input
                 id="prelog-product"
                 type="text"
                 autocomplete="off"
                 placeholder="Leave blank to omit this column"
+                data-i18n-placeholder="traffic.optionalPlaceholder"
               />
             </label>
             <label>
-              <span>Agency (Optional)</span>
+              <span data-i18n="traffic.agencyOptional">Agency (Optional)</span>
               <input
                 id="prelog-agency"
                 type="text"
                 autocomplete="off"
                 placeholder="Leave blank to omit this column"
+                data-i18n-placeholder="traffic.optionalPlaceholder"
               />
             </label>
             <label>
-              <span>Channel Logo (Optional PNG or JPG)</span>
+              <span data-i18n="traffic.logoOptional">Channel Logo (Optional PNG or JPG)</span>
               <input
                 id="prelog-logo"
                 type="file"
@@ -1876,7 +1879,7 @@
               id="export-prelog-button"
               type="button"
             >
-              Download Pre Log
+              <span data-i18n="prelog.download">Download Pre Log</span>
             </button>
           </div>
           <p class="export-status" id="prelog-export-status"></p>
@@ -1889,12 +1892,12 @@
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">POST LOGS</p>
-            <h2>Certify Actual Airings</h2>
+            <p class="eyebrow" data-i18n="postlog.eyebrow">POST LOGS</p>
+            <h2 data-i18n="postlog.title">Certify Actual Airings</h2>
           </div>
         </div>
 
-        <p class="section-copy">
+        <p class="section-copy" data-i18n="postlog.copy">
           Upload one or more As-Run logs, select the clips to certify, and
           export a detailed record of every actual airing.
         </p>
@@ -1910,8 +1913,8 @@
               required
             />
             <span class="upload-icon">+</span>
-            <strong id="postlog-file-title">Drop your As-Run files here</strong>
-            <small id="postlog-file-subtitle">
+            <strong id="postlog-file-title" data-i18n="postlog.dropTitle">Drop your As-Run files here</strong>
+            <small id="postlog-file-subtitle" data-i18n="postlog.dropCopy">
               CSV, XLSX, JSON, TXT, or XML
             </small>
           </label>
@@ -1923,35 +1926,36 @@
 
           <div class="filter-grid">
             <label>
-              <span>Filter Type</span>
+              <span data-i18n="traffic.filterType">Filter Type</span>
               <select id="postlog-filter-mode" name="filter_mode">
-                <option value="all">All Elements</option>
-                <option value="prefix">Starts With Prefix</option>
-                <option value="exact">Exact Asset ID</option>
-                <option value="contains">Contains Text</option>
+                <option value="all" data-i18n="traffic.allElements">All Elements</option>
+                <option value="prefix" data-i18n="traffic.startsPrefix">Starts With Prefix</option>
+                <option value="exact" data-i18n="traffic.exactAsset">Exact Asset ID</option>
+                <option value="contains" data-i18n="traffic.containsText">Contains Text</option>
               </select>
             </label>
             <label id="postlog-filter-value-field">
-              <span>Filter Values</span>
+              <span data-i18n="traffic.filterValues">Filter Values</span>
               <input
                 id="postlog-filter-value"
                 name="filter_value"
                 type="text"
                 list="postlog-filter-suggestions"
                 placeholder="Enter one or more values separated by commas"
+                data-i18n-placeholder="traffic.filterPlaceholder"
               />
               <datalist id="postlog-filter-suggestions"></datalist>
             </label>
             <label>
-              <span>Start Date</span>
+              <span data-i18n="traffic.startDate">Start Date</span>
               <input id="postlog-start-date" name="start_date" type="date" />
             </label>
             <label>
-              <span>End Date</span>
+              <span data-i18n="traffic.endDate">End Date</span>
               <input id="postlog-end-date" name="end_date" type="date" />
             </label>
             <label>
-              <span>As-Run Time Zone</span>
+              <span data-i18n="postlog.timezone">As-Run Time Zone</span>
               <select name="source_timezone">
                 <option value="America/New_York" selected>
                   Eastern Time — New York
@@ -1977,7 +1981,7 @@
               id="inspect-postlogs-button"
               type="button"
             >
-              Inspect As-Run
+              <span data-i18n="postlog.inspect">Inspect As-Run</span>
             </button>
             <button
               class="button button-primary"
@@ -1985,7 +1989,7 @@
               type="submit"
               disabled
             >
-              Find Actual Airings
+              <span data-i18n="postlog.find">Find Actual Airings</span>
             </button>
           </div>
         </form>
@@ -1993,18 +1997,18 @@
         <section class="result-panel is-hidden" id="postlog-result-panel">
           <div class="result-icon">✓</div>
           <div class="result-content">
-            <h3 id="postlog-result-title">Airings ready for certification</h3>
+            <h3 id="postlog-result-title" data-i18n="postlog.ready">Airings ready for certification</h3>
             <p id="postlog-result-message"></p>
             <div class="result-metrics" id="postlog-result-metrics"></div>
             <div class="table-scroll">
               <table class="preview-table">
                 <thead>
                   <tr>
-                    <th>Channel</th>
-                    <th>Asset ID</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Duration</th>
+                    <th data-i18n="traffic.channel">Channel</th>
+                    <th data-i18n="traffic.assetId">Asset ID</th>
+                    <th data-i18n="traffic.date">Date</th>
+                    <th data-i18n="traffic.time">Time</th>
+                    <th data-i18n="traffic.duration">Duration</th>
                   </tr>
                 </thead>
                 <tbody id="postlog-preview-body"></tbody>
@@ -2014,22 +2018,23 @@
         </section>
 
         <section class="export-panel is-hidden" id="postlog-export-panel">
-          <p class="eyebrow">CERTIFICATION SETTINGS</p>
-          <h3>Generate Post Log</h3>
+          <p class="eyebrow" data-i18n="postlog.certificationSettings">CERTIFICATION SETTINGS</p>
+          <h3 data-i18n="postlog.generate">Generate Post Log</h3>
 
           <div class="profile-manager">
             <label>
-              <span>Saved Profile</span>
+              <span data-i18n="postlog.savedProfile">Saved Profile</span>
               <select id="postlog-profile-select">
-                <option value="">Choose a saved profile</option>
+                <option value="" data-i18n="postlog.chooseProfile">Choose a saved profile</option>
               </select>
             </label>
             <label>
-              <span>Profile Name</span>
+              <span data-i18n="postlog.profileName">Profile Name</span>
               <input
                 id="postlog-profile-name"
                 type="text"
                 placeholder="Example: Comercio TV - INDOTEL"
+                data-i18n-placeholder="postlog.profilePlaceholder"
               />
             </label>
             <button
@@ -2037,7 +2042,7 @@
               id="save-postlog-profile"
               type="button"
             >
-              Save Profile
+              <span data-i18n="postlog.saveProfile">Save Profile</span>
             </button>
             <button
               class="button button-secondary"
@@ -2045,44 +2050,44 @@
               type="button"
               disabled
             >
-              Delete Profile
+              <span data-i18n="postlog.deleteProfile">Delete Profile</span>
             </button>
           </div>
           <p class="export-status" id="postlog-profile-status"></p>
 
           <div class="filter-grid">
             <label>
-              <span>Client Name (Optional)</span>
+              <span data-i18n="traffic.clientOptional">Client Name (Optional)</span>
               <input id="postlog-client-name" type="text" />
             </label>
             <label>
-              <span>Channel Name</span>
+              <span data-i18n="traffic.channelName">Channel Name</span>
               <input id="postlog-channel-name" type="text" required />
             </label>
             <label>
-              <span>Report Language</span>
+              <span data-i18n="traffic.reportLanguage">Report Language</span>
               <select id="postlog-report-language">
                 <option value="en">English</option>
                 <option value="es">Español</option>
               </select>
             </label>
             <label>
-              <span>Download Format</span>
+              <span data-i18n="traffic.downloadFormat">Download Format</span>
               <select id="postlog-output-format">
                 <option value="xlsx">Excel (.xlsx)</option>
                 <option value="pdf">PDF (.pdf)</option>
               </select>
             </label>
             <label>
-              <span>Product (Optional)</span>
+              <span data-i18n="traffic.productOptional">Product (Optional)</span>
               <input id="postlog-product" type="text" />
             </label>
             <label>
-              <span>Agency (Optional)</span>
+              <span data-i18n="traffic.agencyOptional">Agency (Optional)</span>
               <input id="postlog-agency" type="text" />
             </label>
             <label>
-              <span>Channel Logo (Optional PNG or JPG)</span>
+              <span data-i18n="traffic.logoOptional">Channel Logo (Optional PNG or JPG)</span>
               <input
                 id="postlog-logo"
                 type="file"
@@ -2096,7 +2101,7 @@
               id="export-postlog-button"
               type="button"
             >
-              Download Certifications
+              <span data-i18n="postlog.download">Download Certifications</span>
             </button>
           </div>
           <p class="export-status" id="postlog-export-status"></p>

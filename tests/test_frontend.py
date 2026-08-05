@@ -135,6 +135,30 @@ def test_xmltv_validator_and_repair_localize_ui_without_mutating_exports():
     assert 'link.download = match?.[1] || "xmltv-repaired.xml"' in repair
 
 
+def test_traffic_modules_localize_ui_without_changing_report_language():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    prelog = (FRONTEND_DIR / "prelog-filter.js").read_text()
+    postlog = (FRONTEND_DIR / "postlog-certification.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "prelog.title",
+        "prelog.inspect",
+        "postlog.title",
+        "postlog.find",
+        "traffic.filterType",
+        "traffic.reportLanguage",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert 'window.addEventListener("btp:languagechange"' in prelog
+    assert 'window.addEventListener("btp:languagechange"' in postlog
+    assert 'data.append("report_language", prelogReportLanguage.value)' in prelog
+    assert '"report_language",' in postlog
+    assert 'document.querySelector("#postlog-report-language").value' in postlog
+
+
 def test_home_returns_frontend():
     landing_response = home()
     application_response = application()
@@ -428,8 +452,8 @@ def test_prelog_filter_builder_is_available():
     assert 'id="prelog-output-format"' in html
     assert ".jpg,.jpeg" in html
     assert 'id="export-prelog-button"' in html
-    assert "<th>Date</th>" in html
-    assert "<th>Time</th>" in html
+    assert 'data-i18n="traffic.date">Date</th>' in html
+    assert 'data-i18n="traffic.time">Time</th>' in html
 
 
 def test_postlog_certification_is_available():

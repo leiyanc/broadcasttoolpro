@@ -45,6 +45,14 @@ const PRELOG_FILTER_STORAGE_KEY = "broadcastToolPro.prelogFilters";
 const PRELOG_FILTER_MODE_STORAGE_KEY = "broadcastToolPro.prelogFilterMode";
 let prelogStorageScope = "anonymous";
 
+function prelogText(key, fallback, values = {}) {
+  let text = window.BTPi18n?.t(key, fallback) || fallback;
+  for (const [name, value] of Object.entries(values)) {
+    text = text.replaceAll(`{${name}}`, value);
+  }
+  return text;
+}
+
 function scopedStorageKey(baseKey) {
   return `${baseKey}.${prelogStorageScope}`;
 }
@@ -102,16 +110,16 @@ function updatePrelogFiles() {
     ),
   );
   prelogFiles.setCustomValidity(
-    invalid ? "Playlist files must use .csv, .xml, or .txt." : "",
+    invalid ? prelogText("prelog.invalidFiles", "Playlist files must use .csv, .xml, or .txt.") : "",
   );
   prelogDropZone.classList.toggle("is-invalid", invalid);
   prelogFileTitle.textContent = (
-    files.length === 1 ? files[0].name : `${files.length} playlists selected`
+    files.length === 1 ? files[0].name : prelogText("prelog.filesSelected", `${files.length} playlists selected`, { count: files.length })
   );
   const totalKilobytes = (
     files.reduce((total, file) => total + file.size, 0) / 1024
   );
-  prelogFileSubtitle.textContent = `${totalKilobytes.toFixed(1)} KB total`;
+  prelogFileSubtitle.textContent = prelogText("traffic.kbTotal", `${totalKilobytes.toFixed(1)} KB total`, { size: totalKilobytes.toFixed(1) });
   playlistsInspected = false;
   availableFilterOptions = null;
   applyPrelogFiltersButton.disabled = true;
@@ -146,7 +154,7 @@ function showPrelogError(message) {
   prelogResultPanel.classList.remove("is-hidden");
   prelogResultPanel.classList.add("is-error");
   prelogResultIcon.textContent = "!";
-  prelogResultTitle.textContent = "Playlist needs attention";
+  prelogResultTitle.textContent = prelogText("prelog.attention", "Playlist needs attention");
   prelogResultMessage.textContent = message;
   prelogResultMetrics.replaceChildren();
   prelogPreviewBody.replaceChildren();
@@ -200,7 +208,7 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     data.append("start_date", prelogStartDate.value);
   }
   inspectPlaylistsButton.disabled = true;
-  inspectPlaylistsButton.textContent = "Inspecting…";
+  inspectPlaylistsButton.textContent = prelogText("prelog.inspecting", "Inspecting…");
 
   try {
     const response = await fetch("/api/prelogs/options", {
@@ -210,7 +218,7 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     const result = await response.json();
 
     if (!response.ok) {
-      showPrelogError(result.detail || "The playlists could not be inspected.");
+      showPrelogError(result.detail || prelogText("prelog.inspectError", "The playlists could not be inspected."));
       return;
     }
 
@@ -226,21 +234,20 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     addMetric(playlistSummaryMetrics, `${result.channels.length} Channels`);
     addMetric(
       playlistSummaryMetrics,
-      result.source_timezone || "Time zone not detected",
+      result.source_timezone || prelogText("traffic.timezoneUnknown", "Time zone not detected"),
     );
     playlistSummaryMessage.textContent = (
-      `${result.channels.join(", ") || "Unknown channel"} · ` +
-      `Broadcast days ${result.start_date || "Unknown"} to ` +
-      `${result.end_date || "Unknown"} · 06:00–05:59`
+      `${result.channels.join(", ") || prelogText("traffic.unknownChannel", "Unknown channel")} · ` +
+      prelogText("prelog.broadcastRange", `Broadcast days ${result.start_date || "Unknown"} to ${result.end_date || "Unknown"} · 06:00–05:59`, { start: result.start_date || prelogText("traffic.unknown", "Unknown"), end: result.end_date || prelogText("traffic.unknown", "Unknown") })
     );
     prelogStartDate.value = result.start_date || "";
     prelogEndDate.value = result.end_date || "";
     updateFilterControls(result);
   } catch {
-    showPrelogError("The server could not inspect the playlists.");
+    showPrelogError(prelogText("prelog.serverInspectError", "The server could not inspect the playlists."));
   } finally {
     inspectPlaylistsButton.disabled = false;
-    inspectPlaylistsButton.textContent = "Inspect Playlists";
+    inspectPlaylistsButton.textContent = prelogText("prelog.inspect", "Inspect Playlists");
   }
 });
 
@@ -263,7 +270,7 @@ prelogForm.addEventListener("submit", async (event) => {
   }
 
   applyPrelogFiltersButton.disabled = true;
-  applyPrelogFiltersButton.textContent = "Filtering…";
+  applyPrelogFiltersButton.textContent = prelogText("traffic.filtering", "Filtering…");
 
   try {
     const response = await fetch("/api/prelogs/filter", {
@@ -273,16 +280,16 @@ prelogForm.addEventListener("submit", async (event) => {
     const result = await response.json();
 
     if (!response.ok) {
-      showPrelogError(result.detail || "The filters could not be applied.");
+      showPrelogError(result.detail || prelogText("traffic.filterError", "The filters could not be applied."));
       return;
     }
 
     prelogResultPanel.classList.remove("is-hidden", "is-error");
     prelogResultIcon.textContent = "✓";
-    prelogResultTitle.textContent = "Selection ready";
+    prelogResultTitle.textContent = prelogText("prelog.selectionReady", "Selection ready");
     prelogResultMessage.textContent = result.matching_events
-      ? "Review the scheduled occurrences selected for this Pre Log."
-      : "No events match the selected filters.";
+      ? prelogText("prelog.reviewSelection", "Review the scheduled occurrences selected for this Pre Log.")
+      : prelogText("traffic.noMatches", "No events match the selected filters.");
     prelogResultMetrics.replaceChildren();
     addMetric(prelogResultMetrics, `${result.files_processed} Files`);
     addMetric(prelogResultMetrics, `${result.matching_events} Matches`);
@@ -316,10 +323,10 @@ prelogForm.addEventListener("submit", async (event) => {
       block: "nearest",
     });
   } catch {
-    showPrelogError("The server could not apply the filters.");
+    showPrelogError(prelogText("traffic.serverFilterError", "The server could not apply the filters."));
   } finally {
     applyPrelogFiltersButton.disabled = false;
-    applyPrelogFiltersButton.textContent = "Apply Filters";
+    applyPrelogFiltersButton.textContent = prelogText("traffic.applyFilters", "Apply Filters");
   }
 });
 
@@ -356,9 +363,9 @@ exportPrelogButton.addEventListener("click", async () => {
   }
 
   exportPrelogButton.disabled = true;
-  exportPrelogButton.textContent = "Generating…";
+  exportPrelogButton.textContent = prelogText("traffic.generating", "Generating…");
   prelogExportStatus.classList.remove("is-error");
-  prelogExportStatus.textContent = "Preparing your Excel Pre Log…";
+  prelogExportStatus.textContent = prelogText("prelog.preparing", "Preparing your Pre Log…");
 
   try {
     const response = await fetch("/api/prelogs/export", {
@@ -370,7 +377,7 @@ exportPrelogButton.addEventListener("click", async () => {
       const result = await response.json();
       prelogExportStatus.classList.add("is-error");
       prelogExportStatus.textContent = (
-        result.detail || "The Pre Log could not be generated."
+        result.detail || prelogText("prelog.generateError", "The Pre Log could not be generated.")
       );
       return;
     }
@@ -387,16 +394,16 @@ exportPrelogButton.addEventListener("click", async () => {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    prelogExportStatus.textContent = `${filename} downloaded successfully.`;
+    prelogExportStatus.textContent = prelogText("traffic.downloadSuccess", `${filename} downloaded successfully.`, { filename });
     window.dispatchEvent(new CustomEvent("report-generated"));
   } catch {
     prelogExportStatus.classList.add("is-error");
     prelogExportStatus.textContent = (
-      "The server could not generate the Pre Log."
+      prelogText("prelog.serverGenerateError", "The server could not generate the Pre Log.")
     );
   } finally {
     exportPrelogButton.disabled = false;
-    exportPrelogButton.textContent = "Download Pre Log";
+    exportPrelogButton.textContent = prelogText("prelog.download", "Download Pre Log");
   }
 });
 
@@ -430,3 +437,14 @@ window.addEventListener("btp:identity", (event) => {
 });
 
 restoreAccountPreferences();
+
+window.addEventListener("btp:languagechange", () => {
+  window.BTPi18n?.apply(document.querySelector("#prelog"));
+  const files = [...prelogFiles.files];
+  if (!files.length) return;
+  prelogFileTitle.textContent = files.length === 1
+    ? files[0].name
+    : prelogText("prelog.filesSelected", `${files.length} playlists selected`, { count: files.length });
+  const size = (files.reduce((total, file) => total + file.size, 0) / 1024).toFixed(1);
+  prelogFileSubtitle.textContent = prelogText("traffic.kbTotal", `${size} KB total`, { size });
+});
