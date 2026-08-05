@@ -88,6 +88,15 @@ terminology remain in English.
   selectors remain independent from the interface language, and switching the
   interface never alters selected source files, filters, report content, or
   export formats.
+- HLS Validator and Monitor Stream localize validation, variant, SCTE-35,
+  monitoring, and download feedback surfaces. Monitoring state and collected
+  technical data remain intact when the interface language changes, while the
+  explicit PDF report-language selector continues to control report content
+  independently.
+- Help Center and customer support requests share the global interface
+  language, including guides, privacy request forms, ticket history, replies,
+  and customer-facing status labels. Ticket identifiers and stored support
+  records remain canonical and are never translated in persistence.
 
 ## Commercial Packaging
 

@@ -35,11 +35,40 @@ let latestHlsResult = null;
 let hlsMonitorStartedAt = null;
 let hlsMonitorStoppedAt = null;
 let hlsMonitorFailed = false;
+let hlsMonitorState = "idle";
 const hlsSeenTriggers = new Set();
 const hlsMonitorTriggers = [];
 const hlsMonitorIssues = new Map();
 let hlsInitialVariants = [];
 const hlsBandwidthSamples = [];
+
+function hlsText(key, fallback, values = {}) {
+  let text = window.BTPi18n?.t(key, fallback) ?? fallback;
+  Object.entries(values).forEach(([name, value]) => {
+    text = text.replaceAll(`{${name}}`, String(value));
+  });
+  return text;
+}
+
+function renderHlsMonitorSummary(mode = "unique") {
+  const summary = summarizeScteBreaks(hlsMonitorTriggers);
+  hlsMonitorStatus.textContent = mode === "breaks"
+    ? hlsText("hls.inspectionSummary", (
+      "{inspections} inspections · {breaks} ad breaks · "
+      + "{seconds}s planned · {continuations} continuation markers"
+    ), {
+      inspections: hlsPolls,
+      breaks: summary.break_count,
+      seconds: summary.total_planned_duration,
+      continuations: summary.continuation_count,
+    })
+    : hlsText("hls.uniqueSummary", (
+      "{inspections} inspections · {triggers} unique triggers"
+    ), {
+      inspections: hlsPolls,
+      triggers: hlsSeenTriggers.size,
+    });
+}
 
 function hlsMetric(label) {
   const metric = document.createElement("span");
@@ -67,30 +96,38 @@ function renderHlsResult(result) {
   hlsPanel.classList.toggle("is-error", !result.valid);
   hlsIcon.textContent = result.valid ? "✓" : "!";
   hlsTitle.textContent = result.valid
-    ? "HLS playlist is valid"
-    : "HLS playlist needs attention";
+    ? hlsText("hls.valid", "HLS playlist is valid")
+    : hlsText("hls.attention", "HLS playlist needs attention");
   hlsMessage.textContent = result.playlist_type === "master"
-    ? "Master playlist inspected successfully."
-    : "Media playlist inspected successfully.";
+    ? hlsText("hls.masterInspected", "Master playlist inspected successfully.")
+    : hlsText("hls.mediaInspected", "Media playlist inspected successfully.");
 
   hlsMetric(result.playlist_type === "master"
-    ? "Master Playlist"
-    : "Media Playlist");
-  hlsMetric(`${result.critical || 0} Critical`);
-  hlsMetric(`${result.warnings || 0} Warnings`);
+    ? hlsText("hls.masterPlaylist", "Master Playlist")
+    : hlsText("hls.mediaPlaylist", "Media Playlist"));
+  hlsMetric(hlsText("hls.critical", "{count} Critical", {
+    count: result.critical || 0,
+  }));
+  hlsMetric(hlsText("hls.warnings", "{count} Warnings", {
+    count: result.warnings || 0,
+  }));
   if (result.scte35_detected) {
-    hlsMetric("SCTE-35 Track Present");
+    hlsMetric(hlsText("hls.trackPresent", "SCTE-35 Track Present"));
   } else if (result.scte35_track_detected) {
-    hlsMetric("SCTE-35 Track Present");
+    hlsMetric(hlsText("hls.trackPresent", "SCTE-35 Track Present"));
   } else {
-    hlsMetric("No SCTE-35");
+    hlsMetric(hlsText("hls.noScte", "No SCTE-35"));
   }
 
   if (result.media) {
-    hlsMetric(`${result.media.segments || 0} Segments`);
-    hlsMetric(result.media.live ? "Live" : "VOD");
+    hlsMetric(hlsText("hls.segmentsCount", "{count} Segments", {
+      count: result.media.segments || 0,
+    }));
+    hlsMetric(result.media.live ? hlsText("hls.live", "Live") : "VOD");
     if (result.media.target_duration != null) {
-      hlsMetric(`${result.media.target_duration}s Target`);
+      hlsMetric(hlsText("hls.target", "{seconds}s Target", {
+        seconds: result.media.target_duration,
+      }));
     }
   }
 
@@ -118,14 +155,23 @@ function renderHlsResult(result) {
       hlsCell(
         row,
         variant.scte35_track_detected
-          ? `Present (PID ${(variant.scte35_pids || []).join(", ")})`
-          : "Not detected",
+          ? hlsText("hls.presentPid", "Present (PID {pids})", {
+            pids: (variant.scte35_pids || []).join(", "),
+          })
+          : hlsText("hls.notDetected", "Not detected"),
       );
-      hlsCell(row, variant.valid === false ? "Needs attention" : "Valid");
+      hlsCell(
+        row,
+        variant.valid === false
+          ? hlsText("hls.needsAttention", "Needs attention")
+          : hlsText("hls.validStatus", "Valid"),
+      );
       hlsVariantBody.appendChild(row);
     });
     hlsVariantTable.classList.remove("is-hidden");
-    hlsMetric(`${result.variant_count || variants.length} Variants`);
+    hlsMetric(hlsText("hls.variants", "{count} Variants", {
+      count: result.variant_count || variants.length,
+    }));
   }
 
   const triggers = result.media?.triggers
@@ -157,7 +203,10 @@ function renderHlsRequestError(message) {
       message,
     }],
   });
-  hlsMessage.textContent = "The playlist could not be inspected.";
+  hlsMessage.textContent = hlsText(
+    "hls.inspectFailed",
+    "The playlist could not be inspected.",
+  );
 }
 
 async function requestHlsValidation(playlistUrl) {
@@ -173,7 +222,10 @@ async function requestHlsValidation(playlistUrl) {
     throw new Error(
       typeof payload.detail === "string"
         ? payload.detail
-        : "The HLS validation request failed.",
+        : hlsText(
+          "hls.validationFailed",
+          "The HLS validation request failed.",
+        ),
     );
   }
   return payload;
@@ -241,12 +293,7 @@ function addMonitoredTriggers(result) {
     );
     hlsMonitorTriggerBody.prepend(row);
   });
-  const summary = summarizeScteBreaks(hlsMonitorTriggers);
-  hlsMonitorStatus.textContent = (
-    `${hlsPolls} inspections · ${summary.break_count} ad breaks · `
-    + `${summary.total_planned_duration}s planned · `
-    + `${summary.continuation_count} continuation markers`
-  );
+  renderHlsMonitorSummary("breaks");
   return added;
 }
 
@@ -278,15 +325,14 @@ function stopHlsMonitoring(completed = false) {
   window.clearInterval(hlsCountdownTimer);
   hlsMonitorTimer = null;
   hlsCountdownTimer = null;
+  hlsMonitorState = completed ? "complete" : "stopped";
   hlsMonitorButton.disabled = false;
-  hlsMonitorButton.textContent = "Monitor Stream";
+  hlsMonitorButton.textContent = hlsText("hls.monitor", "Monitor Stream");
   hlsStopButton.classList.add("is-hidden");
   hlsMonitorTitle.textContent = completed
-    ? "Monitoring complete"
-    : "Monitoring stopped";
-  hlsMonitorStatus.textContent = (
-    `${hlsPolls} inspections · ${hlsSeenTriggers.size} unique triggers`
-  );
+    ? hlsText("hls.monitorComplete", "Monitoring complete")
+    : hlsText("hls.monitorStopped", "Monitoring stopped");
+  renderHlsMonitorSummary();
   hlsMonitorCountdown.textContent = "00:00";
   if (hlsMonitorStartedAt) {
     hlsMonitorStoppedAt = new Date();
@@ -328,9 +374,7 @@ async function pollHlsMonitor() {
     const targetDuration = result.media?.target_duration
       || result.variants?.[0]?.target_duration
       || 6;
-    hlsMonitorStatus.textContent = (
-      `${hlsPolls} inspections · ${hlsSeenTriggers.size} unique triggers`
-    );
+    renderHlsMonitorSummary();
     hlsMonitorTimer = window.setTimeout(
       pollHlsMonitor,
       Math.max(2, targetDuration) * 1000,
@@ -359,7 +403,7 @@ if (hlsForm) {
     hlsMonitorPanel.classList.add("is-hidden");
     hlsStopButton.classList.add("is-hidden");
     hlsButton.disabled = true;
-    hlsButton.textContent = "Validating…";
+    hlsButton.textContent = hlsText("hls.validating", "Validating…");
     hlsMonitorStartedAt = null;
     hlsMonitorStoppedAt = null;
     hlsMonitorFailed = false;
@@ -374,7 +418,7 @@ if (hlsForm) {
       renderHlsRequestError(error.message);
     } finally {
       hlsButton.disabled = false;
-      hlsButton.textContent = "Validate HLS";
+      hlsButton.textContent = hlsText("hls.validate", "Validate HLS");
     }
   });
 }
@@ -391,6 +435,7 @@ if (hlsMonitorButton) {
     hlsMonitorTriggerBody.replaceChildren();
     hlsPolls = 0;
     hlsMonitorFailed = false;
+    hlsMonitorState = "monitoring";
     hlsMonitorStartedAt = new Date();
     hlsMonitorStoppedAt = null;
     hlsMonitorUrl = hlsUrl.value.trim();
@@ -400,9 +445,18 @@ if (hlsMonitorButton) {
     hlsMonitorPanel.classList.remove("is-hidden");
     hlsStopButton.classList.remove("is-hidden");
     hlsMonitorButton.disabled = true;
-    hlsMonitorButton.textContent = "Monitoring…";
-    hlsMonitorTitle.textContent = "Monitoring stream…";
-    hlsMonitorStatus.textContent = "Starting first inspection…";
+    hlsMonitorButton.textContent = hlsText(
+      "hls.monitoringButton",
+      "Monitoring…",
+    );
+    hlsMonitorTitle.textContent = hlsText(
+      "hls.monitoring",
+      "Monitoring stream…",
+    );
+    hlsMonitorStatus.textContent = hlsText(
+      "hls.starting",
+      "Starting first inspection…",
+    );
     hlsMonitorTimer = window.setTimeout(pollHlsMonitor, 0);
     hlsCountdownTimer = window.setInterval(updateHlsCountdown, 1000);
     updateHlsCountdown();
@@ -460,14 +514,22 @@ function hlsReportPayload() {
 
 async function downloadHlsPdfReport() {
   hlsReportButton.disabled = true;
-  hlsReportButton.textContent = "Preparing PDF…";
+  hlsReportButton.textContent = hlsText(
+    "hls.preparingPdf",
+    "Preparing PDF…",
+  );
   try {
     const response = await fetch("/api/hls/report/pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(hlsReportPayload()),
     });
-    if (!response.ok) throw new Error("The PDF report could not be created.");
+    if (!response.ok) {
+      throw new Error(hlsText(
+        "hls.pdfFailed",
+        "The PDF report could not be created.",
+      ));
+    }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -481,7 +543,10 @@ async function downloadHlsPdfReport() {
     hlsMonitorStatus.textContent = error.message;
   } finally {
     hlsReportButton.disabled = false;
-    hlsReportButton.textContent = "Download PDF Report";
+    hlsReportButton.textContent = hlsText(
+      "hls.downloadReport",
+      "Download PDF Report",
+    );
   }
 }
 
@@ -494,3 +559,45 @@ if (hlsStopButton) {
     stopHlsMonitoring();
   });
 }
+
+window.addEventListener("btp:languagechange", () => {
+  if (!hlsButton.disabled) {
+    hlsButton.textContent = hlsText("hls.validate", "Validate HLS");
+  }
+  if (!hlsMonitorButton.disabled) {
+    hlsMonitorButton.textContent = hlsText("hls.monitor", "Monitor Stream");
+  }
+  if (!hlsReportButton.disabled) {
+    hlsReportButton.textContent = hlsText(
+      "hls.downloadReport",
+      "Download PDF Report",
+    );
+  }
+  hlsStopButton.textContent = hlsText("hls.stop", "Stop Monitoring");
+  if (latestHlsResult && !hlsPanel.classList.contains("is-hidden")) {
+    renderHlsResult(latestHlsResult);
+  }
+  if (hlsMonitorState === "monitoring") {
+    hlsMonitorButton.textContent = hlsText(
+      "hls.monitoringButton",
+      "Monitoring…",
+    );
+    hlsMonitorTitle.textContent = hlsText(
+      "hls.monitoring",
+      "Monitoring stream…",
+    );
+    renderHlsMonitorSummary();
+  } else if (hlsMonitorState === "complete") {
+    hlsMonitorTitle.textContent = hlsText(
+      "hls.monitorComplete",
+      "Monitoring complete",
+    );
+    renderHlsMonitorSummary();
+  } else if (hlsMonitorState === "stopped") {
+    hlsMonitorTitle.textContent = hlsText(
+      "hls.monitorStopped",
+      "Monitoring stopped",
+    );
+    renderHlsMonitorSummary();
+  }
+});

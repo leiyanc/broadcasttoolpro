@@ -53,7 +53,33 @@ const helpRequestTypeLabel = document.querySelector(
 const helpRequestType = document.querySelector("#help-request-type");
 const helpPrivacy = document.querySelector("#help-privacy");
 const helpSubmitButton = document.querySelector("#help-submit-button");
-const helpPreferenceKey = "broadcastToolPro.helpLanguage";
+
+function helpIsSpanish() {
+  return helpLanguageSelect.value === "es";
+}
+
+function helpUiText(english, spanish) {
+  return helpIsSpanish() ? spanish : english;
+}
+
+function helpStatusLabel(status) {
+  const labels = helpIsSpanish()
+    ? {
+        open: "Abierta",
+        in_progress: "En progreso",
+        waiting_customer: "Esperando respuesta",
+        resolved: "Resuelta",
+        closed: "Cerrada",
+      }
+    : {
+        open: "Open",
+        in_progress: "In progress",
+        waiting_customer: "Waiting for customer",
+        resolved: "Resolved",
+        closed: "Closed",
+      };
+  return labels[status] || status;
+}
 
 function updateHelpSupportFields() {
   const spanish = helpLanguageSelect.value === "es";
@@ -505,8 +531,7 @@ Object.entries(helpGuides).forEach(([key, guide]) => {
   helpGuideSelect.appendChild(option);
 });
 
-helpLanguageSelect.value =
-  localStorage.getItem(helpPreferenceKey) || "en";
+helpLanguageSelect.value = window.BTPi18n?.getLanguage?.() || "en";
 helpLauncher.addEventListener("click", () => {
   if (helpPanel.classList.contains("is-hidden")) helpOpen();
   else helpDismiss();
@@ -527,7 +552,19 @@ helpGuideSelect.addEventListener("change", () => {
   helpRenderGuide(helpGuideSelect.value);
 });
 helpLanguageSelect.addEventListener("change", () => {
-  localStorage.setItem(helpPreferenceKey, helpLanguageSelect.value);
+  if (window.BTPi18n?.setLanguage) {
+    window.BTPi18n.setLanguage(helpLanguageSelect.value);
+  } else {
+    helpRenderGuide();
+  }
+});
+window.addEventListener("btp:languagechange", (event) => {
+  helpLanguageSelect.value = event.detail?.language || "en";
+  Object.entries(helpGuides).forEach(([key, guide]) => {
+    const option = helpGuideSelect.querySelector(`option[value="${key}"]`);
+    if (option) option.textContent = guide[helpLanguageSelect.value]?.title
+      || guide.en.title;
+  });
   helpRenderGuide();
 });
 helpCategory.addEventListener("change", updateHelpSupportFields);
@@ -585,7 +622,10 @@ async function helpLoadRequests() {
   helpSupportForm.classList.add("is-hidden");
   helpControlsVisible(false);
   helpRequests.classList.remove("is-hidden");
-  helpRequestsStatus.textContent = "Loading requests…";
+  helpRequestsStatus.textContent = helpUiText(
+    "Loading requests…",
+    "Cargando solicitudes…",
+  );
   helpRequestList.replaceChildren();
   helpRequestDetail.classList.add("is-hidden");
   helpRequestList.classList.remove("is-hidden");
@@ -593,8 +633,14 @@ async function helpLoadRequests() {
     const payload = await authRequest("/api/support/requests");
     const requests = payload.requests || [];
     helpRequestsStatus.textContent = requests.length
-      ? `${requests.length} support request(s).`
-      : "No support requests have been submitted.";
+      ? helpUiText(
+        `${requests.length} support request(s).`,
+        `${requests.length} solicitud(es) de soporte.`,
+      )
+      : helpUiText(
+        "No support requests have been submitted.",
+        "No se han enviado solicitudes de soporte.",
+      );
     requests.forEach((request) => {
       const card = document.createElement("article");
       const heading = document.createElement("div");
@@ -602,7 +648,7 @@ async function helpLoadRequests() {
       const status = document.createElement("span");
       const detail = document.createElement("p");
       title.textContent = request.summary;
-      status.textContent = request.status;
+      status.textContent = helpStatusLabel(request.status);
       detail.textContent = `${request.id} · ${request.module} · ${
         new Date(request.created_at).toLocaleDateString()
       }`;
@@ -610,7 +656,10 @@ async function helpLoadRequests() {
       card.append(heading, detail);
       card.tabIndex = 0;
       card.setAttribute("role", "button");
-      card.setAttribute("aria-label", `Open ${request.id}`);
+      card.setAttribute("aria-label", helpUiText(
+        `Open ${request.id}`,
+        `Abrir ${request.id}`,
+      ));
       card.addEventListener("click", () => {
         helpOpenRequest(request.id);
       });
@@ -633,7 +682,7 @@ function helpThreadMessage(author, message, createdAt) {
   const strong = document.createElement("strong");
   const small = document.createElement("small");
   const paragraph = document.createElement("p");
-  strong.textContent = author || "Support";
+  strong.textContent = author || helpUiText("Support", "Soporte");
   small.textContent = new Date(createdAt).toLocaleString();
   paragraph.textContent = message;
   heading.append(strong, small);
@@ -645,7 +694,10 @@ async function helpOpenRequest(incidentId) {
   helpCurrentRequestId = incidentId;
   helpRequestList.classList.add("is-hidden");
   helpRequestDetail.classList.remove("is-hidden");
-  helpRequestDetailMessage.textContent = "Loading request…";
+  helpRequestDetailMessage.textContent = helpUiText(
+    "Loading request…",
+    "Cargando solicitud…",
+  );
   try {
     const payload = await authRequest(
       `/api/support/requests/${incidentId}`,
@@ -655,7 +707,7 @@ async function helpOpenRequest(incidentId) {
       `${incident.id} · ${incident.summary}`;
     helpRequestDetailBody.replaceChildren(
       helpThreadMessage(
-        "Original request",
+        helpUiText("Original request", "Solicitud original"),
         incident.details,
         incident.created_at,
       ),
@@ -663,7 +715,7 @@ async function helpOpenRequest(incidentId) {
     if (incident.error_message) {
       helpRequestDetailBody.appendChild(
         helpThreadMessage(
-          "Exact error message",
+          helpUiText("Exact error message", "Mensaje de error exacto"),
           incident.error_message,
           incident.created_at,
         ),
@@ -672,7 +724,7 @@ async function helpOpenRequest(incidentId) {
     if (incident.resolution) {
       helpRequestDetailBody.appendChild(
         helpThreadMessage(
-          "Resolution",
+          helpUiText("Resolution", "Resolución"),
           incident.resolution,
           incident.resolved_at,
         ),
@@ -687,7 +739,10 @@ async function helpOpenRequest(incidentId) {
       ));
     });
     if (!payload.messages.length) {
-      helpRequestThread.textContent = "No replies yet.";
+      helpRequestThread.textContent = helpUiText(
+        "No replies yet.",
+        "Aún no hay respuestas.",
+      );
     }
     helpReopenRequest.classList.toggle(
       "is-hidden",
@@ -698,7 +753,10 @@ async function helpOpenRequest(incidentId) {
       incident.status === "resolved",
     );
     helpRequestDetailMessage.textContent =
-      `Status: ${incident.status}`;
+      helpUiText(
+        `Status: ${helpStatusLabel(incident.status)}`,
+        `Estado: ${helpStatusLabel(incident.status)}`,
+      );
   } catch (error) {
     helpRequestDetailMessage.textContent = error.message;
     helpRequestDetailMessage.classList.add("is-error");

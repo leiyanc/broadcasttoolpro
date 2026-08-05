@@ -159,6 +159,72 @@ def test_traffic_modules_localize_ui_without_changing_report_language():
     assert 'document.querySelector("#postlog-report-language").value' in postlog
 
 
+def test_hls_workflows_localize_ui_without_changing_report_language():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "hls.title",
+        "hls.validate",
+        "hls.monitor",
+        "hls.downloadReport",
+        "hls.bandwidth",
+        "hls.scteTrack",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert 'window.addEventListener("btp:languagechange"' in javascript
+    assert '"hls.monitoring"' in javascript
+    assert '"hls.inspectionSummary"' in javascript
+    assert 'report_language: hlsReportLanguage.value' in javascript
+    assert 'id="hls-report-language"' in html
+    assert 'value="en" data-i18n="language.english"' in html
+    assert 'value="es" data-i18n="language.spanish"' in html
+
+
+def test_help_center_shares_global_language_without_mutating_tickets():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "help.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "help.launcher",
+        "help.center",
+        "help.allGuides",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert "broadcastToolPro.helpLanguage" not in javascript
+    assert "window.BTPi18n.setLanguage" in javascript
+    assert 'window.addEventListener("btp:languagechange"' in javascript
+    assert "helpStatusLabel" in javascript
+    assert 'request.id' in javascript
+
+
+def test_billing_localizes_presentation_without_mutating_commercial_data():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "billing.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "billing.title",
+        "billing.pricingTitle",
+        "billing.servicesTitle",
+        "billing.invoices",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert "latestBillingPayload" in javascript
+    assert 'window.addEventListener("btp:languagechange"' in javascript
+    assert "billingPlanDescription" in javascript
+    assert "billingFeature" in javascript
+    assert "/api/billing/organizations/" in javascript
+
+
 def test_home_returns_frontend():
     landing_response = home()
     application_response = application()
@@ -280,11 +346,11 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert 'id="hls-monitor-trigger-body"' in html
     assert 'id="download-hls-report-button"' in html
     assert 'id="hls-report-language"' in html
-    assert '<option value="en">English</option>' in html
-    assert '<option value="es">Español</option>' in html
-    assert '<option value="5">5 minutes</option>' in html
-    assert '<option value="10">10 minutes</option>' in html
-    assert '<option value="15">15 minutes</option>' in html
+    assert 'value="en" data-i18n="language.english"' in html
+    assert 'value="es" data-i18n="language.spanish"' in html
+    assert 'value="5" data-i18n="hls.minutes5"' in html
+    assert 'value="10" data-i18n="hls.minutes10"' in html
+    assert 'value="15" data-i18n="hls.minutes15"' in html
     assert "pollHlsMonitor" in javascript
     assert "hlsSeenTriggers" in javascript
     assert "/api/hls/report/pdf" in javascript
@@ -393,7 +459,8 @@ def test_contextual_help_center_is_present():
     assert 'id="help-guide-select"' in html
     assert 'id="help-language-select"' in html
     assert "helpGuideForViewport" in javascript
-    assert "broadcastToolPro.helpLanguage" in javascript
+    assert "window.BTPi18n.setLanguage" in javascript
+    assert 'window.addEventListener("btp:languagechange"' in javascript
     assert "XMLTV Generator" in javascript
     assert "Post Logs" in javascript
     assert "HLS Validator" in javascript

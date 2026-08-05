@@ -18,10 +18,68 @@ const billingInvoiceTable = document.querySelector(
 );
 const billingInvoiceBody = document.querySelector("#billing-invoice-body");
 let billingOrganization = null;
+let latestBillingPayload = null;
+
+function billingText(key, fallback, values = {}) {
+  let text = window.BTPi18n?.t(key, fallback) ?? fallback;
+  Object.entries(values).forEach(([name, value]) => {
+    text = text.replaceAll(`{${name}}`, String(value));
+  });
+  return text;
+}
+
+function billingLocale() {
+  return window.BTPi18n?.getLanguage?.() === "es" ? "es" : "en";
+}
+
+const billingFeatureKeys = {
+  "Everything in Programming Suite": "billing.feature.everythingProgramming",
+  "Everything in Professional": "billing.feature.everythingProfessional",
+  "Branded Excel and PDF reports": "billing.feature.brandedReports",
+  "Multi-format playlist and As-Run imports": "billing.feature.multiFormat",
+  "Stream Monitoring included": "billing.feature.monitoringIncluded",
+  "Higher channel and user limits": "billing.feature.higherLimits",
+  "Advanced auditability": "billing.feature.auditability",
+  "Priority onboarding and support": "billing.feature.prioritySupport",
+  "Media QC: loudness, captions, black frames, and freeze frames": (
+    "billing.feature.mediaQc"
+  ),
+};
+
+function billingFeature(label) {
+  const key = billingFeatureKeys[label];
+  return key ? billingText(key, label) : label;
+}
+
+function billingPlanDescription(plan) {
+  const keys = {
+    programming_suite: "billing.plan.programming",
+    professional: "billing.plan.professional",
+    enterprise: "billing.plan.enterprise",
+  };
+  return billingText(keys[plan.code], plan.description);
+}
+
+function billingStatus(status) {
+  const normalized = String(status || "").replaceAll("_", " ");
+  const translations = billingLocale() === "es"
+    ? {
+        active: "Activa",
+        canceled: "Cancelada",
+        cancelled: "Cancelada",
+        pending: "Pendiente",
+        paid: "Pagada",
+        open: "Abierta",
+        monthly: "mensual",
+        annual: "anual",
+      }
+    : {};
+  return translations[normalized.toLowerCase()] || normalized;
+}
 
 function billingDate(value) {
-  if (!value) return "Not scheduled";
-  return new Date(value).toLocaleDateString(undefined, {
+  if (!value) return billingText("billing.notScheduled", "Not scheduled");
+  return new Date(value).toLocaleDateString(billingLocale(), {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -29,8 +87,10 @@ function billingDate(value) {
 }
 
 function billingMoney(cents, currency) {
-  if (cents === null || cents === undefined) return "Pricing pending";
-  return new Intl.NumberFormat(undefined, {
+  if (cents === null || cents === undefined) {
+    return billingText("billing.pricingPending", "Pricing pending");
+  }
+  return new Intl.NumberFormat(billingLocale(), {
     style: "currency",
     currency: currency || "USD",
   }).format(cents / 100);
@@ -58,7 +118,9 @@ function pricingButton(plan, currentPlan) {
     `button ${isCurrent ? "button-secondary" : "button-primary"}`
   );
   button.type = "button";
-  button.textContent = isCurrent ? "Current Plan" : "Request Plan Change";
+  button.textContent = isCurrent
+    ? billingText("billing.currentPlan", "Current Plan")
+    : billingText("billing.requestPlan", "Request Plan Change");
   button.disabled = isCurrent;
   if (!isCurrent) {
     button.addEventListener("click", () => {
@@ -86,30 +148,34 @@ function renderPricing(pricing) {
     if (plan.name === pricing.display_name) card.classList.add("is-current");
 
     const eyebrow = document.createElement("small");
-    eyebrow.textContent = plan.featured ? "Most Popular" : "Plan";
+    eyebrow.textContent = plan.featured
+      ? billingText("billing.mostPopular", "Most Popular")
+      : billingText("billing.plan", "Plan");
     const title = document.createElement("h4");
     title.textContent = plan.name;
     const price = document.createElement("p");
     price.className = "pricing-price";
     price.textContent = (
-      `${plan.starting_at ? "From " : ""}`
+      `${plan.starting_at ? billingText("billing.from", "From ") : ""}`
       + `${billingMoney(plan.monthly_cents, "USD")}`
     );
     const period = document.createElement("span");
-    period.textContent = "/month";
+    period.textContent = billingText("billing.perMonth", "/month");
     price.appendChild(period);
     const description = document.createElement("p");
     description.className = "pricing-description";
-    description.textContent = plan.description;
+    description.textContent = billingPlanDescription(plan);
     const features = document.createElement("ul");
     plan.features.forEach((feature) => {
       const item = document.createElement("li");
       const label = typeof feature === "string" ? feature : feature.label;
-      item.append(document.createTextNode(label));
+      item.append(document.createTextNode(billingFeature(label)));
       if (typeof feature !== "string" && feature.status) {
         const status = document.createElement("span");
         status.className = "pricing-feature-status";
-        status.textContent = feature.status;
+        status.textContent = feature.status === "Coming Soon"
+          ? billingText("billing.comingSoon", "Coming Soon")
+          : feature.status;
         item.appendChild(status);
       }
       features.appendChild(item);
@@ -130,16 +196,19 @@ function renderPricing(pricing) {
     const card = document.createElement("div");
     const copy = document.createElement("div");
     const label = document.createElement("small");
-    label.textContent = "Optional Add-on";
+    label.textContent = billingText("billing.optionalAddon", "Optional Add-on");
     const title = document.createElement("strong");
     title.textContent = addon.name;
     const description = document.createElement("p");
-    description.textContent = addon.description;
+    description.textContent = addon.code === "stream_monitoring"
+      ? billingText("billing.addon.stream", addon.description)
+      : addon.description;
     copy.append(label, title, description);
     const price = document.createElement("strong");
     price.className = "pricing-addon-price";
     price.textContent = (
-      `+${billingMoney(addon.monthly_cents, "USD")}/month`
+      `+${billingMoney(addon.monthly_cents, "USD")}`
+      + billingText("billing.perMonth", "/month")
     );
     const actions = document.createElement("div");
     actions.className = "pricing-addon-actions";
@@ -155,8 +224,10 @@ function renderPricing(pricing) {
     );
     button.type = "button";
     button.textContent = isIncluded
-      ? "Included"
-      : (isActive ? "Active Add-on" : "Request Add-on");
+      ? billingText("billing.included", "Included")
+      : (isActive
+        ? billingText("billing.activeAddon", "Active Add-on")
+        : billingText("billing.requestAddon", "Request Add-on"));
     button.disabled = isIncluded || isActive;
     if (!button.disabled) {
       button.addEventListener("click", () => {
@@ -179,34 +250,40 @@ function renderPricing(pricing) {
 }
 
 function renderBilling(payload) {
+  latestBillingPayload = payload;
   const subscription = payload.subscription;
   const pricing = payload.pricing;
   const complimentary = subscription.payment_waived;
   billingSummary.replaceChildren(
     billingCard(
-      "Plan",
+      billingText("billing.plan", "Plan"),
       pricing.display_name,
       subscription.organization_name,
     ),
     billingCard(
-      "Subscription",
+      billingText("billing.subscription", "Subscription"),
       complimentary
-        ? "Complimentary access"
-        : subscription.status.replace("_", " "),
+        ? billingText("billing.complimentary", "Complimentary access")
+        : billingStatus(subscription.status),
       complimentary
-        ? "Payment waived by Broadcast Tool Pro"
-        : `${subscription.billing_cycle} billing`,
+        ? billingText(
+          "billing.paymentWaived",
+          "Payment waived by Broadcast Tool Pro",
+        )
+        : billingText("billing.billingCycle", "{cycle} billing", {
+          cycle: billingStatus(subscription.billing_cycle),
+        }),
     ),
     billingCard(
       complimentary || subscription.cancel_at_period_end
-        ? "Access Until"
-        : "Renews",
+        ? billingText("billing.accessUntil", "Access Until")
+        : billingText("billing.renews", "Renews"),
       billingDate(
         subscription.waiver_expires_at
         || subscription.current_period_end,
       ),
       complimentary
-        ? "No payment due"
+        ? billingText("billing.noPayment", "No payment due")
         : `${billingMoney(
           pricing.billing_total_cents,
           pricing.currency,
@@ -227,11 +304,13 @@ function renderBilling(payload) {
     .forEach((module) => {
       billingEntitlements.appendChild(
         billingCard(
-          "Included",
+          billingText("billing.included", "Included"),
           module.name,
           subscription.plan === "enterprise"
-            ? "Enterprise plan"
-            : `${pricing.base.name} plan`,
+            ? billingText("billing.enterprisePlan", "Enterprise plan")
+            : billingText("billing.namedPlan", "{plan} plan", {
+              plan: pricing.base.name,
+            }),
         ),
       );
     });
@@ -244,10 +323,12 @@ function renderBilling(payload) {
       );
       billingEntitlements.appendChild(
         billingCard(
-          enterprise ? "Included" : "Add-on",
+          enterprise
+            ? billingText("billing.included", "Included")
+            : billingText("billing.addon", "Add-on"),
           addon.name,
           enterprise
-            ? "Enterprise plan"
+            ? billingText("billing.enterprisePlan", "Enterprise plan")
             : `${billingMoney(
                 addonPricing?.monthly_cents,
                 pricing.currency,
@@ -260,14 +341,16 @@ function renderBilling(payload) {
   billingInvoiceBody.replaceChildren();
   billingInvoiceTable.classList.toggle("is-hidden", !invoices.length);
   billingInvoiceStatus.textContent = invoices.length
-    ? `${invoices.length} invoice(s).`
-    : "No invoices have been issued.";
+    ? billingText("billing.invoiceCount", "{count} invoice(s).", {
+      count: invoices.length,
+    })
+    : billingText("billing.noInvoices", "No invoices have been issued.");
   invoices.forEach((invoice) => {
     const row = document.createElement("tr");
     [
       invoice.id,
       billingDate(invoice.invoice_date),
-      invoice.status,
+      billingStatus(invoice.status),
       billingMoney(invoice.amount_due_cents, invoice.currency),
     ].forEach((value) => {
       const cell = document.createElement("td");
@@ -280,7 +363,10 @@ function renderBilling(payload) {
 
 async function loadBilling() {
   if (!billingOrganization) return;
-  billingMessage.textContent = "Loading subscription…";
+  billingMessage.textContent = billingText(
+    "billing.loading",
+    "Loading subscription…",
+  );
   billingMessage.classList.remove("is-error");
   try {
     const payload = await authRequest(
@@ -312,4 +398,8 @@ billingOpenButton.addEventListener("click", () => {
 billingCloseButton.addEventListener("click", () => {
   billingPanel.classList.add("is-hidden");
   applyOrganizationAccess(currentIdentity);
+});
+
+window.addEventListener("btp:languagechange", () => {
+  if (latestBillingPayload) renderBilling(latestBillingPayload);
 });

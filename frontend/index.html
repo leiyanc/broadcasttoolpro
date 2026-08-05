@@ -22,12 +22,12 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260805-1" defer></script>
+    <script src="/static/i18n.js?v=20260805-2" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
     <script src="/static/auth.js?v=20260730-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
-    <script src="/static/billing.js?v=20260728-5" defer></script>
-    <script src="/static/help.js?v=20260728-6" defer></script>
+    <script src="/static/billing.js?v=20260805-1" defer></script>
+    <script src="/static/help.js?v=20260805-1" defer></script>
     <script src="/static/app.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
@@ -37,7 +37,7 @@
       defer
     ></script>
     <script src="/static/report-history.js?v=20260726-4" defer></script>
-    <script src="/static/hls-validator.js?v=20260804-1" defer></script>
+    <script src="/static/hls-validator.js?v=20260805-1" defer></script>
   </head>
 
   <body>
@@ -434,7 +434,7 @@
             id="open-billing-button"
             type="button"
           >
-            Billing
+            <span data-i18n="billing.open">Billing</span>
           </button>
           <button
             class="button button-secondary is-hidden"
@@ -456,9 +456,9 @@
       <section class="billing-shell is-hidden" id="billing-panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">BILLING &amp; SUBSCRIPTIONS</p>
-            <h2>Subscription Overview</h2>
-            <p class="section-copy">
+            <p class="eyebrow" data-i18n="billing.eyebrow">BILLING &amp; SUBSCRIPTIONS</p>
+            <h2 data-i18n="billing.title">Subscription Overview</h2>
+            <p class="section-copy" data-i18n="billing.copy">
               Review your plan, enabled add-ons, renewal period, and invoices.
             </p>
           </div>
@@ -467,7 +467,7 @@
             id="close-billing-button"
             type="button"
           >
-            Close Billing
+            <span data-i18n="billing.close">Close Billing</span>
           </button>
         </div>
         <p
@@ -477,9 +477,9 @@
         ></p>
         <div class="billing-summary" id="billing-summary"></div>
         <div class="billing-section">
-          <p class="eyebrow">PLANS &amp; PRICING</p>
-          <h3>Choose the right operating package</h3>
-          <p class="section-copy">
+          <p class="eyebrow" data-i18n="billing.pricingEyebrow">PLANS &amp; PRICING</p>
+          <h3 data-i18n="billing.pricingTitle">Choose the right operating package</h3>
+          <p class="section-copy" data-i18n="billing.pricingCopy">
             Compare included workflows. Plan changes are reviewed before
             billing or access is updated.
           </p>
@@ -487,31 +487,31 @@
           <div class="pricing-addons" id="billing-pricing-addons"></div>
         </div>
         <div class="billing-section">
-          <p class="eyebrow">ENABLED SERVICES</p>
-          <h3>Plan and Add-ons</h3>
+          <p class="eyebrow" data-i18n="billing.servicesEyebrow">ENABLED SERVICES</p>
+          <h3 data-i18n="billing.servicesTitle">Plan and Add-ons</h3>
           <div class="billing-entitlements" id="billing-entitlements"></div>
         </div>
         <div class="billing-section">
-          <p class="eyebrow">PAYMENT HISTORY</p>
-          <h3>Invoices</h3>
-          <p class="history-status" id="billing-invoice-status">
+          <p class="eyebrow" data-i18n="billing.historyEyebrow">PAYMENT HISTORY</p>
+          <h3 data-i18n="billing.invoices">Invoices</h3>
+          <p class="history-status" id="billing-invoice-status" data-i18n="billing.noInvoices">
             No invoices have been issued.
           </p>
           <div class="table-scroll is-hidden" id="billing-invoice-table">
             <table class="preview-table">
               <thead>
                 <tr>
-                  <th>Invoice</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Amount</th>
+                  <th data-i18n="billing.invoice">Invoice</th>
+                  <th data-i18n="traffic.date">Date</th>
+                  <th data-i18n="hls.status">Status</th>
+                  <th data-i18n="billing.amount">Amount</th>
                 </tr>
               </thead>
               <tbody id="billing-invoice-body"></tbody>
             </table>
           </div>
         </div>
-        <p class="billing-note">
+        <p class="billing-note" data-i18n="billing.providerNote">
           Online payment management will become available when the payment
           provider is connected. No payment method is stored by Broadcast Tool
           Pro at this stage.
@@ -2114,9 +2114,9 @@
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">STREAMING QC</p>
-            <h2>Validate HLS Stream</h2>
-            <p class="section-copy">
+            <p class="eyebrow" data-i18n="hls.eyebrow">STREAMING QC</p>
+            <h2 data-i18n="hls.title">Validate HLS Stream</h2>
+            <p class="section-copy" data-i18n="hls.copy">
               Inspect an HLS playlist before distribution or playback.
             </p>
           </div>
@@ -2124,7 +2124,7 @@
 
         <form id="hls-validator-form">
           <label class="hls-url-field">
-            <span>HLS Playlist URL</span>
+            <span data-i18n="hls.url">HLS Playlist URL</span>
             <input
               id="hls-playlist-url"
               name="playlist_url"
@@ -2135,18 +2135,18 @@
           </label>
           <div class="hls-monitor-controls">
             <label>
-              <span>Monitoring Period</span>
+              <span data-i18n="hls.monitoringPeriod">Monitoring Period</span>
               <select id="hls-monitor-duration">
-                <option value="5">5 minutes</option>
-                <option value="10">10 minutes</option>
-                <option value="15">15 minutes</option>
+                <option value="5" data-i18n="hls.minutes5">5 minutes</option>
+                <option value="10" data-i18n="hls.minutes10">10 minutes</option>
+                <option value="15" data-i18n="hls.minutes15">15 minutes</option>
               </select>
             </label>
             <label>
-              <span>Report Language</span>
+              <span data-i18n="traffic.reportLanguage">Report Language</span>
               <select id="hls-report-language">
-                <option value="en">English</option>
-                <option value="es">Español</option>
+                <option value="en" data-i18n="language.english">English</option>
+                <option value="es" data-i18n="language.spanish">Español</option>
               </select>
             </label>
           </div>
@@ -2156,28 +2156,28 @@
               id="validate-hls-button"
               type="submit"
             >
-              Validate HLS
+              <span data-i18n="hls.validate">Validate HLS</span>
             </button>
             <button
               class="button button-secondary"
               id="monitor-hls-button"
               type="button"
             >
-              Monitor Stream
+              <span data-i18n="hls.monitor">Monitor Stream</span>
             </button>
             <button
               class="button button-secondary is-hidden"
               id="stop-hls-monitor-button"
               type="button"
             >
-              Stop Monitoring
+              <span data-i18n="hls.stop">Stop Monitoring</span>
             </button>
             <button
               class="button button-secondary is-hidden"
               id="download-hls-report-button"
               type="button"
             >
-              Download PDF Report
+              <span data-i18n="hls.downloadReport">Download PDF Report</span>
             </button>
           </div>
         </form>
@@ -2189,7 +2189,7 @@
         >
           <div class="result-icon" id="hls-result-icon">✓</div>
           <div class="hls-result-content">
-            <h3 id="hls-result-title">HLS stream is valid</h3>
+            <h3 id="hls-result-title" data-i18n="hls.valid">HLS stream is valid</h3>
             <p id="hls-result-message"></p>
             <div class="result-metrics" id="hls-result-metrics"></div>
             <ul class="issue-list" id="hls-issue-list"></ul>
@@ -2200,13 +2200,13 @@
               <table class="preview-table">
                 <thead>
                   <tr>
-                    <th>Bandwidth</th>
-                    <th>Resolution</th>
-                    <th>Frame Rate</th>
-                    <th>Codecs</th>
-                    <th>Segments</th>
-                    <th>SCTE-35 Track</th>
-                    <th>Status</th>
+                    <th data-i18n="hls.bandwidth">Bandwidth</th>
+                    <th data-i18n="hls.resolution">Resolution</th>
+                    <th data-i18n="hls.frameRate">Frame Rate</th>
+                    <th data-i18n="hls.codecs">Codecs</th>
+                    <th data-i18n="hls.segments">Segments</th>
+                    <th data-i18n="hls.scteTrack">SCTE-35 Track</th>
+                    <th data-i18n="hls.status">Status</th>
                   </tr>
                 </thead>
                 <tbody id="hls-variant-body"></tbody>
@@ -2219,10 +2219,10 @@
               <table class="preview-table">
                 <thead>
                   <tr>
-                    <th>Type</th>
+                    <th data-i18n="hls.type">Type</th>
                     <th>ID</th>
-                    <th>Start</th>
-                    <th>Duration</th>
+                    <th data-i18n="hls.start">Start</th>
+                    <th data-i18n="traffic.duration">Duration</th>
                   </tr>
                 </thead>
                 <tbody id="hls-trigger-body"></tbody>
@@ -2234,7 +2234,7 @@
             >
               <div class="hls-monitor-heading">
                 <div>
-                  <strong id="hls-monitor-title">Monitoring stream…</strong>
+                  <strong id="hls-monitor-title" data-i18n="hls.monitoring">Monitoring stream…</strong>
                   <small id="hls-monitor-status"></small>
                 </div>
                 <span id="hls-monitor-countdown">00:00</span>
@@ -2243,10 +2243,10 @@
                 <table class="preview-table">
                   <thead>
                     <tr>
-                      <th>Detected</th>
-                      <th>Type</th>
+                      <th data-i18n="hls.detected">Detected</th>
+                      <th data-i18n="hls.type">Type</th>
                       <th>ID</th>
-                      <th>Duration</th>
+                      <th data-i18n="traffic.duration">Duration</th>
                     </tr>
                   </thead>
                   <tbody id="hls-monitor-trigger-body"></tbody>
@@ -2307,7 +2307,7 @@
       aria-expanded="false"
     >
       <span aria-hidden="true">?</span>
-      <span>Help &amp; Guides</span>
+      <span data-i18n="help.launcher">Help &amp; Guides</span>
     </button>
 
     <aside
@@ -2317,7 +2317,7 @@
     >
       <div class="help-header">
         <div>
-          <p class="eyebrow">HELP CENTER</p>
+          <p class="eyebrow" data-i18n="help.center">HELP CENTER</p>
           <h2 id="help-title">Getting Started</h2>
         </div>
         <button
@@ -2325,20 +2325,21 @@
           id="help-close"
           type="button"
           aria-label="Close help"
+          data-i18n-aria-label="help.close"
         >
           ×
         </button>
       </div>
       <div class="help-controls">
         <label>
-          <span>All Guides</span>
+          <span data-i18n="help.allGuides">All Guides</span>
           <select id="help-guide-select"></select>
         </label>
         <label>
-          <span>Language</span>
+          <span data-i18n="language.label">Language</span>
           <select id="help-language-select">
-            <option value="en">English</option>
-            <option value="es">Español</option>
+            <option value="en" data-i18n="language.english">English</option>
+            <option value="es" data-i18n="language.spanish">Español</option>
           </select>
         </label>
       </div>
