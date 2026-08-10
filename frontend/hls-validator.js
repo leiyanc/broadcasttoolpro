@@ -209,10 +209,11 @@ function renderHlsRequestError(message) {
   );
 }
 
-async function requestHlsValidation(playlistUrl) {
+async function requestHlsValidation(playlistUrl, monitorMode = false) {
   const formData = new FormData();
   formData.append("playlist_url", playlistUrl);
   formData.append("inspect_segments", "true");
+  formData.append("monitor_mode", String(monitorMode));
   const response = await fetch("/api/hls/validate", {
     method: "POST",
     body: formData,
@@ -359,7 +360,7 @@ async function pollHlsMonitor() {
   }
 
   try {
-    const result = await requestHlsValidation(hlsMonitorUrl);
+    const result = await requestHlsValidation(hlsMonitorUrl, true);
     latestHlsResult = result;
     hlsReportButton.classList.remove("is-hidden");
     hlsPolls += 1;

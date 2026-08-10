@@ -18,60 +18,82 @@ def collapse_continuation_rows(
         return []
 
     normalized = []
+    previous_by_channel: dict[str, Programme] = {}
+    genre_by_channel: dict[str, str] = {}
 
     for programme in programmes:
-        if not normalized:
-            normalized.append(programme)
-            continue
+        channel = programme.channel or "__default__"
+        previous = previous_by_channel.get(channel)
 
-        previous = normalized[-1]
-        previous_start = programme_start(previous)
-        current_start = programme_start(programme)
-        metadata_matches = (
-            programme_metadata(programme)
-            == programme_metadata(previous)
-        )
+        if previous is not None:
+            previous_start = programme_start(previous)
+            current_start = programme_start(programme)
+            metadata_matches = (
+                programme_metadata(programme)
+                == programme_metadata(previous)
+            )
 
-        if current_start == previous_start and metadata_matches:
+            if current_start == previous_start:
+                auto_fixes.append({
+                    "row": programme.source_row,
+                    "field": "Programme",
+                    "original_value": programme.program_title,
+                    "normalized_value": previous.program_title,
+                    "message": (
+                        "Exact duplicate row was removed; it matches "
+                        f"row {previous.source_row}."
+                        if metadata_matches
+                        else (
+                            "Conflicting row with the same start time was "
+                            "ignored; the first programme on row "
+                            f"{previous.source_row} controls the airing."
+                        )
+                    ),
+                })
+                continue
+
+            try:
+                previous_stop = previous_start + parse_duration(
+                    previous.duration or ""
+                )
+            except ValueError:
+                previous_stop = None
+
+            if (
+                previous_stop is not None
+                and current_start > previous_start
+                and current_start < previous_stop
+            ):
+                auto_fixes.append({
+                    "row": programme.source_row,
+                    "field": "Programme",
+                    "original_value": programme.program_title,
+                    "normalized_value": previous.program_title,
+                    "message": (
+                        "Continuation row was ignored; the duration entered "
+                        f"on row {previous.source_row} controls the complete "
+                        "programme."
+                    ),
+                })
+                continue
+
+        if programme.genre:
+            genre_by_channel[channel] = programme.genre
+        elif channel in genre_by_channel:
+            inherited_genre = genre_by_channel[channel]
+            programme.genre = inherited_genre
             auto_fixes.append({
                 "row": programme.source_row,
-                "field": "Programme",
-                "original_value": programme.program_title,
-                "normalized_value": previous.program_title,
+                "field": "Genre",
+                "original_value": "",
+                "normalized_value": inherited_genre,
                 "message": (
-                    "Exact duplicate row was removed; it matches "
-                    f"row {previous.source_row}."
+                    "Blank Genre inherited the most recent genre for "
+                    "this channel."
                 ),
             })
-            continue
 
-        try:
-            previous_stop = previous_start + parse_duration(
-                previous.duration or ""
-            )
-        except ValueError:
-            normalized.append(programme)
-            continue
-
-        is_continuation = (
-            current_start > previous_start
-            and current_start < previous_stop
-            and metadata_matches
-        )
-
-        if not is_continuation:
-            normalized.append(programme)
-            continue
-
-        auto_fixes.append({
-            "row": programme.source_row,
-            "field": "Programme",
-            "original_value": programme.program_title,
-            "normalized_value": previous.program_title,
-            "message": (
-                "Continuation row was merged into the programme "
-                f"starting on row {previous.source_row}."
-            ),
-        })
+        normalized.append(programme)
+        previous_by_channel[channel] = programme
 
     return normalized

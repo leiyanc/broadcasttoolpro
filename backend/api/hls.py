@@ -25,12 +25,14 @@ router = APIRouter(
 def validate_hls_url(
     playlist_url: str = Form(...),
     inspect_segments: bool = Form(True),
+    monitor_mode: bool = Form(False),
     _user: dict = Depends(require_module("hls_validator")),
 ):
     try:
         return validate_hls(
             playlist_url,
             inspect_segments=inspect_segments,
+            max_variants_to_inspect=1 if monitor_mode else 10,
         )
     except HlsValidationError as exc:
         raise HTTPException(

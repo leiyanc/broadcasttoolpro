@@ -179,14 +179,13 @@ def inspect_mpegts_scte35(content: bytes) -> dict:
             "triggers": [],
         }
 
-    packets = [
-        content[index:index + 188]
-        for index in range(sync_offset, len(content) - 187, 188)
-    ]
+    def packets():
+        for index in range(sync_offset, len(content) - 187, 188):
+            yield content[index:index + 188]
     pmt_pids = set()
     scte_pids = set()
 
-    for packet in packets:
+    for packet in packets():
         parsed = _transport_payload(packet)
         if parsed is None:
             continue
@@ -206,7 +205,7 @@ def inspect_mpegts_scte35(content: bytes) -> dict:
                     pmt_pids.add(program_pid)
                 position += 4
 
-    for packet in packets:
+    for packet in packets():
         parsed = _transport_payload(packet)
         if parsed is None:
             continue
@@ -239,7 +238,7 @@ def inspect_mpegts_scte35(content: bytes) -> dict:
 
     triggers = []
     seen_payloads = set()
-    for packet in packets:
+    for packet in packets():
         parsed = _transport_payload(packet)
         if parsed is None:
             continue
@@ -504,6 +503,7 @@ def validate_hls(
         [str],
         bytes | tuple[bytes, int | None],
     ] = fetch_segment_sample,
+    max_variants_to_inspect: int = MAX_VARIANTS_TO_INSPECT,
 ) -> dict:
     normalized_url = url.strip()
     if not normalized_url:
@@ -556,8 +556,13 @@ def validate_hls(
         })
 
     media = None
+    bounded_variant_count = 0
     if variants:
-        for variant in variants[:MAX_VARIANTS_TO_INSPECT]:
+        bounded_variant_count = max(
+            1,
+            min(int(max_variants_to_inspect), MAX_VARIANTS_TO_INSPECT),
+        )
+        for variant in variants[:bounded_variant_count]:
             if variant["bandwidth"] is None:
                 issues.append(_issue(
                     "warning",
@@ -712,7 +717,7 @@ def validate_hls(
         "variant_count": len(variants),
         "inspected_variants": min(
             len(variants),
-            MAX_VARIANTS_TO_INSPECT,
+            bounded_variant_count,
         ),
         "media": media,
         "trigger_count": trigger_count,

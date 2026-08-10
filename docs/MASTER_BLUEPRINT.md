@@ -88,6 +88,17 @@ terminology remain in English.
   selectors remain independent from the interface language, and switching the
   interface never alters selected source files, filters, report content, or
   export formats.
+- Account access localizes initial setup, sign-in, recovery, paid-access
+  requests, request confirmation, free trial, activation, account preferences,
+  trial expiration, and suspension states. Stored roles, plan codes,
+  organization statuses, entitlements, and authentication decisions remain
+  canonical backend data and are never rewritten by interface localization.
+- Report History localizes archive navigation, table labels, state messages,
+  counts, and download actions. Stored filenames, report formats, archive IDs,
+  and generated report content remain unchanged.
+- The Super Admin Control Panel is an internal owner-only operating surface
+  and remains English-only; it is intentionally outside customer-interface
+  localization scope.
 - HLS Validator and Monitor Stream localize validation, variant, SCTE-35,
   monitoring, and download feedback surfaces. Monitoring state and collected
   technical data remain intact when the interface language changes, while the
@@ -117,6 +128,15 @@ Programming Suite includes the complete XMLTV Suite:
 
 The Excel and CSV templates may be offered as free acquisition resources. The
 processing tools require an active account.
+
+XMLTV schedule normalization follows a first-airing rule for segmented source
+schedules. The first row of an airing controls its complete duration; later
+rows that start before that duration ends are treated as continuation rows and
+are ignored, even when their titles or optional metadata differ. A blank Genre
+inherits the most recently supplied Genre for the same channel until a new
+non-blank value is provided. Every such normalization remains visible as a
+suggested safe correction and requires the existing authorization workflow
+before XMLTV generation.
 
 ### Professional — $99/month
 
@@ -329,6 +349,10 @@ bootstrap.
 - Reuse network security resources across HLS polling cycles and keep MPEG-TS
   inspection samples bounded so a monitoring session cannot progressively
   exhaust the web-service memory allocation.
+- Stream-monitor polling inspects only one selected media variant per cycle,
+  while instant master-playlist validation may inspect the bounded variant set.
+  MPEG-TS packets are processed as an iterator rather than retained as a
+  duplicated in-memory packet collection.
 - Do not introduce Redis, Celery, Kubernetes, dedicated media storage, or
   multiple application services at this stage.
 

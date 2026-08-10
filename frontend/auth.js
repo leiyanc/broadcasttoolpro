@@ -67,6 +67,46 @@ const suspendedAdminButton = document.querySelector(
 );
 let currentIdentity = null;
 let currentEntitlements = null;
+let lastAccessContactName = "";
+let preferenceMessageState = "";
+
+function authText(key, fallback, values = {}) {
+  let translated = window.BTPi18n?.t(key, fallback) || fallback;
+  for (const [name, value] of Object.entries(values)) {
+    translated = translated.replaceAll(`{${name}}`, String(value));
+  }
+  return translated;
+}
+
+function localizedRole(role) {
+  const normalized = String(role || "member").toLowerCase();
+  return authText(`auth.role.${normalized}`, role || authText("auth.member", "Member"));
+}
+
+function renderLocalizedIdentity() {
+  if (currentIdentity?.user) {
+    const organization = currentIdentity.organizations?.[0];
+    accountRole.textContent = localizedRole(organization?.role);
+    accountPanelOrganization.textContent = organization
+      ? `${organization.name} · ${organization.plan}`
+      : authText("account.none", "No organization assigned");
+  }
+  if (lastAccessContactName && !accessRequestSuccess.classList.contains("is-hidden")) {
+    accessRequestSuccessTitle.textContent = authText(
+      "auth.thankYouName",
+      `Thank you, ${lastAccessContactName}.`,
+      { name: lastAccessContactName },
+    );
+  }
+  if (preferenceMessageState) {
+    accountPreferenceMessage.textContent = authText(
+      `account.${preferenceMessageState}`,
+      preferenceMessageState === "saving"
+        ? "Saving preference..."
+        : "Email preference saved.",
+    );
+  }
+}
 
 const moduleSurfaces = {
   xmltv_generator: ['a[href="#generator"]', "#generator"],
@@ -172,7 +212,9 @@ async function authRequest(url, options = {}) {
     ? {}
     : await response.json();
   if (!response.ok) {
-    throw new Error(payload.detail || "The request could not be completed.");
+    throw new Error(
+      payload.detail || authText("auth.requestFailed", "The request could not be completed."),
+    );
   }
   return payload;
 }
@@ -276,13 +318,13 @@ function showPlatform(identity) {
   accountButton.classList.remove("is-hidden");
   accountAvatar.textContent = user.display_name.slice(0, 1).toUpperCase();
   accountName.textContent = user.display_name;
-  accountRole.textContent = organization?.role || "Member";
+  accountRole.textContent = localizedRole(organization?.role);
   openAdminButton.classList.toggle("is-hidden", !user.is_superuser);
   accountPanelName.textContent = user.display_name;
   accountPanelEmail.textContent = user.email;
   accountPanelOrganization.textContent = organization
     ? `${organization.name} · ${organization.plan}`
-    : "No organization assigned";
+    : authText("account.none", "No organization assigned");
   applyOrganizationAccess(identity);
   window.dispatchEvent(new CustomEvent("btp:identity", {
     detail: identity,
@@ -312,7 +354,10 @@ async function initializeAuthentication() {
       showAuthentication(status.bootstrap_required);
     } catch {
       showAuthentication(false);
-      loginMessage.textContent = "The authentication service is unavailable.";
+      loginMessage.textContent = authText(
+        "auth.serviceUnavailable",
+        "The authentication service is unavailable.",
+      );
       loginMessage.classList.add("is-error");
     }
   }
@@ -369,8 +414,12 @@ accessRequestForm.addEventListener("submit", async (event) => {
     });
     accessRequestForm.reset();
     accessRequestMessage.textContent = "";
-    accessRequestSuccessTitle.textContent =
-      `Thank you, ${payload.contact_name}.`;
+    lastAccessContactName = payload.contact_name;
+    accessRequestSuccessTitle.textContent = authText(
+      "auth.thankYouName",
+      `Thank you, ${payload.contact_name}.`,
+      { name: payload.contact_name },
+    );
     accessRequestReference.textContent = result.request_id;
     accessRequestForm.classList.add("is-hidden");
     accessRequestSuccess.classList.remove("is-hidden");
@@ -514,7 +563,11 @@ accountButton.addEventListener("click", () => {
 trialReminderPreference.addEventListener("change", async () => {
   trialReminderPreference.disabled = true;
   accountPreferenceMessage.classList.remove("is-error");
-  accountPreferenceMessage.textContent = "Saving preference...";
+  preferenceMessageState = "saving";
+  accountPreferenceMessage.textContent = authText(
+    "account.saving",
+    "Saving preference...",
+  );
   try {
     const preferences = await authRequest("/api/auth/email-preferences", {
       method: "PUT",
@@ -523,7 +576,11 @@ trialReminderPreference.addEventListener("change", async () => {
       }),
     });
     trialReminderPreference.checked = preferences.trial_reminders;
-    accountPreferenceMessage.textContent = "Email preference saved.";
+    preferenceMessageState = "saved";
+    accountPreferenceMessage.textContent = authText(
+      "account.saved",
+      "Email preference saved.",
+    );
   } catch (error) {
     trialReminderPreference.checked = !trialReminderPreference.checked;
     accountPreferenceMessage.textContent = error.message;
@@ -540,3 +597,5 @@ logoutButton.addEventListener("click", async () => {
 });
 
 initializeAuthentication();
+
+window.addEventListener("btp:languagechange", renderLocalizedIdentity);

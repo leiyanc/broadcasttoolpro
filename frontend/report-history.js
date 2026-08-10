@@ -4,6 +4,15 @@ const reportHistoryTable = document.querySelector("#report-history-table");
 const refreshReportHistory = document.querySelector(
   "#refresh-report-history",
 );
+let latestReports = [];
+
+function historyText(key, fallback, values = {}) {
+  let translated = window.BTPi18n?.t(key, fallback) || fallback;
+  for (const [name, value] of Object.entries(values)) {
+    translated = translated.replaceAll(`{${name}}`, String(value));
+  }
+  return translated;
+}
 
 function historyCell(value) {
   const cell = document.createElement("td");
@@ -27,8 +36,9 @@ function renderReportHistory(reports) {
   reportHistoryBody.replaceChildren();
   if (!reports.length) {
     reportHistoryTable.classList.add("is-hidden");
-    reportHistoryStatus.textContent = (
-      "Generated Pre Logs and Post Logs will appear here."
+    reportHistoryStatus.textContent = historyText(
+      "history.empty",
+      "Generated Pre Logs and Post Logs will appear here.",
     );
     return;
   }
@@ -49,31 +59,37 @@ function renderReportHistory(reports) {
     const download = document.createElement("a");
     download.className = "history-download";
     download.href = `/api/history/${encodeURIComponent(report.id)}/download`;
-    download.textContent = "Download";
+    download.textContent = historyText("history.download", "Download");
     download.setAttribute("download", report.filename);
     downloadCell.appendChild(download);
     row.appendChild(downloadCell);
     reportHistoryBody.appendChild(row);
   }
 
-  reportHistoryStatus.textContent = (
-    `${reports.length} archived report${reports.length === 1 ? "" : "s"}.`
-  );
+  reportHistoryStatus.textContent = reports.length === 1
+    ? historyText("history.count.one", "1 archived report.")
+    : historyText("history.count.many", `${reports.length} archived reports.`, {
+      count: reports.length,
+    });
   reportHistoryTable.classList.remove("is-hidden");
 }
 
 async function loadReportHistory() {
   refreshReportHistory.disabled = true;
-  reportHistoryStatus.textContent = "Loading report history…";
+  reportHistoryStatus.textContent = historyText(
+    "history.loading",
+    "Loading report history…",
+  );
   try {
     const response = await fetch("/api/history");
     if (!response.ok) throw new Error();
     const result = await response.json();
-    renderReportHistory(result.reports || []);
+    latestReports = result.reports || [];
+    renderReportHistory(latestReports);
   } catch {
     reportHistoryTable.classList.add("is-hidden");
     reportHistoryStatus.textContent = (
-      "Report history is temporarily unavailable."
+      historyText("history.unavailable", "Report history is temporarily unavailable.")
     );
   } finally {
     refreshReportHistory.disabled = false;
@@ -82,4 +98,7 @@ async function loadReportHistory() {
 
 refreshReportHistory.addEventListener("click", loadReportHistory);
 window.addEventListener("report-generated", loadReportHistory);
+window.addEventListener("btp:languagechange", () => {
+  renderReportHistory(latestReports);
+});
 loadReportHistory();

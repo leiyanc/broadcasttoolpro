@@ -49,6 +49,28 @@ def test_hls_monitor_reuses_tls_context():
     assert _https_context() is _https_context()
 
 
+def test_monitor_mode_bounds_master_playlist_to_one_variant():
+    fetched = []
+
+    def fetcher(url):
+        fetched.append(url)
+        return MASTER_PLAYLIST if url.endswith("master.m3u8") else MEDIA_PLAYLIST
+
+    result = validate_hls(
+        "https://cdn.example.com/live/master.m3u8",
+        fetcher=fetcher,
+        inspect_segments=False,
+        max_variants_to_inspect=1,
+    )
+
+    assert len(result["variants"]) == 2
+    assert result["inspected_variants"] == 1
+    assert fetched == [
+        "https://cdn.example.com/live/master.m3u8",
+        "https://cdn.example.com/live/360p/index.m3u8",
+    ]
+
+
 def test_hls_report_timestamp_label_uses_utc():
     assert _timestamp_label("2026-07-27T12:30:45Z") == (
         "2026-07-27 12:30:45 UTC"

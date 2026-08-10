@@ -225,6 +225,45 @@ def test_billing_localizes_presentation_without_mutating_commercial_data():
     assert "/api/billing/organizations/" in javascript
 
 
+def test_account_access_workflows_localize_without_mutating_identity_data():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "auth.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in (
+        "auth.recovery",
+        "auth.requestReceived",
+        "auth.trialEyebrow",
+        "auth.accountApproved",
+        "account.trialReminders",
+        "account.suspended",
+    ):
+        assert f'data-i18n="{key}"' in html
+        assert f'"{key}"' in translations
+
+    assert 'window.addEventListener("btp:languagechange"' in javascript
+    assert "renderLocalizedIdentity" in javascript
+    assert "localizedRole" in javascript
+    assert 'organization.plan' in javascript
+    assert 'organization?.status === "suspended"' in javascript
+    assert 'entitlements.access?.type === "trial"' in javascript
+
+
+def test_report_history_localizes_without_mutating_archived_files():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "report-history.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    for key in ("history.title", "history.refresh", "history.download"):
+        assert f'"{key}"' in translations
+    assert 'data-i18n="history.title"' in html
+    assert 'data-i18n="history.format"' in html
+    assert 'window.addEventListener("btp:languagechange"' in javascript
+    assert "renderReportHistory(latestReports)" in javascript
+    assert 'download.setAttribute("download", report.filename)' in javascript
+    assert "report.output_format.toUpperCase()" in javascript
+
+
 def test_home_returns_frontend():
     landing_response = home()
     application_response = application()

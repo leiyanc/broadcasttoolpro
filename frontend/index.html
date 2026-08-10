@@ -22,9 +22,9 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260805-2" defer></script>
+    <script src="/static/i18n.js?v=20260805-3" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
-    <script src="/static/auth.js?v=20260730-1" defer></script>
+    <script src="/static/auth.js?v=20260805-1" defer></script>
     <script src="/static/admin.js?v=20260730-2" defer></script>
     <script src="/static/billing.js?v=20260805-1" defer></script>
     <script src="/static/help.js?v=20260805-1" defer></script>
@@ -36,7 +36,7 @@
       src="/static/postlog-certification.js?v=20260805-1"
       defer
     ></script>
-    <script src="/static/report-history.js?v=20260726-4" defer></script>
+    <script src="/static/report-history.js?v=20260805-1" defer></script>
     <script src="/static/hls-validator.js?v=20260805-1" defer></script>
   </head>
 
@@ -94,7 +94,7 @@
             src="/static/assets/broadcast-tool-pro-logo.png"
             alt="Broadcast Tool Pro"
           />
-          <p class="eyebrow">SECURE PLATFORM ACCESS</p>
+          <p class="eyebrow" data-i18n="auth.secureAccess">SECURE PLATFORM ACCESS</p>
           <h1 data-i18n="auth.welcome">Welcome to Broadcast Tool Pro.</h1>
           <p data-i18n="auth.welcomeCopy">
             Sign in to access your organization's channels, workflows,
@@ -103,25 +103,25 @@
         </div>
 
         <form class="auth-card is-hidden" id="bootstrap-form">
-          <p class="eyebrow">INITIAL SETUP</p>
-          <h2>Create the Owner Account</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.initialSetup">INITIAL SETUP</p>
+          <h2 data-i18n="auth.createOwner">Create the Owner Account</h2>
+          <p class="auth-copy" data-i18n="auth.initialSetupCopy">
             This one-time setup creates the first organization and its owner.
           </p>
           <label>
-            <span>Organization Name</span>
+            <span data-i18n="auth.organization">Organization Name</span>
             <input name="organization_name" required minlength="2" />
           </label>
           <label>
-            <span>Your Name</span>
+            <span data-i18n="auth.name">Your Name</span>
             <input name="display_name" required minlength="2" />
           </label>
           <label>
-            <span>Email Address</span>
+            <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
           <label>
-            <span>Password</span>
+            <span data-i18n="auth.password">Password</span>
             <input
               name="password"
               type="password"
@@ -129,10 +129,10 @@
               minlength="10"
               autocomplete="new-password"
             />
-            <small>Use at least 10 characters.</small>
+            <small data-i18n="auth.passwordRule">Use at least 10 characters.</small>
           </label>
           <button class="button button-primary" type="submit">
-            Create Secure Workspace
+            <span data-i18n="auth.createWorkspace">Create Secure Workspace</span>
           </button>
           <p class="auth-message" id="bootstrap-message"></p>
         </form>
@@ -210,38 +210,38 @@
         </form>
 
         <form class="auth-card is-hidden" id="password-reset-request-form">
-          <p class="eyebrow">ACCOUNT RECOVERY</p>
-          <h2>Reset Password</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.recovery">ACCOUNT RECOVERY</p>
+          <h2 data-i18n="auth.resetPassword">Reset Password</h2>
+          <p class="auth-copy" data-i18n="auth.resetRequestCopy">
             Enter your account email. If it matches an active account,
             secure reset instructions will be sent.
           </p>
           <label>
-            <span>Email Address</span>
+            <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
           <button class="button button-primary" type="submit">
-            Send Reset Instructions
+            <span data-i18n="auth.sendReset">Send Reset Instructions</span>
           </button>
           <button
             class="text-link auth-text-button"
             data-return-to-login
             type="button"
           >
-            Return to Sign In
+            <span data-i18n="auth.returnSignIn">Return to Sign In</span>
           </button>
           <p class="auth-message" id="password-reset-request-message"></p>
         </form>
 
         <form class="auth-card is-hidden" id="password-reset-confirm-form">
-          <p class="eyebrow">ACCOUNT RECOVERY</p>
-          <h2>Choose a New Password</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.recovery">ACCOUNT RECOVERY</p>
+          <h2 data-i18n="auth.choosePassword">Choose a New Password</h2>
+          <p class="auth-copy" data-i18n="auth.resetConfirmCopy">
             The secure recovery link expires after 30 minutes and can be
             used only once.
           </p>
           <label>
-            <span>New Password</span>
+            <span data-i18n="auth.newPassword">New Password</span>
             <input
               name="password"
               type="password"
@@ -249,17 +249,17 @@
               minlength="10"
               autocomplete="new-password"
             />
-            <small>Use at least 10 characters.</small>
+            <small data-i18n="auth.passwordRule">Use at least 10 characters.</small>
           </label>
           <button class="button button-primary" type="submit">
-            Update Password
+            <span data-i18n="auth.updatePassword">Update Password</span>
           </button>
           <button
             class="text-link auth-text-button"
             data-return-to-login
             type="button"
           >
-            Return to Sign In
+            <span data-i18n="auth.returnSignIn">Return to Sign In</span>
           </button>
           <p class="auth-message" id="password-reset-confirm-message"></p>
         </form>
@@ -316,47 +316,47 @@
             <span></span><span></span><span></span><span></span>
           </div>
           <div class="success-check" aria-hidden="true">✓</div>
-          <p class="eyebrow">REQUEST RECEIVED</p>
-          <h2 id="access-request-success-title">Thank you.</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.requestReceived">REQUEST RECEIVED</p>
+          <h2 id="access-request-success-title" data-i18n="auth.thankYou">Thank you.</h2>
+          <p class="auth-copy" data-i18n="auth.requestReceivedCopy">
             Your request is now awaiting review by Broadcast Tool Pro.
             We will contact you at the email address you provided.
           </p>
           <div class="request-reference">
-            <span>Request Reference</span>
+            <span data-i18n="auth.requestReference">Request Reference</span>
             <strong id="access-request-reference"></strong>
           </div>
-          <p class="success-next-step">
+          <p class="success-next-step" data-i18n="auth.requestNextStep">
             No payment has been collected. If approved, you will receive
             account activation and plan instructions separately.
           </p>
-          <a class="button button-primary" href="/">Return to Home</a>
+          <a class="button button-primary" href="/" data-i18n="auth.returnHome">Return to Home</a>
           <button
             class="text-link auth-text-button"
             data-return-to-login
             type="button"
           >
-            Go to Sign In
+            <span data-i18n="auth.goSignIn">Go to Sign In</span>
           </button>
         </section>
 
         <form class="auth-card is-hidden" id="trial-form">
-          <p class="eyebrow">7-DAY FREE TRIAL</p>
-          <h2>Create Account</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.trialEyebrow">7-DAY FREE TRIAL</p>
+          <h2 data-i18n="auth.createAccount">Create Account</h2>
+          <p class="auth-copy" data-i18n="auth.trialCopy">
             Includes XMLTV Validator, Pre-Logs, and HLS Validator.
             Trial reports are branded PDF files.
           </p>
           <label>
-            <span>Organization Name</span>
+            <span data-i18n="auth.organization">Organization Name</span>
             <input name="organization_name" required minlength="2" />
           </label>
           <label>
-            <span>Your Name</span>
+            <span data-i18n="auth.name">Your Name</span>
             <input name="display_name" required minlength="2" />
           </label>
           <label>
-            <span>Email Address</span>
+            <span data-i18n="auth.email">Email Address</span>
             <input
               name="email"
               type="email"
@@ -365,7 +365,7 @@
             />
           </label>
           <label>
-            <span>Password</span>
+            <span data-i18n="auth.password">Password</span>
             <input
               name="password"
               type="password"
@@ -373,26 +373,26 @@
               minlength="10"
               autocomplete="new-password"
             />
-            <small>Use at least 10 characters.</small>
+            <small data-i18n="auth.passwordRule">Use at least 10 characters.</small>
           </label>
           <button class="button button-primary" type="submit">
-            Start 7-Day Free Trial
+            <span data-i18n="auth.startTrial">Start 7-Day Free Trial</span>
           </button>
-          <p class="trial-terms">
+          <p class="trial-terms" data-i18n="auth.trialTerms">
             No payment method required. Access ends automatically after 7 days.
           </p>
           <p class="auth-message" id="trial-message"></p>
         </form>
 
         <form class="auth-card is-hidden" id="account-activation-form">
-          <p class="eyebrow">ACCOUNT APPROVED</p>
-          <h2>Activate Your Account</h2>
-          <p class="auth-copy">
+          <p class="eyebrow" data-i18n="auth.accountApproved">ACCOUNT APPROVED</p>
+          <h2 data-i18n="auth.activateAccount">Activate Your Account</h2>
+          <p class="auth-copy" data-i18n="auth.activationCopy">
             Create your password to activate the Professional or Enterprise
             account assigned by Broadcast Tool Pro.
           </p>
           <label>
-            <span>Create Password</span>
+            <span data-i18n="auth.createPassword">Create Password</span>
             <input
               name="password"
               type="password"
@@ -400,10 +400,10 @@
               minlength="10"
               autocomplete="new-password"
             />
-            <small>Use at least 10 characters.</small>
+            <small data-i18n="auth.passwordRule">Use at least 10 characters.</small>
           </label>
           <button class="button button-primary" type="submit">
-            Activate Account
+            <span data-i18n="auth.activateAccount">Activate Account</span>
           </button>
           <p class="auth-message" id="account-activation-message"></p>
         </form>
@@ -412,15 +412,15 @@
 
       <section class="account-panel is-hidden" id="account-panel">
         <div>
-          <p class="eyebrow">ACTIVE ACCOUNT</p>
+          <p class="eyebrow" data-i18n="account.active">ACTIVE ACCOUNT</p>
           <h2 id="account-panel-name">Account</h2>
           <p id="account-panel-email"></p>
           <p id="account-panel-organization"></p>
           <label class="account-email-preference">
             <input id="trial-reminder-preference" type="checkbox" checked />
             <span>
-              <strong>Trial reminder emails</strong>
-              <small>
+              <strong data-i18n="account.trialReminders">Trial reminder emails</strong>
+              <small data-i18n="account.trialRemindersCopy">
                 Receive the optional three-day and one-day trial reminders.
                 Security, access, billing, and support messages remain enabled.
               </small>
@@ -441,14 +441,14 @@
             id="open-admin-button"
             type="button"
           >
-            Control Panel
+            <span data-i18n="account.controlPanel">Control Panel</span>
           </button>
           <button
             class="button button-secondary"
             id="logout-button"
             type="button"
           >
-            Sign Out
+            <span data-i18n="account.signOut">Sign Out</span>
           </button>
         </div>
       </section>
@@ -523,14 +523,14 @@
         id="trial-expired"
         aria-live="polite"
       >
-        <p class="eyebrow">FREE TRIAL</p>
-        <h2>Your 7-Day Trial Has Ended</h2>
-        <p>
+        <p class="eyebrow" data-i18n="auth.freeTrial">FREE TRIAL</p>
+        <h2 data-i18n="account.trialEnded">Your 7-Day Trial Has Ended</h2>
+        <p data-i18n="account.trialEndedCopy">
           Trial modules and downloads are now disabled. Contact Broadcast Tool
           Pro to activate the appropriate operating package.
         </p>
         <a class="button button-primary" href="/#pricing">
-          View Plans
+          <span data-i18n="account.viewPlans">View Plans</span>
         </a>
       </section>
 
@@ -539,9 +539,9 @@
         id="organization-suspended"
         aria-live="polite"
       >
-        <p class="eyebrow">ACCOUNT STATUS</p>
-        <h2>Organization Suspended</h2>
-        <p>
+        <p class="eyebrow" data-i18n="account.status">ACCOUNT STATUS</p>
+        <h2 data-i18n="account.suspended">Organization Suspended</h2>
+        <p data-i18n="account.suspendedCopy">
           Product access is currently disabled for this organization.
           Contact the platform administrator for assistance.
         </p>
@@ -550,7 +550,7 @@
           id="suspended-admin-button"
           type="button"
         >
-          Open Control Panel
+          <span data-i18n="account.openControlPanel">Open Control Panel</span>
         </button>
       </section>
 
@@ -2260,9 +2260,9 @@
       <section class="generator-shell history-shell" id="report-history">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">REPORT HISTORY</p>
-            <h2>Previous Downloads</h2>
-            <p class="section-copy">
+            <p class="eyebrow" data-i18n="history.eyebrow">REPORT HISTORY</p>
+            <h2 data-i18n="history.title">Previous Downloads</h2>
+            <p class="section-copy" data-i18n="history.copy">
               Re-download previously generated Pre Logs and Post Logs.
             </p>
           </div>
@@ -2271,24 +2271,24 @@
             id="refresh-report-history"
             type="button"
           >
-            Refresh History
+            <span data-i18n="history.refresh">Refresh History</span>
           </button>
         </div>
         <p class="history-status" id="report-history-status">
-          Loading report history…
+          <span data-i18n="history.loading">Loading report history…</span>
         </p>
         <div class="table-scroll is-hidden" id="report-history-table">
           <table class="preview-table history-table">
             <thead>
               <tr>
-                <th>Generated</th>
-                <th>Type</th>
-                <th>Client</th>
-                <th>Channel</th>
-                <th>Clips</th>
-                <th>Date Range</th>
-                <th>Format</th>
-                <th>File</th>
+                <th data-i18n="history.generated">Generated</th>
+                <th data-i18n="history.type">Type</th>
+                <th data-i18n="history.client">Client</th>
+                <th data-i18n="history.channel">Channel</th>
+                <th data-i18n="history.clips">Clips</th>
+                <th data-i18n="history.dateRange">Date Range</th>
+                <th data-i18n="history.format">Format</th>
+                <th data-i18n="history.file">File</th>
               </tr>
             </thead>
             <tbody id="report-history-body"></tbody>
