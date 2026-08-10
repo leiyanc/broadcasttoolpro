@@ -2,8 +2,9 @@
 
 ## Purpose
 
-This procedure controls paid and complimentary account activation while
-Broadcast Tool Pro does not have an integrated payment provider.
+This procedure controls paid and complimentary account activation when Stripe
+Checkout is unavailable or an approved commercial exception requires manual
+handling.
 
 ## Paid access
 
@@ -28,8 +29,10 @@ documented administrative decision.
 
 ## Current limitations
 
-- Broadcast Tool Pro does not collect or store payment methods.
-- Payment collection, receipts, refunds, and cancellations are handled
-  manually outside the platform.
-- Self-service checkout must not be advertised until a payment provider and
-  the related refund and cancellation procedures are operational.
+- Broadcast Tool Pro never collects or stores payment methods; Stripe hosts the
+  payment form.
+- Manual subscriptions still require independent proof of cleared payment.
+- Refunds and manual cancellations remain controlled outside the platform until
+  the Stripe Customer Portal and final commercial policies are approved.
+- Self-service checkout must not be advertised until the Sandbox webhook and
+  complete subscription lifecycle have passed release acceptance.

@@ -10,4 +10,5 @@ pillow==12.3.0
 python-multipart==0.0.32
 python-dotenv==1.2.2
 reportlab==5.0.0
+stripe==15.3.1
 uvicorn[standard]==0.51.0

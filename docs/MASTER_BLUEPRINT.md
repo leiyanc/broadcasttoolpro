@@ -216,12 +216,24 @@ Billing is organization-scoped and separated from product entitlements.
 - Product access must not depend directly on browser state or payment-provider
   responses.
 
-The initial billing foundation is provider-neutral and uses manual subscription
-management. Commercial prices are calculated from the server-side pricing
-catalog; no payment method is stored until a payment provider is connected.
-A future provider integration must
-use webhooks as the authoritative source for payment status and must be
-idempotent, auditable, and isolated from broadcast-processing workflows.
+The billing foundation remains provider-neutral and supports controlled manual
+activation as an operational fallback. Stripe Checkout is the first integrated
+payment provider. Commercial prices are selected from server-controlled Stripe
+Price IDs; the browser never supplies an amount or Price ID, and Broadcast Tool
+Pro never stores card details.
+
+Stripe subscription events are accepted only through a signature-verified
+webhook. Subscription and invoice events are processed idempotently, and only
+confirmed provider state may change the organization plan, add-ons, renewal
+period, invoice history, or product entitlements. A Checkout redirect or return
+page is not proof of payment. Provider-event processing remains isolated from
+broadcast-processing workflows.
+
+The initial Stripe release uses monthly recurring subscriptions for Programming
+Suite, Professional, Enterprise, and the Professional Stream Monitoring add-on.
+Enterprise includes Stream Monitoring. Existing Stripe subscriptions cannot be
+duplicated through Checkout; later self-service changes and cancellations will
+use the Stripe Customer Portal after its commercial policy is finalized.
 
 Cancellation is distinct from organization suspension and request rejection.
 An immediately canceled subscription blocks product modules while preserving

@@ -75,6 +75,9 @@ class BillingStore:
 
                 CREATE INDEX IF NOT EXISTS idx_invoices_organization
                     ON invoices(organization_id, invoice_date DESC);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_provider
+                    ON invoices(provider_invoice_id)
+                    WHERE provider_invoice_id IS NOT NULL;
 
                 CREATE TABLE IF NOT EXISTS subscription_events (
                     id TEXT PRIMARY KEY,
@@ -89,6 +92,12 @@ class BillingStore:
 
                 CREATE INDEX IF NOT EXISTS idx_subscription_events_org
                     ON subscription_events(organization_id, created_at DESC);
+
+                CREATE TABLE IF NOT EXISTS billing_provider_events (
+                    provider_event_id TEXT PRIMARY KEY,
+                    event_type TEXT NOT NULL,
+                    processed_at TEXT NOT NULL
+                );
             """)
             columns = {
                 row["name"]
@@ -432,6 +441,191 @@ class BillingStore:
                 (organization_id,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def provider_event_processed(self, provider_event_id: str) -> bool:
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT 1 FROM billing_provider_events
+                WHERE provider_event_id = ?
+                """,
+                (provider_event_id,),
+            ).fetchone()
+        return row is not None
+
+    def record_provider_event(
+        self,
+        provider_event_id: str,
+        event_type: str,
+    ) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO billing_provider_events (
+                    provider_event_id, event_type, processed_at
+                ) VALUES (?, ?, ?)
+                """,
+                (provider_event_id, event_type, _utc_now()),
+            )
+
+    def apply_stripe_subscription(
+        self,
+        organization_id: str,
+        *,
+        plan_code: str,
+        stream_monitoring: bool,
+        status: str,
+        amount_cents: int,
+        currency: str,
+        customer_id: str,
+        subscription_id: str,
+        period_start: str,
+        period_end: str,
+        cancel_at_period_end: bool,
+    ) -> dict:
+        if plan_code not in {
+            "programming_suite",
+            "professional",
+            "enterprise",
+        }:
+            raise ValueError("Stripe subscription contains an unknown plan.")
+        internal_plan = (
+            "enterprise" if plan_code == "enterprise" else "professional"
+        )
+        traffic_enabled = plan_code == "professional"
+        if plan_code == "enterprise":
+            stream_monitoring = True
+        now = _utc_now()
+        with self._connection() as connection:
+            organization = connection.execute(
+                "SELECT id FROM organizations WHERE id = ?",
+                (organization_id,),
+            ).fetchone()
+            if organization is None:
+                raise KeyError("Organization not found.")
+            connection.execute(
+                """
+                UPDATE organizations
+                SET plan = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (internal_plan, now, organization_id),
+            )
+            for addon_code, enabled in (
+                ("traffic_operations", traffic_enabled),
+                ("stream_monitoring", stream_monitoring),
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO organization_addons (
+                        organization_id, addon_code, enabled
+                    ) VALUES (?, ?, ?)
+                    ON CONFLICT (organization_id, addon_code)
+                    DO UPDATE SET enabled = excluded.enabled
+                    """,
+                    (organization_id, addon_code, int(enabled)),
+                )
+            connection.execute(
+                """
+                INSERT INTO subscriptions (
+                    id, organization_id, status, billing_cycle, currency,
+                    amount_cents, provider, provider_customer_id,
+                    provider_subscription_id, current_period_start,
+                    current_period_end, cancel_at_period_end,
+                    payment_waived, waiver_reason, waiver_expires_at,
+                    waived_by_user_id, created_at, updated_at
+                ) VALUES (?, ?, ?, 'monthly', ?, ?, 'stripe', ?, ?, ?, ?, ?,
+                          0, NULL, NULL, NULL, ?, ?)
+                ON CONFLICT (organization_id)
+                DO UPDATE SET
+                    status = excluded.status,
+                    billing_cycle = 'monthly',
+                    currency = excluded.currency,
+                    amount_cents = excluded.amount_cents,
+                    provider = 'stripe',
+                    provider_customer_id = excluded.provider_customer_id,
+                    provider_subscription_id =
+                        excluded.provider_subscription_id,
+                    current_period_start = excluded.current_period_start,
+                    current_period_end = excluded.current_period_end,
+                    cancel_at_period_end = excluded.cancel_at_period_end,
+                    payment_waived = 0,
+                    waiver_reason = NULL,
+                    waiver_expires_at = NULL,
+                    waived_by_user_id = NULL,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    status,
+                    currency.upper(),
+                    amount_cents,
+                    customer_id,
+                    subscription_id,
+                    period_start,
+                    period_end,
+                    int(cancel_at_period_end),
+                    now,
+                    now,
+                ),
+            )
+        return self.get_subscription(organization_id)
+
+    def organization_for_provider_subscription(
+        self,
+        provider_subscription_id: str,
+    ) -> str | None:
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT organization_id FROM subscriptions
+                WHERE provider_subscription_id = ?
+                """,
+                (provider_subscription_id,),
+            ).fetchone()
+        return row["organization_id"] if row else None
+
+    def upsert_stripe_invoice(
+        self,
+        organization_id: str,
+        *,
+        provider_invoice_id: str,
+        status: str,
+        currency: str,
+        amount_due_cents: int,
+        amount_paid_cents: int,
+        invoice_date: str,
+        due_date: str | None,
+        paid_at: str | None,
+        hosted_invoice_url: str | None,
+    ) -> None:
+        subscription = self.get_subscription(organization_id)
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO invoices (
+                    id, organization_id, subscription_id, status, currency,
+                    amount_due_cents, amount_paid_cents, invoice_date,
+                    due_date, paid_at, provider_invoice_id,
+                    hosted_invoice_url, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (provider_invoice_id)
+                DO UPDATE SET
+                    status = excluded.status,
+                    amount_due_cents = excluded.amount_due_cents,
+                    amount_paid_cents = excluded.amount_paid_cents,
+                    due_date = excluded.due_date,
+                    paid_at = excluded.paid_at,
+                    hosted_invoice_url = excluded.hosted_invoice_url
+                """,
+                (
+                    str(uuid4()), organization_id, subscription["id"],
+                    status, currency.upper(), amount_due_cents,
+                    amount_paid_cents, invoice_date, due_date, paid_at,
+                    provider_invoice_id, hosted_invoice_url, _utc_now(),
+                ),
+            )
 
     @staticmethod
     def _serialize(row: sqlite3.Row) -> dict:

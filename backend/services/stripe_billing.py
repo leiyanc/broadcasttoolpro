@@ -1,0 +1,249 @@
+import os
+from datetime import datetime, timezone
+from typing import Any
+
+import stripe
+
+from backend.services.billing_store import billing_store
+
+
+PLAN_PRICE_ENV = {
+    "programming_suite": "BTP_STRIPE_PRICE_PROGRAMMING",
+    "professional": "BTP_STRIPE_PRICE_PROFESSIONAL",
+    "enterprise": "BTP_STRIPE_PRICE_ENTERPRISE",
+}
+STREAM_PRICE_ENV = "BTP_STRIPE_PRICE_STREAM_MONITORING"
+STRIPE_ACTIVE_STATUSES = {"active", "trialing"}
+
+
+def _value(data: Any, key: str, default: Any = None) -> Any:
+    if isinstance(data, dict):
+        return data.get(key, default)
+    return getattr(data, key, default)
+
+
+def _iso_timestamp(value: Any, fallback: datetime | None = None) -> str:
+    if value:
+        return datetime.fromtimestamp(
+            int(value), timezone.utc
+        ).isoformat()
+    return (fallback or datetime.now(timezone.utc)).isoformat()
+
+
+class StripeBillingService:
+    def _secret_key(self) -> str:
+        return os.getenv("BTP_STRIPE_SECRET_KEY", "").strip()
+
+    def webhook_secret(self) -> str:
+        return os.getenv("BTP_STRIPE_WEBHOOK_SECRET", "").strip()
+
+    def price_id(self, plan_code: str) -> str:
+        variable = PLAN_PRICE_ENV.get(plan_code)
+        if variable is None:
+            raise ValueError("Unknown subscription plan.")
+        price_id = os.getenv(variable, "").strip()
+        if not price_id:
+            raise RuntimeError("Stripe pricing is not configured.")
+        return price_id
+
+    def stream_price_id(self) -> str:
+        price_id = os.getenv(STREAM_PRICE_ENV, "").strip()
+        if not price_id:
+            raise RuntimeError("Stripe add-on pricing is not configured.")
+        return price_id
+
+    def is_configured(self) -> bool:
+        return bool(
+            self._secret_key()
+            and all(os.getenv(name, "").strip() for name in PLAN_PRICE_ENV.values())
+            and os.getenv(STREAM_PRICE_ENV, "").strip()
+        )
+
+    def create_checkout_session(
+        self,
+        *,
+        organization_id: str,
+        email: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> str:
+        secret_key = self._secret_key()
+        if not secret_key or not self.is_configured():
+            raise RuntimeError("Stripe Checkout is not available.")
+        if include_stream_monitoring and plan_code != "professional":
+            raise ValueError(
+                "Stream Monitoring can be added to Professional. "
+                "It is already included with Enterprise."
+            )
+        current = billing_store.get_subscription(organization_id)
+        if (
+            current["provider"] == "stripe"
+            and current["status"] in STRIPE_ACTIVE_STATUSES
+        ):
+            raise ValueError(
+                "This organization already has an active Stripe subscription."
+            )
+        line_items = [{"price": self.price_id(plan_code), "quantity": 1}]
+        if include_stream_monitoring:
+            line_items.append({"price": self.stream_price_id(), "quantity": 1})
+        application_url = os.getenv(
+            "BTP_APPLICATION_URL",
+            "http://127.0.0.1:8000/app",
+        ).rstrip("/")
+        metadata = {
+            "organization_id": organization_id,
+            "plan_code": plan_code,
+            "stream_monitoring": str(include_stream_monitoring).lower(),
+        }
+        stripe.api_key = secret_key
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            customer_email=email,
+            line_items=line_items,
+            allow_promotion_codes=True,
+            success_url=f"{application_url}?billing=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{application_url}?billing=cancelled",
+            metadata=metadata,
+            subscription_data={"metadata": metadata},
+        )
+        return session.url
+
+    def construct_event(self, payload: bytes, signature: str) -> Any:
+        secret = self.webhook_secret()
+        if not secret:
+            raise RuntimeError("Stripe webhook verification is not configured.")
+        return stripe.Webhook.construct_event(payload, signature, secret)
+
+    def process_event(self, event: Any) -> None:
+        event_id = _value(event, "id")
+        event_type = _value(event, "type")
+        if not event_id or not event_type:
+            raise ValueError("Invalid Stripe event.")
+        if billing_store.provider_event_processed(event_id):
+            return
+        data = _value(_value(event, "data", {}), "object", {})
+        if event_type in {
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+        }:
+            self._apply_subscription(data)
+        elif event_type in {"invoice.paid", "invoice.payment_failed"}:
+            self._apply_invoice(data)
+        billing_store.record_provider_event(event_id, event_type)
+
+    def _price_codes(self, subscription: Any) -> tuple[str, bool]:
+        items = _value(_value(subscription, "items", {}), "data", []) or []
+        price_ids = {
+            _value(_value(item, "price", {}), "id")
+            for item in items
+        }
+        plan_code = next(
+            (
+                code for code, variable in PLAN_PRICE_ENV.items()
+                if os.getenv(variable, "").strip() in price_ids
+            ),
+            None,
+        )
+        if plan_code is None:
+            raise ValueError("Stripe subscription does not match a configured plan.")
+        return plan_code, self.stream_price_id() in price_ids
+
+    def _apply_subscription(self, subscription: Any) -> None:
+        metadata = _value(subscription, "metadata", {}) or {}
+        organization_id = _value(metadata, "organization_id")
+        if not organization_id:
+            organization_id = billing_store.organization_for_provider_subscription(
+                _value(subscription, "id", "")
+            )
+        if not organization_id:
+            raise ValueError("Stripe subscription is missing organization metadata.")
+        plan_code, stream_monitoring = self._price_codes(subscription)
+        stripe_status = _value(subscription, "status", "past_due")
+        status = (
+            "active" if stripe_status == "active"
+            else "trialing" if stripe_status == "trialing"
+            else "canceled" if stripe_status == "canceled"
+            else "past_due"
+        )
+        items = _value(_value(subscription, "items", {}), "data", []) or []
+        period_source = items[0] if items else subscription
+        period_start = _value(subscription, "current_period_start") or _value(
+            period_source, "current_period_start"
+        )
+        period_end = _value(subscription, "current_period_end") or _value(
+            period_source, "current_period_end"
+        )
+        amount_cents = sum(
+            int(_value(_value(item, "price", {}), "unit_amount", 0) or 0)
+            * int(_value(item, "quantity", 1) or 1)
+            for item in items
+        )
+        currency = next(
+            (
+                _value(_value(item, "price", {}), "currency")
+                for item in items
+                if _value(_value(item, "price", {}), "currency")
+            ),
+            "usd",
+        )
+        billing_store.apply_stripe_subscription(
+            organization_id,
+            plan_code=plan_code,
+            stream_monitoring=stream_monitoring,
+            status=status,
+            amount_cents=amount_cents,
+            currency=currency,
+            customer_id=_value(subscription, "customer", ""),
+            subscription_id=_value(subscription, "id", ""),
+            period_start=_iso_timestamp(period_start),
+            period_end=_iso_timestamp(period_end),
+            cancel_at_period_end=bool(
+                _value(subscription, "cancel_at_period_end", False)
+            ),
+        )
+
+    def _invoice_subscription_id(self, invoice: Any) -> str | None:
+        subscription_id = _value(invoice, "subscription")
+        if subscription_id:
+            return subscription_id
+        parent = _value(invoice, "parent", {}) or {}
+        details = _value(parent, "subscription_details", {}) or {}
+        return _value(details, "subscription")
+
+    def _apply_invoice(self, invoice: Any) -> None:
+        subscription_id = self._invoice_subscription_id(invoice)
+        if not subscription_id:
+            return
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        self._apply_subscription(subscription)
+        organization_id = billing_store.organization_for_provider_subscription(
+            subscription_id
+        )
+        if not organization_id:
+            raise ValueError(
+                "Stripe invoice could not be matched to an organization."
+            )
+        transitions = _value(invoice, "status_transitions", {}) or {}
+        billing_store.upsert_stripe_invoice(
+            organization_id,
+            provider_invoice_id=_value(invoice, "id", ""),
+            status=_value(invoice, "status", "open") or "open",
+            currency=_value(invoice, "currency", "usd"),
+            amount_due_cents=int(_value(invoice, "amount_due", 0) or 0),
+            amount_paid_cents=int(_value(invoice, "amount_paid", 0) or 0),
+            invoice_date=_iso_timestamp(_value(invoice, "created")),
+            due_date=(
+                _iso_timestamp(_value(invoice, "due_date"))
+                if _value(invoice, "due_date") else None
+            ),
+            paid_at=(
+                _iso_timestamp(_value(transitions, "paid_at"))
+                if _value(transitions, "paid_at") else None
+            ),
+            hosted_invoice_url=_value(invoice, "hosted_invoice_url"),
+        )
+
+
+stripe_billing = StripeBillingService()

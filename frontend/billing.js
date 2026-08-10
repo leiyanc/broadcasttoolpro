@@ -19,6 +19,7 @@ const billingInvoiceTable = document.querySelector(
 const billingInvoiceBody = document.querySelector("#billing-invoice-body");
 let billingOrganization = null;
 let latestBillingPayload = null;
+let billingPaymentsAvailable = false;
 
 function billingText(key, fallback, values = {}) {
   let text = window.BTPi18n?.t(key, fallback) ?? fallback;
@@ -111,19 +112,63 @@ function billingCard(label, value, detail = "") {
   return card;
 }
 
+async function startCheckout(planCode, includeStreamMonitoring = false) {
+  if (!billingOrganization) return;
+  billingMessage.textContent = billingText(
+    "billing.redirecting",
+    "Opening secure Stripe Checkout…",
+  );
+  billingMessage.classList.remove("is-error");
+  try {
+    const result = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/checkout`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          plan_code: planCode,
+          include_stream_monitoring: includeStreamMonitoring,
+        }),
+      },
+    );
+    window.location.assign(result.checkout_url);
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
 function pricingButton(plan, currentPlan) {
   const button = document.createElement("button");
   const isCurrent = plan.name === currentPlan;
+  const isStripeCurrent = (
+    isCurrent
+    && latestBillingPayload?.subscription?.provider === "stripe"
+    && ["active", "trialing"].includes(
+      latestBillingPayload?.subscription?.status,
+    )
+  );
+  const canSubscribeCurrent = (
+    isCurrent && billingPaymentsAvailable && !isStripeCurrent
+  );
   button.className = (
     `button ${isCurrent ? "button-secondary" : "button-primary"}`
   );
   button.type = "button";
-  button.textContent = isCurrent
+  button.textContent = (isCurrent && !canSubscribeCurrent)
     ? billingText("billing.currentPlan", "Current Plan")
-    : billingText("billing.requestPlan", "Request Plan Change");
-  button.disabled = isCurrent;
-  if (!isCurrent) {
+    : (billingPaymentsAvailable
+      ? (isCurrent
+        ? billingText("billing.subscribe", "Subscribe")
+        : billingText("billing.choosePlan", "Choose Plan"))
+      : billingText("billing.requestPlan", "Request Plan Change"));
+  button.disabled = isCurrent && !canSubscribeCurrent;
+  if (!button.disabled) {
     button.addEventListener("click", () => {
+      if (billingPaymentsAvailable) {
+        startCheckout(plan.code);
+        return;
+      }
       window.dispatchEvent(new CustomEvent("btp:open-support", {
         detail: {
           category: "billing",
@@ -231,6 +276,10 @@ function renderPricing(pricing) {
     button.disabled = isIncluded || isActive;
     if (!button.disabled) {
       button.addEventListener("click", () => {
+        if (billingPaymentsAvailable && pricing.display_name === "Professional") {
+          startCheckout("professional", true);
+          return;
+        }
         window.dispatchEvent(new CustomEvent("btp:open-support", {
           detail: {
             category: "billing",
@@ -251,6 +300,7 @@ function renderPricing(pricing) {
 
 function renderBilling(payload) {
   latestBillingPayload = payload;
+  billingPaymentsAvailable = Boolean(payload.payments_available);
   const subscription = payload.subscription;
   const pricing = payload.pricing;
   const complimentary = subscription.payment_waived;

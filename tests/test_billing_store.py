@@ -105,6 +105,11 @@ def test_billing_routes_are_registered():
         "/api/admin/organizations/{organization_id}/subscription"
         in paths
     )
+    assert (
+        "/api/billing/organizations/{organization_id}/checkout"
+        in paths
+    )
+    assert "/api/billing/stripe/webhook" in paths
 
 
 def test_commercial_pricing_uses_plan_and_addons():

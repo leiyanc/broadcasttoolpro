@@ -41,3 +41,17 @@ services:
         sync: false
       - key: BTP_INITIAL_ADMIN_PASSWORD
         sync: false
+      - key: BTP_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: BTP_STRIPE_SECRET_KEY
+        sync: false
+      - key: BTP_STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: BTP_STRIPE_PRICE_PROGRAMMING
+        sync: false
+      - key: BTP_STRIPE_PRICE_PROFESSIONAL
+        sync: false
+      - key: BTP_STRIPE_PRICE_ENTERPRISE
+        sync: false
+      - key: BTP_STRIPE_PRICE_STREAM_MONITORING
+        sync: false

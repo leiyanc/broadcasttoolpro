@@ -12,6 +12,16 @@ SubscriptionStatus = Literal[
     "canceled",
 ]
 BillingCycle = Literal["monthly", "annual"]
+CheckoutPlan = Literal[
+    "programming_suite",
+    "professional",
+    "enterprise",
+]
+
+
+class CheckoutSessionCreate(BaseModel):
+    plan_code: CheckoutPlan
+    include_stream_monitoring: bool = False
 
 
 class SubscriptionAdminUpdate(BaseModel):
