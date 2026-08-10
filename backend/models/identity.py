@@ -63,7 +63,22 @@ class AccessRequestCreate(BaseModel):
     organization_name: str = Field(min_length=2, max_length=120)
     contact_name: str = Field(min_length=2, max_length=120)
     email: str
+    requested_plan: Literal[
+        "programming_suite", "professional", "enterprise"
+    ] = "professional"
+    include_stream_monitoring: bool = False
+    billing_cycle: Literal["monthly"] = "monthly"
     message: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("include_stream_monitoring")
+    @classmethod
+    def validate_stream_monitoring(cls, value: bool, info):
+        if value and info.data.get("requested_plan") != "professional":
+            raise ValueError(
+                "Stream Monitoring can only be added to Professional; "
+                "Enterprise already includes it."
+            )
+        return value
 
     @field_validator("email")
     @classmethod

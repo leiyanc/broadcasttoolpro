@@ -26,12 +26,24 @@ class AccessRequestStore:
                     contact_name TEXT NOT NULL,
                     email TEXT NOT NULL,
                     message TEXT,
+                    requested_plan TEXT NOT NULL DEFAULT 'professional' CHECK (
+                        requested_plan IN (
+                            'programming_suite', 'professional', 'enterprise'
+                        )
+                    ),
+                    include_stream_monitoring INTEGER NOT NULL DEFAULT 0,
+                    billing_cycle TEXT NOT NULL DEFAULT 'monthly' CHECK (
+                        billing_cycle IN ('monthly')
+                    ),
                     status TEXT NOT NULL DEFAULT 'pending' CHECK (
                         status IN ('pending', 'approved', 'rejected')
                     ),
                     assigned_plan TEXT CHECK (
-                        assigned_plan IN ('professional', 'enterprise')
+                        assigned_plan IN (
+                            'programming_suite', 'professional', 'enterprise'
+                        )
                     ),
+                    assigned_stream_monitoring INTEGER,
                     organization_id TEXT,
                     user_id TEXT,
                     existing_account INTEGER NOT NULL DEFAULT 0,
@@ -59,6 +71,84 @@ class AccessRequestStore:
                     ADD COLUMN existing_account INTEGER NOT NULL DEFAULT 0
                     """
                 )
+            migrations = {
+                "requested_plan": (
+                    "ALTER TABLE access_requests ADD COLUMN "
+                    "requested_plan TEXT NOT NULL DEFAULT 'professional'"
+                ),
+                "include_stream_monitoring": (
+                    "ALTER TABLE access_requests ADD COLUMN "
+                    "include_stream_monitoring INTEGER NOT NULL DEFAULT 0"
+                ),
+                "billing_cycle": (
+                    "ALTER TABLE access_requests ADD COLUMN "
+                    "billing_cycle TEXT NOT NULL DEFAULT 'monthly'"
+                ),
+                "assigned_stream_monitoring": (
+                    "ALTER TABLE access_requests ADD COLUMN "
+                    "assigned_stream_monitoring INTEGER"
+                ),
+            }
+            for column, statement in migrations.items():
+                if column not in columns:
+                    connection.execute(statement)
+
+            table_sql = connection.execute(
+                """
+                SELECT sql FROM sqlite_master
+                WHERE type = 'table' AND name = 'access_requests'
+                """
+            ).fetchone()["sql"]
+            if "'programming_suite', 'professional', 'enterprise'" not in table_sql:
+                connection.executescript("""
+                    DROP INDEX IF EXISTS idx_access_requests_status;
+                    CREATE TABLE access_requests_v2 (
+                        id TEXT PRIMARY KEY,
+                        organization_name TEXT NOT NULL,
+                        contact_name TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        message TEXT,
+                        requested_plan TEXT NOT NULL DEFAULT 'professional',
+                        include_stream_monitoring INTEGER NOT NULL DEFAULT 0,
+                        billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+                        status TEXT NOT NULL DEFAULT 'pending' CHECK (
+                            status IN ('pending', 'approved', 'rejected')
+                        ),
+                        assigned_plan TEXT CHECK (
+                            assigned_plan IN (
+                                'programming_suite', 'professional', 'enterprise'
+                            )
+                        ),
+                        assigned_stream_monitoring INTEGER,
+                        organization_id TEXT,
+                        user_id TEXT,
+                        existing_account INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (organization_id)
+                            REFERENCES organizations(id) ON DELETE SET NULL,
+                        FOREIGN KEY (user_id)
+                            REFERENCES users(id) ON DELETE SET NULL
+                    );
+                    INSERT INTO access_requests_v2 (
+                        id, organization_name, contact_name, email, message,
+                        requested_plan, include_stream_monitoring, billing_cycle,
+                        status, assigned_plan, assigned_stream_monitoring,
+                        organization_id, user_id,
+                        existing_account, created_at, updated_at
+                    )
+                    SELECT
+                        id, organization_name, contact_name, email, message,
+                        requested_plan, include_stream_monitoring, billing_cycle,
+                        status, assigned_plan, assigned_stream_monitoring,
+                        organization_id, user_id,
+                        existing_account, created_at, updated_at
+                    FROM access_requests;
+                    DROP TABLE access_requests;
+                    ALTER TABLE access_requests_v2 RENAME TO access_requests;
+                    CREATE INDEX idx_access_requests_status
+                        ON access_requests(status, created_at);
+                """)
 
     def create(
         self,
@@ -66,7 +156,10 @@ class AccessRequestStore:
         organization_name: str,
         contact_name: str,
         email: str,
-        message: str | None,
+        requested_plan: str = "professional",
+        include_stream_monitoring: bool = False,
+        billing_cycle: str = "monthly",
+        message: str | None = None,
     ) -> dict:
         email = email.strip().lower()
         now = datetime.now(timezone.utc).isoformat()
@@ -91,8 +184,9 @@ class AccessRequestStore:
                 """
                 INSERT INTO access_requests (
                     id, organization_name, contact_name, email, message,
+                    requested_plan, include_stream_monitoring, billing_cycle,
                     status, existing_account, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
                 """,
                 (
                     request_id,
@@ -100,6 +194,9 @@ class AccessRequestStore:
                     contact_name.strip(),
                     email,
                     message.strip() if message else None,
+                    requested_plan,
+                    int(include_stream_monitoring),
+                    billing_cycle,
                     int(bool(existing_user)),
                     now,
                     now,
@@ -117,6 +214,13 @@ class AccessRequestStore:
             raise KeyError("Access request not found.")
         result = dict(row)
         result["existing_account"] = bool(result["existing_account"])
+        result["include_stream_monitoring"] = bool(
+            result["include_stream_monitoring"]
+        )
+        if result.get("assigned_stream_monitoring") is not None:
+            result["assigned_stream_monitoring"] = bool(
+                result["assigned_stream_monitoring"]
+            )
         return result
 
     def list(self, limit: int = 100) -> list[dict]:
@@ -135,6 +239,13 @@ class AccessRequestStore:
         for row in rows:
             result = dict(row)
             result["existing_account"] = bool(result["existing_account"])
+            result["include_stream_monitoring"] = bool(
+                result["include_stream_monitoring"]
+            )
+            if result.get("assigned_stream_monitoring") is not None:
+                result["assigned_stream_monitoring"] = bool(
+                    result["assigned_stream_monitoring"]
+                )
             results.append(result)
         return results
 
@@ -145,17 +256,20 @@ class AccessRequestStore:
         plan: str,
         organization_id: str,
         user_id: str,
+        include_stream_monitoring: bool = False,
     ) -> dict:
         with self._connection() as connection:
             cursor = connection.execute(
                 """
                 UPDATE access_requests
                 SET status = 'approved', assigned_plan = ?,
+                    assigned_stream_monitoring = ?,
                     organization_id = ?, user_id = ?, updated_at = ?
                 WHERE id = ? AND status = 'pending'
                 """,
                 (
                     plan,
+                    int(include_stream_monitoring),
                     organization_id,
                     user_id,
                     datetime.now(timezone.utc).isoformat(),

@@ -24,7 +24,8 @@ class IncidentMessageCreate(BaseModel):
 
 
 class AccessRequestApproval(BaseModel):
-    plan: Literal["professional", "enterprise"]
+    plan: Literal["programming_suite", "professional", "enterprise"]
+    include_stream_monitoring: bool = False
     payment_confirmed: bool = False
     waive_payment: bool = False
     access_expires_at: datetime | None = None
@@ -32,6 +33,11 @@ class AccessRequestApproval(BaseModel):
 
     @model_validator(mode="after")
     def require_payment_decision(self):
+        if self.include_stream_monitoring and self.plan != "professional":
+            raise ValueError(
+                "Stream Monitoring can only be added to Professional; "
+                "Enterprise already includes it."
+            )
         if self.payment_confirmed == self.waive_payment:
             raise ValueError(
                 "Confirm payment or approve complimentary access, "

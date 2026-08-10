@@ -28,6 +28,14 @@ const trialMessage = document.querySelector("#trial-message");
 const accessRequestMessage = document.querySelector(
   "#access-request-message",
 );
+const accessRequestPlan = document.querySelector("#access-request-plan");
+const accessRequestMonitoring = accessRequestForm?.querySelector(
+  "[name='include_stream_monitoring']",
+);
+const accessRequestMonitoringNote = document.querySelector(
+  "#access-request-monitoring-note",
+);
+const accessRequestTotal = document.querySelector("#access-request-total");
 const accountActivationMessage = document.querySelector(
   "#account-activation-message",
 );
@@ -68,6 +76,38 @@ const suspendedAdminButton = document.querySelector(
 let currentIdentity = null;
 let currentEntitlements = null;
 let lastAccessContactName = "";
+
+function updateAccessRequestPricing() {
+  const plan = accessRequestPlan.value;
+  const planPrices = {
+    programming_suite: 39,
+    professional: 99,
+    enterprise: 199,
+  };
+  const professional = plan === "professional";
+  accessRequestMonitoring.disabled = !professional;
+  if (!professional) accessRequestMonitoring.checked = false;
+  accessRequestMonitoringNote.textContent = plan === "enterprise"
+    ? authText(
+      "auth.streamAddonIncluded",
+      "Stream Monitoring is included with Enterprise.",
+    )
+    : authText(
+      "auth.streamAddonAvailable",
+      "Available as a $59/month add-on with Professional.",
+    );
+  const total = planPrices[plan]
+    + (accessRequestMonitoring.checked ? 59 : 0);
+  accessRequestTotal.textContent = authText(
+    "auth.estimatedTotal",
+    `Estimated monthly total: $${total.toFixed(2)}`,
+    { total: total.toFixed(2) },
+  );
+}
+
+accessRequestPlan.addEventListener("change", updateAccessRequestPricing);
+accessRequestMonitoring.addEventListener("change", updateAccessRequestPricing);
+updateAccessRequestPricing();
 let preferenceMessageState = "";
 
 function authText(key, fallback, values = {}) {
@@ -408,6 +448,7 @@ accessRequestForm.addEventListener("submit", async (event) => {
   accessRequestMessage.classList.remove("is-error");
   try {
     const payload = formPayload(accessRequestForm);
+    payload.include_stream_monitoring = accessRequestMonitoring.checked;
     const result = await authRequest("/api/auth/access-requests", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -599,3 +640,4 @@ logoutButton.addEventListener("click", async () => {
 initializeAuthentication();
 
 window.addEventListener("btp:languagechange", renderLocalizedIdentity);
+window.addEventListener("btp:languagechange", updateAccessRequestPricing);

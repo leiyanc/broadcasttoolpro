@@ -356,12 +356,31 @@ function renderAccessRequests(requests) {
     );
     adminCell(row, new Date(request.created_at).toLocaleString());
     adminCell(row, request.status);
+    const requestedPlan = request.requested_plan || "professional";
+    const requestedPrice = {
+      programming_suite: 39,
+      professional: 99,
+      enterprise: 199,
+    }[requestedPlan];
+    const requestedTotal = requestedPrice
+      + (request.include_stream_monitoring ? 59 : 0);
+    adminCell(
+      row,
+      `${requestedPlan.replaceAll("_", " ")}\n${
+        request.include_stream_monitoring
+          ? "Stream Monitoring add-on\n"
+          : ""
+      }$${requestedTotal}/month`,
+    );
     if (request.status !== "pending") {
       adminCell(
         row,
         request.assigned_plan
-          ? request.assigned_plan[0].toUpperCase()
-            + request.assigned_plan.slice(1)
+          ? `${request.assigned_plan.replaceAll("_", " ")}${
+            request.assigned_stream_monitoring
+              ? " + Stream Monitoring"
+              : ""
+          }`
           : "—",
       );
       adminCell(row, "—");
@@ -375,9 +394,29 @@ function renderAccessRequests(requests) {
       return;
     }
     const planCell = document.createElement("td");
-    const plan = adminSelect(["professional", "enterprise"], "professional");
+    const plan = adminSelect(
+      ["programming_suite", "professional", "enterprise"],
+      requestedPlan,
+    );
     plan.className = "admin-plan-select";
-    planCell.appendChild(plan);
+    const monitoringLabel = document.createElement("label");
+    monitoringLabel.className = "admin-inline-checkbox";
+    const monitoring = document.createElement("input");
+    monitoring.type = "checkbox";
+    monitoring.checked = (
+      requestedPlan === "professional"
+      && request.include_stream_monitoring
+    );
+    const monitoringText = document.createElement("span");
+    monitoringText.textContent = "Stream Monitoring";
+    monitoringLabel.append(monitoring, monitoringText);
+    const updateMonitoringChoice = () => {
+      monitoring.disabled = plan.value !== "professional";
+      if (monitoring.disabled) monitoring.checked = false;
+    };
+    plan.addEventListener("change", updateMonitoringChoice);
+    updateMonitoringChoice();
+    planCell.append(plan, monitoringLabel);
     row.appendChild(planCell);
     const paymentCell = document.createElement("td");
     const payment = adminSelect(
@@ -456,6 +495,10 @@ function renderAccessRequests(requests) {
               method: "POST",
               body: JSON.stringify({
                 plan: plan.value,
+                include_stream_monitoring: (
+                  plan.value === "professional"
+                  && monitoring.checked
+                ),
                 payment_confirmed: payment.value === "Payment received",
                 waive_payment: complimentary,
                 access_expires_at: complimentary

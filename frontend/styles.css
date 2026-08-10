@@ -399,6 +399,7 @@ main {
 }
 
 .auth-card input,
+.auth-card select,
 .auth-card textarea {
   width: 100%;
   padding: 13px 14px;
@@ -407,6 +408,15 @@ main {
   border: 1px solid var(--line);
   border-radius: 10px;
   font: inherit;
+}
+
+.request-price-summary {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-strong);
+  font-weight: 700;
 }
 
 .auth-card input {
@@ -1092,6 +1102,19 @@ main {
   min-width: 132px;
 }
 
+.admin-inline-checkbox {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.admin-inline-checkbox input {
+  width: auto;
+}
+
 .admin-organizations-table {
   min-width: 1840px;
 }
@@ -1527,6 +1550,7 @@ h1 {
 }
 
 [data-theme="dark"] .auth-card input,
+[data-theme="dark"] .auth-card select,
 [data-theme="dark"] .hls-url-field input,
 [data-theme="dark"] .hls-monitor-controls select {
   color: var(--ink);

@@ -248,6 +248,9 @@ class EmailOutboxStore:
         requester_email: str,
         request_message: str | None,
         administrator_emails: list[str],
+        requested_plan: str = "professional",
+        include_stream_monitoring: bool = False,
+        billing_cycle: str = "monthly",
     ) -> list[dict]:
         now = datetime.now(timezone.utc).isoformat()
         messages = [
@@ -259,8 +262,12 @@ class EmailOutboxStore:
                     f"Hello {contact_name},\n\n"
                     "Your Broadcast Tool Pro access request has been "
                     f"received. Reference: {request_id}.\n\n"
-                    "Our team will review your workflow and contact you "
-                    "with the appropriate plan and activation instructions. "
+                    "Our team will review your request and contact you "
+                    "with activation instructions.\n\n"
+                    f"Requested plan: {requested_plan.replace('_', ' ').title()}\n"
+                    f"Billing cycle: {billing_cycle.title()}\n"
+                    "Stream Monitoring add-on: "
+                    f"{'Requested' if include_stream_monitoring else 'No'}\n\n"
                     "No payment has been collected."
                 ),
             }
@@ -293,6 +300,11 @@ class EmailOutboxStore:
                         f"Organization: {organization_name}\n"
                         f"Contact: {contact_name}\n"
                         f"Email: {requester_email}\n"
+                        "Requested plan: "
+                        f"{requested_plan.replace('_', ' ').title()}\n"
+                        f"Billing cycle: {billing_cycle.title()}\n"
+                        "Stream Monitoring add-on: "
+                        f"{'Requested' if include_stream_monitoring else 'No'}\n"
                         f"Workflow: {request_details}"
                     ),
                 }

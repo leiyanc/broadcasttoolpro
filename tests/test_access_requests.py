@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sqlite3
 from tempfile import TemporaryDirectory
 
 import pytest
@@ -76,6 +77,79 @@ def test_paid_access_request_is_separate_from_trial():
         assert identities.user_from_session(session)["id"] == user["id"]
 
 
+def test_access_request_preserves_requested_package_and_approved_override():
+    with TemporaryDirectory() as directory:
+        identities, _, _, requests = _stores(directory)
+        access_request = requests.create(
+            organization_name="Plan Network",
+            contact_name="Plan Owner",
+            email="plans@example.com",
+            requested_plan="professional",
+            include_stream_monitoring=True,
+            billing_cycle="monthly",
+        )
+        user, organization, _ = identities.provision_customer(
+            organization_name="Plan Network",
+            display_name="Plan Owner",
+            email="plans@example.com",
+            plan="enterprise",
+        )
+        approved = requests.approve(
+            access_request["id"],
+            plan="enterprise",
+            include_stream_monitoring=False,
+            organization_id=organization["id"],
+            user_id=user["id"],
+        )
+
+        assert approved["requested_plan"] == "professional"
+        assert approved["include_stream_monitoring"] is True
+        assert approved["assigned_plan"] == "enterprise"
+        assert approved["assigned_stream_monitoring"] is False
+
+
+def test_access_request_schema_migrates_existing_plan_constraint():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "access.db"
+        with sqlite3.connect(database_path) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.executescript("""
+                CREATE TABLE organizations (id TEXT PRIMARY KEY);
+                CREATE TABLE users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT NOT NULL UNIQUE
+                );
+                CREATE TABLE access_requests (
+                    id TEXT PRIMARY KEY,
+                    organization_name TEXT NOT NULL,
+                    contact_name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    message TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending' CHECK (
+                        status IN ('pending', 'approved', 'rejected')
+                    ),
+                    assigned_plan TEXT CHECK (
+                        assigned_plan IN ('professional', 'enterprise')
+                    ),
+                    organization_id TEXT,
+                    user_id TEXT,
+                    existing_account INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+            """)
+        requests = AccessRequestStore(database_path)
+        requests.initialize()
+        created = requests.create(
+            organization_name="Programming Network",
+            contact_name="Programming Owner",
+            email="programming@example.com",
+            requested_plan="programming_suite",
+        )
+
+        assert created["requested_plan"] == "programming_suite"
+
+
 def test_access_request_and_activation_routes_are_registered():
     paths = set(app.openapi()["paths"])
 
@@ -113,6 +187,13 @@ def test_access_approval_represents_paid_and_complimentary_decisions():
             plan="enterprise",
             payment_confirmed=True,
             waive_payment=True,
+        )
+
+    with pytest.raises(ValidationError):
+        AccessRequestApproval(
+            plan="programming_suite",
+            include_stream_monitoring=True,
+            payment_confirmed=True,
         )
 
 

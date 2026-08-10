@@ -609,6 +609,23 @@ def test_frontend_preserves_backend_field_names():
         assert f'name="{field_name}"' in html
 
 
+def test_access_request_collects_requested_plan_and_addon():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    auth_javascript = (FRONTEND_DIR / "auth.js").read_text()
+    admin_javascript = (FRONTEND_DIR / "admin.js").read_text()
+
+    assert 'name="requested_plan"' in html
+    assert 'value="programming_suite"' in html
+    assert 'value="professional"' in html
+    assert 'value="enterprise"' in html
+    assert 'name="include_stream_monitoring"' in html
+    assert 'name="billing_cycle"' in html
+    assert "updateAccessRequestPricing" in auth_javascript
+    assert '"programming_suite", "professional", "enterprise"' in (
+        admin_javascript
+    )
+
+
 def test_frontend_does_not_render_server_messages_as_html():
     javascript = (FRONTEND_DIR / "app.js").read_text()
 

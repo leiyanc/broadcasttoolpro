@@ -268,8 +268,8 @@
           <p class="eyebrow" data-i18n="auth.paidAccess">PAID ACCOUNT ACCESS</p>
           <h2 data-i18n="auth.requestAccess">Request Access</h2>
           <p class="auth-copy" data-i18n="auth.requestCopy">
-            Tell us who you are. We will review your workflow and assign a
-            Professional or Enterprise account separately from the free trial.
+            Tell us who you are and select the package you want. We will
+            review the request separately from the free trial.
           </p>
           <label>
             <span data-i18n="auth.organization">Organization Name</span>
@@ -283,6 +283,32 @@
             <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
+          <label>
+            <span data-i18n="auth.requestedPlan">Requested Plan</span>
+            <select name="requested_plan" id="access-request-plan" required>
+              <option value="programming_suite">Programming Suite — $39/month</option>
+              <option value="professional" selected>Professional — $99/month</option>
+              <option value="enterprise">Enterprise — $199/month</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="auth.billingCycle">Billing Cycle</span>
+            <select name="billing_cycle" required>
+              <option value="monthly" data-i18n="auth.monthly">Monthly</option>
+            </select>
+          </label>
+          <label class="remember-session" id="access-request-monitoring-field">
+            <input name="include_stream_monitoring" type="checkbox" />
+            <span>
+              <strong data-i18n="auth.streamAddon">Add Stream Monitoring — $59/month</strong>
+              <small id="access-request-monitoring-note" data-i18n="auth.streamAddonNote">
+                Available with Professional. Included with Enterprise.
+              </small>
+            </span>
+          </label>
+          <p class="request-price-summary" id="access-request-total">
+            Estimated monthly total: $99.00
+          </p>
           <label>
             <span data-i18n="auth.goal">What would you like to accomplish? (Optional)</span>
             <textarea
@@ -717,7 +743,7 @@
           <p class="eyebrow">CUSTOMER ONBOARDING</p>
           <h3>Access Requests</h3>
           <p class="section-copy">
-            Approve a customer directly as Professional or Enterprise.
+            Review the requested package and approve or override it.
             These accounts are independent of the free trial.
           </p>
           <p
@@ -737,6 +763,7 @@
                   <th>Contact</th>
                   <th>Received</th>
                   <th>Status</th>
+                  <th>Requested</th>
                   <th>Assign Plan</th>
                   <th>Payment Approval</th>
                   <th>Access Ends</th>

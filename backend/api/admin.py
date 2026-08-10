@@ -164,13 +164,18 @@ def approve_access_request(
                 raise ValueError(
                     "A reason is required when payment is waived."
                 )
+        internal_plan = (
+            "enterprise"
+            if request.plan == "enterprise"
+            else "professional"
+        )
         existing_account = identity_store.existing_customer_account(
             access_request["email"]
         )
         if existing_account:
             user, organization = identity_store.reactivate_customer_account(
                 access_request["email"],
-                request.plan,
+                internal_plan,
             )
             activation_token = None
         else:
@@ -179,7 +184,7 @@ def approve_access_request(
                     organization_name=access_request["organization_name"],
                     display_name=access_request["contact_name"],
                     email=access_request["email"],
-                    plan=request.plan,
+                    plan=internal_plan,
                 )
             )
         if request.waive_payment:
@@ -190,9 +195,13 @@ def approve_access_request(
                 waived_by_user_id=administrator["id"],
             )
         else:
-            amount_cents = (
-                9900 if request.plan == "professional" else 19900
-            )
+            amount_cents = {
+                "programming_suite": 3900,
+                "professional": 9900,
+                "enterprise": 19900,
+            }[request.plan]
+            if request.include_stream_monitoring:
+                amount_cents += 5900
             subscription = billing_store.create_manual_paid_subscription(
                 organization["id"],
                 amount_cents=amount_cents,
@@ -203,9 +212,15 @@ def approve_access_request(
                 "traffic_operations",
                 True,
             )
+            entitlement_store.set_addon(
+                organization["id"],
+                "stream_monitoring",
+                request.include_stream_monitoring,
+            )
         approved = access_request_store.approve(
             request_id,
             plan=request.plan,
+            include_stream_monitoring=request.include_stream_monitoring,
             organization_id=organization["id"],
             user_id=user["id"],
         )

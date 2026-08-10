@@ -334,6 +334,11 @@ def create_access_request(request: AccessRequestCreate):
                         contact_name=access_request["contact_name"],
                         requester_email=access_request["email"],
                         request_message=access_request["message"],
+                        requested_plan=access_request["requested_plan"],
+                        include_stream_monitoring=access_request[
+                            "include_stream_monitoring"
+                        ],
+                        billing_cycle=access_request["billing_cycle"],
                         administrator_emails=[
                             target["email"]
                             for target in notification_targets
