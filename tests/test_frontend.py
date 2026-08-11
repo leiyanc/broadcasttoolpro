@@ -440,6 +440,7 @@ def test_secure_account_interface_is_present():
     assert "Ends on date" in admin_javascript
     assert "lifecycle_note" in admin_javascript
     assert "hasSubscriptionChange" in admin_javascript
+    assert 'awaitingPayment' in admin_javascript
     assert "subscription_events" in admin_javascript
     assert "/api/admin/incidents/" in admin_javascript
     assert "openAdminTicket" in admin_javascript

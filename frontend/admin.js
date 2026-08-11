@@ -136,7 +136,8 @@ function adminSelect(options, selected) {
   options.forEach((value) => {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = value[0].toUpperCase() + value.slice(1);
+    const label = value.replaceAll("_", " ");
+    option.textContent = label[0].toUpperCase() + label.slice(1);
     option.selected = value === selected;
     select.appendChild(option);
   });
@@ -791,9 +792,15 @@ function renderOrganizations(organizations) {
     );
     statusCell.replaceChildren(status);
     const subscriptionStatusCell = adminCell(row, "");
+    const awaitingPayment =
+      organization.subscription.access_state === "awaiting_payment";
     const subscriptionStatus = adminSelect(
-      ["trialing", "active", "past_due", "canceled"],
-      organization.subscription.status,
+      awaitingPayment
+        ? ["awaiting_payment"]
+        : ["trialing", "active", "past_due", "canceled"],
+      awaitingPayment
+        ? "awaiting_payment"
+        : organization.subscription.status,
     );
     subscriptionStatusCell.replaceChildren(subscriptionStatus);
     subscriptionStatus.disabled = stripeManaged;
