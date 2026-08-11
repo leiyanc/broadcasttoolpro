@@ -37,6 +37,7 @@ class BillingStore:
                     ),
                     currency TEXT NOT NULL DEFAULT 'USD',
                     amount_cents INTEGER,
+                    plan_code TEXT,
                     provider TEXT NOT NULL DEFAULT 'manual',
                     provider_customer_id TEXT,
                     provider_subscription_id TEXT,
@@ -120,6 +121,9 @@ class BillingStore:
                 "waived_by_user_id": (
                     "ALTER TABLE subscriptions ADD COLUMN "
                     "waived_by_user_id TEXT"
+                ),
+                "plan_code": (
+                    "ALTER TABLE subscriptions ADD COLUMN plan_code TEXT"
                 ),
             }
             for column, statement in migrations.items():
@@ -253,6 +257,87 @@ class BillingStore:
             )
         return self.get_subscription(organization_id)
 
+    def create_pending_stripe_subscription(
+        self,
+        organization_id: str,
+        *,
+        plan_code: str,
+        amount_cents: int,
+        billing_cycle: str = "monthly",
+    ) -> dict:
+        if plan_code not in {
+            "programming_suite",
+            "professional",
+            "enterprise",
+        }:
+            raise ValueError("A valid subscription plan is required.")
+        if amount_cents < 0:
+            raise ValueError("Subscription amount cannot be negative.")
+        if billing_cycle != "monthly":
+            raise ValueError("Stripe subscriptions currently bill monthly.")
+        now = datetime.now(timezone.utc)
+        with self._connection() as connection:
+            organization = connection.execute(
+                "SELECT id FROM organizations WHERE id = ?",
+                (organization_id,),
+            ).fetchone()
+            if organization is None:
+                raise KeyError("Organization not found.")
+            connection.execute(
+                """
+                INSERT INTO subscriptions (
+                    id, organization_id, status, billing_cycle, currency,
+                    amount_cents, plan_code, provider,
+                    current_period_start, current_period_end,
+                    cancel_at_period_end, payment_waived,
+                    created_at, updated_at
+                ) VALUES (?, ?, 'past_due', 'monthly', 'USD', ?, ?,
+                          'stripe_pending', ?, ?, 0, 0, ?, ?)
+                ON CONFLICT (organization_id)
+                DO UPDATE SET
+                    status = 'past_due',
+                    billing_cycle = 'monthly',
+                    currency = 'USD',
+                    amount_cents = excluded.amount_cents,
+                    plan_code = excluded.plan_code,
+                    provider = 'stripe_pending',
+                    provider_customer_id = NULL,
+                    provider_subscription_id = NULL,
+                    current_period_start = excluded.current_period_start,
+                    current_period_end = excluded.current_period_end,
+                    cancel_at_period_end = 0,
+                    payment_waived = 0,
+                    waiver_reason = NULL,
+                    waiver_expires_at = NULL,
+                    waived_by_user_id = NULL,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    amount_cents,
+                    plan_code,
+                    now.isoformat(),
+                    (now + timedelta(days=30)).isoformat(),
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, event_type, details, created_at
+                ) VALUES (?, ?, 'payment_requested', ?, ?)
+                """,
+                (
+                    str(uuid4()),
+                    organization_id,
+                    f"Stripe payment requested for {plan_code}.",
+                    now.isoformat(),
+                ),
+            )
+        return self.get_subscription(organization_id)
+
     def create_complimentary_subscription(
         self,
         organization_id: str,
@@ -323,7 +408,8 @@ class BillingStore:
             row = connection.execute(
                 """
                 SELECT subscriptions.*, organizations.name AS organization_name,
-                       organizations.plan
+                       COALESCE(subscriptions.plan_code, organizations.plan)
+                           AS plan
                 FROM subscriptions
                 JOIN organizations
                     ON organizations.id = subscriptions.organization_id
@@ -529,12 +615,12 @@ class BillingStore:
                 """
                 INSERT INTO subscriptions (
                     id, organization_id, status, billing_cycle, currency,
-                    amount_cents, provider, provider_customer_id,
+                    amount_cents, plan_code, provider, provider_customer_id,
                     provider_subscription_id, current_period_start,
                     current_period_end, cancel_at_period_end,
                     payment_waived, waiver_reason, waiver_expires_at,
                     waived_by_user_id, created_at, updated_at
-                ) VALUES (?, ?, ?, 'monthly', ?, ?, 'stripe', ?, ?, ?, ?, ?,
+                ) VALUES (?, ?, ?, 'monthly', ?, ?, ?, 'stripe', ?, ?, ?, ?, ?,
                           0, NULL, NULL, NULL, ?, ?)
                 ON CONFLICT (organization_id)
                 DO UPDATE SET
@@ -542,6 +628,7 @@ class BillingStore:
                     billing_cycle = 'monthly',
                     currency = excluded.currency,
                     amount_cents = excluded.amount_cents,
+                    plan_code = excluded.plan_code,
                     provider = 'stripe',
                     provider_customer_id = excluded.provider_customer_id,
                     provider_subscription_id =
@@ -561,6 +648,7 @@ class BillingStore:
                     status,
                     currency.upper(),
                     amount_cents,
+                    plan_code,
                     customer_id,
                     subscription_id,
                     period_start,

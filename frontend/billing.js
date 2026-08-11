@@ -151,6 +151,10 @@ function pricingButton(plan, currentPlan) {
   const canSubscribeCurrent = (
     isCurrent && billingPaymentsAvailable && !isStripeCurrent
   );
+  const awaitingPayment = (
+    latestBillingPayload?.subscription?.provider === "stripe_pending"
+    && latestBillingPayload?.subscription?.status === "past_due"
+  );
   button.className = (
     `button ${isCurrent ? "button-secondary" : "button-primary"}`
   );
@@ -159,14 +163,23 @@ function pricingButton(plan, currentPlan) {
     ? billingText("billing.currentPlan", "Current Plan")
     : (billingPaymentsAvailable
       ? (isCurrent
-        ? billingText("billing.subscribe", "Subscribe")
+        ? (awaitingPayment
+          ? billingText("billing.completeSubscription", "Complete Subscription")
+          : billingText("billing.subscribe", "Subscribe"))
         : billingText("billing.choosePlan", "Choose Plan"))
       : billingText("billing.requestPlan", "Request Plan Change"));
-  button.disabled = isCurrent && !canSubscribeCurrent;
+  button.disabled = (isCurrent && !canSubscribeCurrent)
+    || (awaitingPayment && !isCurrent);
   if (!button.disabled) {
     button.addEventListener("click", () => {
       if (billingPaymentsAvailable) {
-        startCheckout(plan.code);
+        const monitoringApproved = (
+          plan.code === "professional"
+          && (latestBillingPayload?.entitlements?.addons || []).some(
+            (addon) => addon.code === "stream_monitoring" && addon.enabled,
+          )
+        );
+        startCheckout(plan.code, monitoringApproved);
         return;
       }
       window.dispatchEvent(new CustomEvent("btp:open-support", {
@@ -304,6 +317,10 @@ function renderBilling(payload) {
   const subscription = payload.subscription;
   const pricing = payload.pricing;
   const complimentary = subscription.payment_waived;
+  const awaitingPayment = (
+    subscription.provider === "stripe_pending"
+    && subscription.status === "past_due"
+  );
   billingSummary.replaceChildren(
     billingCard(
       billingText("billing.plan", "Plan"),
@@ -314,15 +331,22 @@ function renderBilling(payload) {
       billingText("billing.subscription", "Subscription"),
       complimentary
         ? billingText("billing.complimentary", "Complimentary access")
+        : awaitingPayment
+          ? billingText("billing.awaitingPayment", "Awaiting Payment")
         : billingStatus(subscription.status),
       complimentary
         ? billingText(
           "billing.paymentWaived",
           "Payment waived by Broadcast Tool Pro",
         )
-        : billingText("billing.billingCycle", "{cycle} billing", {
+        : awaitingPayment
+          ? billingText(
+            "billing.paymentRequired",
+            "Complete secure Stripe Checkout to activate access",
+          )
+          : billingText("billing.billingCycle", "{cycle} billing", {
           cycle: billingStatus(subscription.billing_cycle),
-        }),
+          }),
     ),
     billingCard(
       complimentary || subscription.cancel_at_period_end

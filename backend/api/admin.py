@@ -122,9 +122,15 @@ def access_requests(
     limit: int = 100,
     _: dict = Depends(superuser),
 ):
-    return {
-        "requests": access_request_store.list(limit),
-    }
+    requests = access_request_store.list(limit)
+    for access_request in requests:
+        organization_id = access_request.get("organization_id")
+        access_request["subscription"] = (
+            billing_store.get_subscription(organization_id)
+            if organization_id
+            else None
+        )
+    return {"requests": requests}
 
 
 @router.post("/access-requests/{request_id}/approve")
@@ -137,16 +143,8 @@ def approve_access_request(
         access_request = access_request_store.get(request_id)
         if access_request["status"] != "pending":
             raise ValueError("Only a pending request can be approved.")
-        if request.payment_confirmed and request.waive_payment:
-            raise ValueError(
-                "Payment cannot be both confirmed and waived."
-            )
-        if not request.payment_confirmed and not request.waive_payment:
-            raise ValueError(
-                "Confirm that payment was received or approve "
-                "complimentary access."
-            )
-        if request.waive_payment:
+        complimentary = request.payment_method == "complimentary"
+        if complimentary:
             if request.access_expires_at is None:
                 raise ValueError(
                     "An expiration date is required when payment is waived."
@@ -187,7 +185,7 @@ def approve_access_request(
                     plan=internal_plan,
                 )
             )
-        if request.waive_payment:
+        if complimentary:
             subscription = billing_store.create_complimentary_subscription(
                 organization["id"],
                 expires_at=request.access_expires_at,
@@ -202,21 +200,22 @@ def approve_access_request(
             }[request.plan]
             if request.include_stream_monitoring:
                 amount_cents += 5900
-            subscription = billing_store.create_manual_paid_subscription(
+            subscription = billing_store.create_pending_stripe_subscription(
                 organization["id"],
+                plan_code=request.plan,
                 amount_cents=amount_cents,
             )
-        if request.plan == "professional":
-            entitlement_store.set_addon(
-                organization["id"],
-                "traffic_operations",
-                True,
-            )
-            entitlement_store.set_addon(
-                organization["id"],
-                "stream_monitoring",
-                request.include_stream_monitoring,
-            )
+        entitlement_store.set_addon(
+            organization["id"],
+            "traffic_operations",
+            request.plan in {"professional", "enterprise"},
+        )
+        entitlement_store.set_addon(
+            organization["id"],
+            "stream_monitoring",
+            request.plan == "enterprise"
+            or request.include_stream_monitoring,
+        )
         approved = access_request_store.approve(
             request_id,
             plan=request.plan,
@@ -238,6 +237,7 @@ def approve_access_request(
                 organization_name=organization["name"],
                 plan=request.plan,
                 activation_url=activation_url,
+                payment_required=not complimentary,
             )
         else:
             activation_url = f"{application_url}?mode=signin"
@@ -247,6 +247,7 @@ def approve_access_request(
                 organization_name=organization["name"],
                 plan=request.plan,
                 sign_in_url=activation_url,
+                payment_required=not complimentary,
             )
         return {
             "request": approved,
@@ -254,9 +255,9 @@ def approve_access_request(
             "subscription": subscription,
             "activation_url": activation_url,
             "message": (
-                f"{request.plan.title()} account created"
-                f"{' with waived payment' if request.waive_payment else ''}. "
-                "The activation message is queued."
+                f"{request.plan.replace('_', ' ').title()} account "
+                f"approved {'with complimentary access' if complimentary else 'and awaiting Stripe payment'}. "
+                "The account message is queued."
             ),
         }
     except KeyError as exc:

@@ -26,8 +26,7 @@ class IncidentMessageCreate(BaseModel):
 class AccessRequestApproval(BaseModel):
     plan: Literal["programming_suite", "professional", "enterprise"]
     include_stream_monitoring: bool = False
-    payment_confirmed: bool = False
-    waive_payment: bool = False
+    payment_method: Literal["stripe", "complimentary"] = "stripe"
     access_expires_at: datetime | None = None
     waiver_reason: str | None = Field(default=None, max_length=500)
 
@@ -38,9 +37,13 @@ class AccessRequestApproval(BaseModel):
                 "Stream Monitoring can only be added to Professional; "
                 "Enterprise already includes it."
             )
-        if self.payment_confirmed == self.waive_payment:
-            raise ValueError(
-                "Confirm payment or approve complimentary access, "
-                "but not both."
-            )
+        if self.payment_method == "complimentary":
+            if self.access_expires_at is None:
+                raise ValueError(
+                    "Complimentary access requires an expiration date."
+                )
+            if len((self.waiver_reason or "").strip()) < 3:
+                raise ValueError(
+                    "Complimentary access requires an internal reason."
+                )
         return self

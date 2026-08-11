@@ -206,6 +206,7 @@ class EmailOutboxStore:
         organization_name: str,
         plan: str,
         activation_url: str,
+        payment_required: bool = False,
     ) -> dict:
         now = datetime.now(timezone.utc).isoformat()
         message_id = str(uuid4())
@@ -225,8 +226,15 @@ class EmailOutboxStore:
                     "Activate your Broadcast Tool Pro account",
                     (
                         f"{organization_name} has been approved for the "
-                        f"{plan.title()} plan. Create your password within "
-                        f"seven days: {activation_url}"
+                        f"{plan.replace('_', ' ').title()} plan. Create "
+                        f"your password within seven days: {activation_url}"
+                        + (
+                            "\n\nAfter activation, open Billing and complete "
+                            "secure Stripe Checkout. Product access begins "
+                            "only after Stripe confirms the subscription."
+                            if payment_required
+                            else ""
+                        )
                     ),
                     now,
                     now,
@@ -346,6 +354,7 @@ class EmailOutboxStore:
         organization_name: str,
         plan: str,
         sign_in_url: str,
+        payment_required: bool = False,
     ) -> dict:
         now = datetime.now(timezone.utc).isoformat()
         message_id = str(uuid4())
@@ -365,8 +374,16 @@ class EmailOutboxStore:
                     "Your Broadcast Tool Pro access was approved",
                     (
                         f"{organization_name} has been approved for the "
-                        f"{plan.title()} plan. Your existing account remains "
-                        f"valid. Sign in here: {sign_in_url}"
+                        f"{plan.replace('_', ' ').title()} plan. Your "
+                        f"existing account remains valid. Sign in here: "
+                        f"{sign_in_url}"
+                        + (
+                            "\n\nOpen Billing and complete secure Stripe "
+                            "Checkout. Product access begins only after "
+                            "Stripe confirms the subscription."
+                            if payment_required
+                            else ""
+                        )
                     ),
                     now,
                     now,

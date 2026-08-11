@@ -161,39 +161,29 @@ def test_access_request_and_activation_routes_are_registered():
 
 
 def test_access_approval_represents_paid_and_complimentary_decisions():
-    paid = AccessRequestApproval(
-        plan="professional",
-        payment_confirmed=True,
-    )
+    paid = AccessRequestApproval(plan="professional")
     complimentary = AccessRequestApproval(
         plan="enterprise",
-        waive_payment=True,
+        payment_method="complimentary",
         access_expires_at=(
             datetime.now(timezone.utc) + timedelta(days=30)
         ),
         waiver_reason="Controlled industry pilot",
     )
 
-    assert paid.payment_confirmed is True
-    assert paid.waive_payment is False
-    assert complimentary.payment_confirmed is False
-    assert complimentary.waive_payment is True
-
-    with pytest.raises(ValidationError):
-        AccessRequestApproval(plan="professional")
+    assert paid.payment_method == "stripe"
+    assert complimentary.payment_method == "complimentary"
 
     with pytest.raises(ValidationError):
         AccessRequestApproval(
             plan="enterprise",
-            payment_confirmed=True,
-            waive_payment=True,
+            payment_method="complimentary",
         )
 
     with pytest.raises(ValidationError):
         AccessRequestApproval(
             plan="programming_suite",
             include_stream_monitoring=True,
-            payment_confirmed=True,
         )
 
 

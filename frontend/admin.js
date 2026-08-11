@@ -383,9 +383,24 @@ function renderAccessRequests(requests) {
           }`
           : "—",
       );
-      adminCell(row, "—");
-      adminCell(row, "—");
-      adminCell(row, "—");
+      const subscription = request.subscription;
+      const paymentLabel = !subscription
+        ? "—"
+        : subscription.provider === "stripe_pending"
+          ? "Awaiting Stripe payment"
+          : subscription.provider === "complimentary"
+            ? "Complimentary access"
+            : subscription.provider === "stripe"
+              ? "Paid via Stripe"
+              : subscription.status;
+      adminCell(row, paymentLabel);
+      adminCell(
+        row,
+        subscription?.waiver_expires_at
+          ? new Date(subscription.waiver_expires_at).toLocaleDateString()
+          : "—",
+      );
+      adminCell(row, subscription?.waiver_reason || "—");
       adminCell(
         row,
         request.status === "rejected" ? "Rejected" : "Completed",
@@ -420,8 +435,8 @@ function renderAccessRequests(requests) {
     row.appendChild(planCell);
     const paymentCell = document.createElement("td");
     const payment = adminSelect(
-      ["Select payment status", "Payment received", "Complimentary access"],
-      "Select payment status",
+      ["Stripe checkout required", "Complimentary access"],
+      "Stripe checkout required",
     );
     payment.setAttribute("aria-label", `Payment approval for ${request.id}`);
     paymentCell.appendChild(payment);
@@ -478,11 +493,6 @@ function renderAccessRequests(requests) {
         adminAccessMessage.textContent = "Creating customer account…";
         adminAccessMessage.classList.remove("is-error");
         try {
-          if (payment.value === "Select payment status") {
-            throw new Error(
-              "Select Payment received or Complimentary access.",
-            );
-          }
           const complimentary = payment.value === "Complimentary access";
           if (complimentary && !reason.value.trim()) {
             throw new Error(
@@ -499,8 +509,7 @@ function renderAccessRequests(requests) {
                   plan.value === "professional"
                   && monitoring.checked
                 ),
-                payment_confirmed: payment.value === "Payment received",
-                waive_payment: complimentary,
+                payment_method: complimentary ? "complimentary" : "stripe",
                 access_expires_at: complimentary
                   ? `${expiration.value}T23:59:59Z`
                   : null,

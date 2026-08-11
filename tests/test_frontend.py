@@ -432,11 +432,11 @@ def test_secure_account_interface_is_present():
     assert "moduleSurfaces" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
-    assert "Payment Approval" in html
-    assert "Select payment status" in admin_javascript
-    assert "Payment received" in admin_javascript
+    assert "Payment Setup" in html
+    assert "Stripe checkout required" in admin_javascript
     assert "Complimentary access" in admin_javascript
-    assert "payment_confirmed" in admin_javascript
+    assert "payment_method" in admin_javascript
+    assert "Awaiting Stripe payment" in admin_javascript
     assert "Ends on date" in admin_javascript
     assert "lifecycle_note" in admin_javascript
     assert "subscription_events" in admin_javascript

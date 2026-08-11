@@ -63,6 +63,33 @@ def test_subscription_status_and_cycle_can_be_updated():
         assert events[0]["details"] == "Annual access scheduled to end."
 
 
+def test_pending_stripe_subscription_preserves_commercial_plan():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Pending Customer",
+            slug=None,
+            plan="professional",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+
+        result = billing.create_pending_stripe_subscription(
+            organization["id"],
+            plan_code="programming_suite",
+            amount_cents=3900,
+        )
+
+        assert result["status"] == "past_due"
+        assert result["provider"] == "stripe_pending"
+        assert result["plan"] == "programming_suite"
+        assert result["amount_cents"] == 3900
+        events = billing.subscription_events(organization["id"])
+        assert events[0]["event_type"] == "payment_requested"
+
+
 def test_complimentary_extension_updates_the_enforced_expiration():
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "billing.db"

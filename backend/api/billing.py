@@ -57,6 +57,29 @@ def create_checkout(
             detail="Online payment confirmation is not configured.",
         )
     try:
+        subscription = billing_store.get_subscription(organization_id)
+        if subscription["provider"] == "stripe_pending":
+            if request.plan_code != subscription["plan"]:
+                raise ValueError(
+                    "Complete Checkout for the plan approved by Broadcast "
+                    "Tool Pro. Contact support to change the approved plan."
+                )
+            entitlements = entitlement_store.effective_entitlements(
+                organization_id
+            )
+            approved_monitoring = (
+                request.plan_code == "professional"
+                and any(
+                    addon["code"] == "stream_monitoring"
+                    and addon["enabled"]
+                    for addon in entitlements.get("addons", [])
+                )
+            )
+            if request.include_stream_monitoring != approved_monitoring:
+                raise ValueError(
+                    "The Stream Monitoring selection must match the "
+                    "approved access request."
+                )
         checkout_url = stripe_billing.create_checkout_session(
             organization_id=organization_id,
             email=user["email"],
