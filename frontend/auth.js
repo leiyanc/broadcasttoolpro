@@ -71,6 +71,7 @@ const accountPreferenceMessage = document.querySelector(
 );
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
+const authAdminControlPanel = document.querySelector("#admin-control-plane");
 const suspendedPanel = document.querySelector("#organization-suspended");
 const trialExpiredPanel = document.querySelector("#trial-expired");
 const suspendedAdminButton = document.querySelector(
@@ -112,6 +113,25 @@ accessRequestPlan.addEventListener("change", updateAccessRequestPricing);
 accessRequestMonitoring.addEventListener("change", updateAccessRequestPricing);
 updateAccessRequestPricing();
 let preferenceMessageState = "";
+
+function resetAdministrativeSurface(identity = null) {
+  const isSuperuser = Boolean(identity?.user?.is_superuser);
+  openAdminButton.classList.toggle("is-hidden", !isSuperuser);
+  suspendedAdminButton.classList.toggle("is-hidden", !isSuperuser);
+  authAdminControlPanel?.classList.add("is-hidden");
+
+  if (isSuperuser) return;
+
+  document.querySelector("#admin-metrics")?.replaceChildren();
+  document.querySelector("#admin-security-body")?.replaceChildren();
+  document.querySelector("#admin-email-attempt-body")?.replaceChildren();
+  document.querySelector("#admin-suppression-body")?.replaceChildren();
+  document.querySelector("#admin-email-event-body")?.replaceChildren();
+  document.querySelector("#admin-access-body")?.replaceChildren();
+  document.querySelector("#admin-organizations-body")?.replaceChildren();
+  document.querySelector("#admin-incidents-body")?.replaceChildren();
+  document.querySelector("#admin-ticket-panel")?.classList.add("is-hidden");
+}
 
 function authText(key, fallback, values = {}) {
   let translated = window.BTPi18n?.t(key, fallback) || fallback;
@@ -339,6 +359,9 @@ function requestedAuthenticationMode() {
 }
 
 function showAuthentication(bootstrapRequired) {
+  currentIdentity = null;
+  currentEntitlements = null;
+  resetAdministrativeSurface();
   authGate.classList.remove("is-hidden");
   platformContent.classList.add("is-hidden");
   accountButton.classList.add("is-hidden");
@@ -362,6 +385,7 @@ function showPlatform(identity) {
   currentIdentity = identity;
   const user = identity.user;
   const organization = identity.organizations?.[0];
+  resetAdministrativeSurface(identity);
   authGate.classList.add("is-hidden");
   bootstrapForm.classList.add("is-hidden");
   loginForm.classList.add("is-hidden");
@@ -375,7 +399,6 @@ function showPlatform(identity) {
   accountAvatar.textContent = user.display_name.slice(0, 1).toUpperCase();
   accountName.textContent = user.display_name;
   accountRole.textContent = localizedRole(organization?.role);
-  openAdminButton.classList.toggle("is-hidden", !user.is_superuser);
   accountPanelName.textContent = user.display_name;
   accountPanelEmail.textContent = user.email;
   accountPanelOrganization.textContent = organization

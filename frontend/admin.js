@@ -1128,7 +1128,21 @@ runBackupButton.addEventListener("click", async () => {
   }
 });
 
-adminOpenButton.addEventListener("click", () => {
+adminOpenButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/auth/me", {
+      credentials: "same-origin",
+    });
+    const identity = response.ok ? await response.json() : null;
+    if (!identity?.user?.is_superuser) {
+      adminControlPlane.classList.add("is-hidden");
+      adminOpenButton.classList.add("is-hidden");
+      return;
+    }
+  } catch {
+    adminControlPlane.classList.add("is-hidden");
+    return;
+  }
   adminControlPlane.classList.remove("is-hidden");
   accountPanel.classList.add("is-hidden");
   platformContent.classList.add("is-hidden");
@@ -1157,7 +1171,21 @@ refreshEmailHealthButton.addEventListener("click", async () => {
     refreshEmailHealthButton.disabled = false;
   }
 });
-suspendedAdminControlButton.addEventListener("click", () => {
+suspendedAdminControlButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/auth/me", {
+      credentials: "same-origin",
+    });
+    const identity = response.ok ? await response.json() : null;
+    if (!identity?.user?.is_superuser) {
+      adminControlPlane.classList.add("is-hidden");
+      suspendedAdminControlButton.classList.add("is-hidden");
+      return;
+    }
+  } catch {
+    adminControlPlane.classList.add("is-hidden");
+    return;
+  }
   adminControlPlane.classList.remove("is-hidden");
   suspendedPanel.classList.add("is-hidden");
   platformContent.classList.add("is-hidden");

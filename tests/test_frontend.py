@@ -632,3 +632,19 @@ def test_frontend_does_not_render_server_messages_as_html():
     assert "issueList.innerHTML" not in javascript
     assert "resultMetrics.innerHTML" not in javascript
     assert "textContent = text" in javascript
+
+
+def test_customer_session_clears_global_administrative_state():
+    auth = (FRONTEND_DIR / "auth.js").read_text()
+    admin = (FRONTEND_DIR / "admin.js").read_text()
+    history = (FRONTEND_DIR / "report-history.js").read_text()
+
+    assert "function resetAdministrativeSurface" in auth
+    assert "resetAdministrativeSurface();" in auth
+    assert "resetAdministrativeSurface(identity);" in auth
+    assert 'document.querySelector("#admin-access-body")?.replaceChildren()' in auth
+    assert 'document.querySelector("#admin-email-event-body")?.replaceChildren()' in auth
+    assert 'fetch("/api/auth/me"' in admin
+    assert "if (!identity?.user?.is_superuser)" in admin
+    assert "function clearReportHistory" in history
+    assert 'window.addEventListener("btp:identity"' in history

@@ -6,6 +6,16 @@ const refreshReportHistory = document.querySelector(
 );
 let latestReports = [];
 
+function clearReportHistory() {
+  latestReports = [];
+  reportHistoryBody.replaceChildren();
+  reportHistoryTable.classList.add("is-hidden");
+  reportHistoryStatus.textContent = historyText(
+    "history.empty",
+    "Generated Pre Logs and Post Logs will appear here.",
+  );
+}
+
 function historyText(key, fallback, values = {}) {
   let translated = window.BTPi18n?.t(key, fallback) || fallback;
   for (const [name, value] of Object.entries(values)) {
@@ -101,4 +111,7 @@ window.addEventListener("report-generated", loadReportHistory);
 window.addEventListener("btp:languagechange", () => {
   renderReportHistory(latestReports);
 });
-loadReportHistory();
+window.addEventListener("btp:identity", (event) => {
+  clearReportHistory();
+  if (event.detail?.user) loadReportHistory();
+});
