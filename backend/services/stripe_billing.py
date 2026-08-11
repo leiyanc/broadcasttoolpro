@@ -173,9 +173,18 @@ class StripeBillingService:
             raise ValueError("Stripe subscription is missing organization metadata.")
         plan_code, stream_monitoring = self._price_codes(subscription)
         stripe_status = _value(subscription, "status", "past_due")
+        cancellation_details = (
+            _value(subscription, "cancellation_details", {}) or {}
+        )
+        cancellation_reason = _value(cancellation_details, "reason", "")
+        payment_failure_cancellation = (
+            stripe_status == "canceled"
+            and cancellation_reason == "payment_failed"
+        )
         status = (
             "active" if stripe_status == "active"
             else "trialing" if stripe_status == "trialing"
+            else "past_due" if payment_failure_cancellation
             else "canceled" if stripe_status == "canceled"
             else "past_due"
         )
@@ -200,6 +209,7 @@ class StripeBillingService:
             ),
             "usd",
         )
+        previous = billing_store.get_subscription(organization_id)
         billing_store.apply_stripe_subscription(
             organization_id,
             plan_code=plan_code,
@@ -215,6 +225,30 @@ class StripeBillingService:
                 _value(subscription, "cancel_at_period_end", False)
             ),
         )
+        if payment_failure_cancellation:
+            already_in_grace = bool(previous.get("grace_period_ends_at"))
+            failed = billing_store.mark_payment_failed(
+                organization_id,
+                grace_hours=self.payment_grace_hours(),
+            )
+            if not already_in_grace:
+                members = identity_store.list_members(organization_id)
+                recipient = next(
+                    (
+                        member["email"] for member in members
+                        if member["status"] == "active"
+                        and member["role"] in {"owner", "admin"}
+                    ),
+                    "",
+                )
+                if recipient:
+                    email_outbox_store.schedule_payment_failure_lifecycle(
+                        organization_id=organization_id,
+                        recipient_email=recipient,
+                        grace_ends_at=failed["grace_period_ends_at"],
+                        grace_hours=self.payment_grace_hours(),
+                        hosted_invoice_url=None,
+                    )
 
     def _invoice_subscription_id(self, invoice: Any) -> str | None:
         subscription_id = _value(invoice, "subscription")

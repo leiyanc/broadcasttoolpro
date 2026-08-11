@@ -210,3 +210,103 @@ def test_invoice_failure_starts_grace_and_payment_restores_access(monkeypatch):
         assert recovered["access_state"] == "active"
         assert len(outbox.canceled) == 1
         assert len(outbox.recovered) == 1
+
+
+def test_payment_failure_cancellation_preserves_72_hour_grace(monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setenv("BTP_PAYMENT_GRACE_HOURS", "72")
+
+    class RecordingOutbox:
+        def __init__(self):
+            self.failed = []
+
+        def schedule_payment_failure_lifecycle(self, **kwargs):
+            self.failed.append(kwargs)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Grace Network", slug=None, plan="professional"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        outbox = RecordingOutbox()
+        monkeypatch.setattr(stripe_module, "email_outbox_store", outbox)
+        monkeypatch.setattr(
+            stripe_module.identity_store,
+            "list_members",
+            lambda _organization_id: [{
+                "email": "owner@example.com",
+                "status": "active",
+                "role": "owner",
+            }],
+        )
+        subscription = {
+            "id": "sub_failed",
+            "customer": "cus_failed",
+            "status": "canceled",
+            "metadata": {"organization_id": organization["id"]},
+            "cancellation_details": {"reason": "payment_failed"},
+            "cancel_at_period_end": False,
+            "current_period_start": 1_786_000_000,
+            "current_period_end": 1_788_592_000,
+            "items": {"data": [{
+                "price": {
+                    "id": "price_professional",
+                    "unit_amount": 9900,
+                    "currency": "usd",
+                },
+                "quantity": 1,
+            }]},
+        }
+
+        StripeBillingService()._apply_subscription(subscription)
+
+        result = billing.get_subscription(organization["id"])
+        assert result["status"] == "past_due"
+        assert result["access_state"] == "payment_grace"
+        assert result["grace_period_ends_at"] is not None
+        assert len(outbox.failed) == 1
+        assert outbox.failed[0]["grace_hours"] == 72
+
+
+def test_voluntary_stripe_cancellation_remains_canceled(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Canceled Network", slug=None, plan="professional"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        subscription = {
+            "id": "sub_canceled",
+            "customer": "cus_canceled",
+            "status": "canceled",
+            "metadata": {"organization_id": organization["id"]},
+            "cancellation_details": {"reason": "cancellation_requested"},
+            "cancel_at_period_end": False,
+            "current_period_start": 1_786_000_000,
+            "current_period_end": 1_788_592_000,
+            "items": {"data": [{
+                "price": {
+                    "id": "price_professional",
+                    "unit_amount": 9900,
+                    "currency": "usd",
+                },
+                "quantity": 1,
+            }]},
+        }
+
+        StripeBillingService()._apply_subscription(subscription)
+
+        result = billing.get_subscription(organization["id"])
+        assert result["status"] == "canceled"
