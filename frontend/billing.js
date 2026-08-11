@@ -152,6 +152,9 @@ async function startCheckout(planCode, includeStreamMonitoring = false) {
 function pricingButton(plan, currentPlan) {
   const button = document.createElement("button");
   const isCurrent = plan.name === currentPlan;
+  const approvedCheckout = latestBillingPayload?.approved_checkout;
+  const isApprovedPlan = approvedCheckout?.plan_code === plan.code;
+  const lockedToApprovedPlan = Boolean(approvedCheckout?.plan_code);
   const isStripeCurrent = (
     isCurrent
     && latestBillingPayload?.subscription?.provider === "stripe"
@@ -175,7 +178,11 @@ function pricingButton(plan, currentPlan) {
     `button ${isCurrent ? "button-secondary" : "button-primary"}`
   );
   button.type = "button";
-  button.textContent = (isCurrent && !canSubscribeCurrent)
+  button.textContent = (lockedToApprovedPlan && !isApprovedPlan)
+    ? billingText("billing.notSelected", "Not Selected")
+    : (isApprovedPlan
+      ? billingText("billing.completeSubscription", "Complete Subscription")
+      : (isCurrent && !canSubscribeCurrent)
     ? (paymentProblem
       ? billingText("billing.updatePayment", "Update Payment")
       : billingText("billing.currentPlan", "Current Plan"))
@@ -185,8 +192,9 @@ function pricingButton(plan, currentPlan) {
           ? billingText("billing.completeSubscription", "Complete Subscription")
           : billingText("billing.subscribe", "Subscribe"))
         : billingText("billing.choosePlan", "Choose Plan"))
-      : billingText("billing.requestPlan", "Request Plan Change"));
-  button.disabled = (isCurrent && !canSubscribeCurrent && !paymentProblem)
+      : billingText("billing.requestPlan", "Request Plan Change")));
+  button.disabled = (lockedToApprovedPlan && !isApprovedPlan)
+    || (isCurrent && !canSubscribeCurrent && !paymentProblem && !isApprovedPlan)
     || (paymentProblem && !payableInvoice)
     || (awaitingPayment && !isCurrent);
   if (!button.disabled) {
@@ -196,12 +204,14 @@ function pricingButton(plan, currentPlan) {
         return;
       }
       if (billingPaymentsAvailable) {
-        const monitoringApproved = (
-          plan.code === "professional"
+        const monitoringApproved = isApprovedPlan
+          ? Boolean(approvedCheckout.include_stream_monitoring)
+          : (
+            plan.code === "professional"
           && (latestBillingPayload?.entitlements?.addons || []).some(
             (addon) => addon.code === "stream_monitoring" && addon.enabled,
           )
-        );
+          );
         startCheckout(plan.code, monitoringApproved);
         return;
       }

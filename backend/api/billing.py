@@ -16,6 +16,14 @@ router = APIRouter(
 )
 
 
+def _requires_approved_checkout(subscription: dict) -> bool:
+    """Keep the approved offer authoritative until Checkout succeeds."""
+    return subscription["provider"] == "stripe_pending" or (
+        subscription["provider"] == "stripe"
+        and subscription["status"] == "canceled"
+    )
+
+
 @router.get("/organizations/{organization_id}")
 def organization_billing(
     organization_id: str,
@@ -50,7 +58,7 @@ def organization_billing(
                         "include_stream_monitoring"
                     ],
                 }
-                if subscription["provider"] == "stripe_pending"
+                if _requires_approved_checkout(subscription)
                 and approved_request
                 else None
             ),
@@ -73,7 +81,7 @@ def create_checkout(
         )
     try:
         subscription = billing_store.get_subscription(organization_id)
-        if subscription["provider"] == "stripe_pending":
+        if _requires_approved_checkout(subscription):
             approved_request = (
                 access_request_store.approved_for_organization(
                     organization_id
