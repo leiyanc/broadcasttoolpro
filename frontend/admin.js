@@ -701,25 +701,32 @@ async function saveOrganization(context) {
         status: status.value,
       }),
     });
-    await adminRequest(
-      `/api/admin/organizations/${organization.id}/subscription`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          status: subscriptionStatus.disabled
-            ? null
-            : subscriptionStatus.value,
-          billing_cycle: billingCycle.disabled ? null : billingCycle.value,
-          current_period_end: !accessEnd.disabled && accessEnd.value
-            ? `${accessEnd.value}T23:59:59Z`
-            : null,
-          cancel_at_period_end: endAccess.disabled
-            ? null
-            : endAccess.checked,
-          lifecycle_note: lifecycleNote.value.trim() || null,
-        }),
-      },
-    );
+    const subscriptionUpdate = {
+      status: subscriptionStatus.disabled ? null : subscriptionStatus.value,
+      billing_cycle: billingCycle.disabled ? null : billingCycle.value,
+      current_period_end: !accessEnd.disabled && accessEnd.value
+        ? `${accessEnd.value}T23:59:59Z`
+        : null,
+      cancel_at_period_end: endAccess.disabled
+        ? null
+        : endAccess.checked,
+      lifecycle_note: lifecycleNote.value.trim() || null,
+    };
+    const hasSubscriptionChange = [
+      subscriptionUpdate.status,
+      subscriptionUpdate.billing_cycle,
+      subscriptionUpdate.current_period_end,
+      subscriptionUpdate.cancel_at_period_end,
+    ].some((value) => value !== null);
+    if (hasSubscriptionChange) {
+      await adminRequest(
+        `/api/admin/organizations/${organization.id}/subscription`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(subscriptionUpdate),
+        },
+      );
+    }
     await Promise.all([
       adminRequest(
         `/api/admin/organizations/${organization.id}`
