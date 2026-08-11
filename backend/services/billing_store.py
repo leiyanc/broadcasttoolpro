@@ -132,6 +132,16 @@ class BillingStore:
                     "ALTER TABLE subscriptions ADD COLUMN "
                     "grace_period_ends_at TEXT"
                 ),
+                "pending_plan_code": (
+                    "ALTER TABLE subscriptions ADD COLUMN pending_plan_code TEXT"
+                ),
+                "pending_stream_monitoring": (
+                    "ALTER TABLE subscriptions ADD COLUMN "
+                    "pending_stream_monitoring INTEGER"
+                ),
+                "pending_change_at": (
+                    "ALTER TABLE subscriptions ADD COLUMN pending_change_at TEXT"
+                ),
             }
             for column, statement in migrations.items():
                 if column not in columns:
@@ -606,6 +616,43 @@ class BillingStore:
             )
         return self.get_subscription(organization_id)
 
+    def schedule_subscription_change(
+        self,
+        organization_id: str,
+        *,
+        plan_code: str,
+        stream_monitoring: bool,
+        change_at: str,
+    ) -> dict:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET pending_plan_code = ?, pending_stream_monitoring = ?,
+                    pending_change_at = ?, updated_at = ?
+                WHERE organization_id = ?
+                """,
+                (
+                    plan_code, int(stream_monitoring), change_at,
+                    _utc_now(), organization_id,
+                ),
+            )
+        return self.get_subscription(organization_id)
+
+    def clear_scheduled_change(self, organization_id: str) -> dict:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET pending_plan_code = NULL,
+                    pending_stream_monitoring = NULL,
+                    pending_change_at = NULL, updated_at = ?
+                WHERE organization_id = ?
+                """,
+                (_utc_now(), organization_id),
+            )
+        return self.get_subscription(organization_id)
+
     def subscription_events(
         self,
         organization_id: str,
@@ -855,6 +902,10 @@ class BillingStore:
             result["cancel_at_period_end"]
         )
         result["payment_waived"] = bool(result["payment_waived"])
+        if result.get("pending_stream_monitoring") is not None:
+            result["pending_stream_monitoring"] = bool(
+                result["pending_stream_monitoring"]
+            )
         grace_end = result.get("grace_period_ends_at")
         grace_end_value = None
         if grace_end:

@@ -60,6 +60,109 @@ def test_checkout_uses_server_side_prices_and_metadata(monkeypatch):
     assert "price" not in captured["metadata"]
 
 
+def test_upgrade_preview_uses_stripe_proration_and_enterprise_includes_monitoring(
+    monkeypatch,
+):
+    _configure(monkeypatch)
+    subscription = {
+        "id": "sub_change",
+        "status": "active",
+        "current_period_end": 1_788_592_000,
+        "items": {"data": [
+            {
+                "id": "si_plan",
+                "price": {"id": "price_professional"},
+                "quantity": 1,
+            },
+            {
+                "id": "si_monitoring",
+                "price": {"id": "price_monitoring"},
+                "quantity": 1,
+            },
+        ]},
+    }
+    monkeypatch.setattr(
+        stripe_module,
+        "billing_store",
+        SimpleNamespace(get_subscription=lambda _organization_id: {
+            "provider": "stripe",
+            "status": "active",
+            "provider_subscription_id": "sub_change",
+        }),
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription,
+        "retrieve",
+        lambda _subscription_id: subscription,
+    )
+    captured = {}
+
+    def preview(**kwargs):
+        captured.update(kwargs)
+        return {"amount_due": 4125, "currency": "usd"}
+
+    monkeypatch.setattr(stripe_module.stripe.Invoice, "create_preview", preview)
+    result = StripeBillingService().preview_subscription_change(
+        organization_id="org_1",
+        plan_code="enterprise",
+        include_stream_monitoring=True,
+    )
+
+    assert result["effective"] == "immediately"
+    assert result["amount_due_now_cents"] == 4125
+    assert result["recurring_monthly_cents"] == 19900
+    assert result["include_stream_monitoring"] is False
+    assert captured["subscription_details"]["items"] == [
+        {"id": "si_plan", "price": "price_enterprise", "quantity": 1},
+        {"id": "si_monitoring", "deleted": True},
+    ]
+
+
+def test_downgrade_preview_is_scheduled_without_proration(monkeypatch):
+    _configure(monkeypatch)
+    subscription = {
+        "id": "sub_change",
+        "current_period_end": 1_788_592_000,
+        "items": {"data": [{
+            "id": "si_plan",
+            "price": {"id": "price_enterprise"},
+            "quantity": 1,
+        }]},
+    }
+    monkeypatch.setattr(
+        stripe_module,
+        "billing_store",
+        SimpleNamespace(get_subscription=lambda _organization_id: {
+            "provider": "stripe",
+            "status": "active",
+            "provider_subscription_id": "sub_change",
+        }),
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription,
+        "retrieve",
+        lambda _subscription_id: subscription,
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.Invoice,
+        "create_preview",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("Downgrades must not create a prorated invoice")
+        ),
+    )
+
+    result = StripeBillingService().preview_subscription_change(
+        organization_id="org_1",
+        plan_code="professional",
+        include_stream_monitoring=True,
+    )
+
+    assert result["effective"] == "period_end"
+    assert result["amount_due_now_cents"] == 0
+    assert result["recurring_monthly_cents"] == 15800
+    assert result["effective_at"].startswith("2026-")
+
+
 def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
     _configure(monkeypatch)
     with TemporaryDirectory() as directory:

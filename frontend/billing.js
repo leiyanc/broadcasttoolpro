@@ -17,9 +17,18 @@ const billingInvoiceTable = document.querySelector(
   "#billing-invoice-table",
 );
 const billingInvoiceBody = document.querySelector("#billing-invoice-body");
+const billingSubscriptionActions = document.querySelector(
+  "#billing-subscription-actions",
+);
+const billingConfirmation = document.querySelector("#billing-confirmation");
+const billingChangeSummary = document.querySelector("#billing-change-summary");
+const billingChangeNotice = document.querySelector("#billing-change-notice");
+const billingChangeBack = document.querySelector("#billing-change-back");
+const billingChangeConfirm = document.querySelector("#billing-change-confirm");
 let billingOrganization = null;
 let latestBillingPayload = null;
 let billingPaymentsAvailable = false;
+let pendingBillingChange = null;
 
 function billingText(key, fallback, values = {}) {
   let text = window.BTPi18n?.t(key, fallback) ?? fallback;
@@ -149,6 +158,130 @@ async function startCheckout(planCode, includeStreamMonitoring = false) {
   }
 }
 
+function changeSummaryRow(label, value) {
+  const row = document.createElement("div");
+  const name = document.createElement("span");
+  const amount = document.createElement("strong");
+  name.textContent = label;
+  amount.textContent = value;
+  row.append(name, amount);
+  return row;
+}
+
+function closeBillingConfirmation() {
+  pendingBillingChange = null;
+  billingConfirmation.classList.add("is-hidden");
+}
+
+async function requestSubscriptionChange(planCode, includeStreamMonitoring) {
+  billingMessage.textContent = "Calculating your exact cost summary…";
+  billingMessage.classList.remove("is-error");
+  try {
+    const preview = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/change/preview`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          plan_code: planCode,
+          include_stream_monitoring: includeStreamMonitoring,
+        }),
+      },
+    );
+    pendingBillingChange = {planCode, includeStreamMonitoring, preview};
+    const planName = {
+      programming_suite: "Programming Suite",
+      professional: "Professional",
+      enterprise: "Enterprise",
+    }[planCode];
+    billingChangeSummary.replaceChildren(
+      changeSummaryRow("New plan", planName),
+      changeSummaryRow(
+        "Stream Monitoring",
+        preview.include_stream_monitoring
+          ? "Added — $59.00/month"
+          : (planCode === "enterprise" ? "Included" : "Not included"),
+      ),
+      changeSummaryRow(
+        "Due now",
+        billingMoney(preview.amount_due_now_cents, preview.currency),
+      ),
+      changeSummaryRow(
+        "New monthly total",
+        billingMoney(preview.recurring_monthly_cents, preview.currency),
+      ),
+      changeSummaryRow(
+        "Effective",
+        preview.effective === "immediately"
+          ? "Immediately"
+          : billingDate(preview.effective_at),
+      ),
+    );
+    billingChangeNotice.textContent = preview.effective === "immediately"
+      ? "The amount due now includes Stripe's prorated charge and credit for the current billing period. Your plan updates after payment succeeds."
+      : "No charge is due today. Your current plan remains active through the end of this billing period, then the new monthly total begins.";
+    billingConfirmation.classList.remove("is-hidden");
+    billingMessage.textContent = "";
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
+async function confirmSubscriptionChange() {
+  if (!pendingBillingChange) return;
+  billingChangeConfirm.disabled = true;
+  billingChangeBack.disabled = true;
+  try {
+    const result = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/change`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          plan_code: pendingBillingChange.planCode,
+          include_stream_monitoring: pendingBillingChange.includeStreamMonitoring,
+        }),
+      },
+    );
+    closeBillingConfirmation();
+    await loadBilling();
+    billingMessage.textContent = result.effective === "immediately"
+      ? "Your subscription was updated immediately."
+      : `Your subscription change is scheduled for ${billingDate(result.change_at)}.`;
+  } catch (error) {
+    billingChangeNotice.textContent = error.message;
+    billingChangeNotice.classList.add("is-error");
+  } finally {
+    billingChangeConfirm.disabled = false;
+    billingChangeBack.disabled = false;
+  }
+}
+
+async function setCancellation(cancel) {
+  const action = cancel ? "cancel" : "resume";
+  if (!window.confirm(
+    cancel
+      ? "Cancel at the end of the current billing period? Access will remain active until then."
+      : "Resume automatic renewal for this subscription?",
+  )) return;
+  billingMessage.textContent = `${action === "cancel" ? "Scheduling cancellation" : "Resuming renewal"}…`;
+  billingMessage.classList.remove("is-error");
+  try {
+    await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/cancellation?cancel=${cancel}`,
+      {method: "POST"},
+    );
+    await loadBilling();
+    billingMessage.textContent = cancel
+      ? "Cancellation scheduled. Access remains active through the current period."
+      : "Automatic renewal resumed.";
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
 function pricingButton(plan, currentPlan) {
   const button = document.createElement("button");
   const isCurrent = plan.name === currentPlan;
@@ -212,7 +345,11 @@ function pricingButton(plan, currentPlan) {
             (addon) => addon.code === "stream_monitoring" && addon.enabled,
           )
           );
-        startCheckout(plan.code, monitoringApproved);
+        if (latestBillingPayload?.subscription?.provider === "stripe") {
+          requestSubscriptionChange(plan.code, monitoringApproved);
+        } else {
+          startCheckout(plan.code, monitoringApproved);
+        }
         return;
       }
       window.dispatchEvent(new CustomEvent("btp:open-support", {
@@ -314,16 +451,26 @@ function renderPricing(pricing) {
         : "button-primary"}`
     );
     button.type = "button";
+    if (isActive) button.title = "Active Add-on — remove at period end";
     button.textContent = isIncluded
       ? billingText("billing.included", "Included")
       : (isActive
-        ? billingText("billing.activeAddon", "Active Add-on")
-        : billingText("billing.requestAddon", "Request Add-on"));
-    button.disabled = isIncluded || isActive;
+        ? "Remove Add-on"
+        : (billingPaymentsAvailable
+          ? "Add Stream Monitoring"
+          : billingText("billing.requestAddon", "Request Add-on")));
+    button.disabled = isIncluded;
     if (!button.disabled) {
       button.addEventListener("click", () => {
-        if (billingPaymentsAvailable && pricing.display_name === "Professional") {
-          startCheckout("professional", true);
+        if (billingPaymentsAvailable) {
+          const planCode = latestBillingPayload.subscription.plan === "starter"
+            ? "programming_suite"
+            : latestBillingPayload.subscription.plan;
+          if (latestBillingPayload.subscription.provider === "stripe") {
+            requestSubscriptionChange(planCode, !isActive);
+          } else {
+            startCheckout(planCode, true);
+          }
           return;
         }
         window.dispatchEvent(new CustomEvent("btp:open-support", {
@@ -473,6 +620,34 @@ function renderBilling(payload) {
       timingDetail,
     ),
   );
+  billingSubscriptionActions.replaceChildren();
+  if (subscription.pending_plan_code) {
+    const pending = document.createElement("p");
+    pending.className = "billing-pending-change";
+    const pendingName = {
+      programming_suite: "Programming Suite",
+      professional: "Professional",
+      enterprise: "Enterprise",
+    }[subscription.pending_plan_code];
+    pending.textContent = (
+      `Scheduled change: ${pendingName}`
+      + (subscription.pending_stream_monitoring ? " + Stream Monitoring" : "")
+      + ` on ${billingDate(subscription.pending_change_at)}.`
+    );
+    billingSubscriptionActions.appendChild(pending);
+  }
+  if (subscription.provider === "stripe" && subscription.status !== "canceled") {
+    const cancellationButton = document.createElement("button");
+    cancellationButton.className = "button button-secondary";
+    cancellationButton.type = "button";
+    cancellationButton.textContent = subscription.cancel_at_period_end
+      ? "Resume Subscription"
+      : "Cancel at Period End";
+    cancellationButton.addEventListener("click", () => {
+      setCancellation(!subscription.cancel_at_period_end);
+    });
+    billingSubscriptionActions.appendChild(cancellationButton);
+  }
   renderPricing(pricing);
 
   const modules = Object.values(payload.entitlements.modules || {});
@@ -582,6 +757,9 @@ billingCloseButton.addEventListener("click", () => {
   billingPanel.classList.add("is-hidden");
   applyOrganizationAccess(currentIdentity);
 });
+
+billingChangeBack.addEventListener("click", closeBillingConfirmation);
+billingChangeConfirm.addEventListener("click", confirmSubscriptionChange);
 
 window.addEventListener("btp:languagechange", () => {
   if (latestBillingPayload) renderBilling(latestBillingPayload);

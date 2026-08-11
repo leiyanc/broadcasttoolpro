@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from stripe import SignatureVerificationError, StripeError
 
 from backend.api.auth import current_user, require_organization_role
-from backend.models.billing import CheckoutSessionCreate
+from backend.models.billing import CheckoutSessionCreate, SubscriptionChangeCreate
 from backend.services.billing_store import billing_store
 from backend.services.access_request_store import access_request_store
 from backend.services.commercial_pricing import commercial_pricing
@@ -134,6 +134,72 @@ def create_checkout(
         raise HTTPException(
             status_code=503,
             detail="Stripe Checkout is temporarily unavailable.",
+        ) from exc
+
+
+@router.post("/organizations/{organization_id}/change")
+def change_subscription(
+    organization_id: str,
+    request: SubscriptionChangeCreate,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.change_subscription(
+            organization_id=organization_id,
+            plan_code=request.plan_code,
+            include_stream_monitoring=request.include_stream_monitoring,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not update the subscription.",
+        ) from exc
+
+
+@router.post("/organizations/{organization_id}/change/preview")
+def preview_subscription_change(
+    organization_id: str,
+    request: SubscriptionChangeCreate,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.preview_subscription_change(
+            organization_id=organization_id,
+            plan_code=request.plan_code,
+            include_stream_monitoring=request.include_stream_monitoring,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not calculate the subscription change.",
+        ) from exc
+
+
+@router.post("/organizations/{organization_id}/cancellation")
+def change_cancellation(
+    organization_id: str,
+    cancel: bool,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        stripe_billing.set_cancel_at_period_end(
+            organization_id=organization_id,
+            cancel=cancel,
+        )
+        return {"cancel_at_period_end": cancel}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not update the cancellation.",
         ) from exc
 
 

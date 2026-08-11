@@ -24,6 +24,11 @@ class CheckoutSessionCreate(BaseModel):
     include_stream_monitoring: bool = False
 
 
+class SubscriptionChangeCreate(BaseModel):
+    plan_code: CheckoutPlan
+    include_stream_monitoring: bool = False
+
+
 class SubscriptionAdminUpdate(BaseModel):
     status: SubscriptionStatus | None = None
     billing_cycle: BillingCycle | None = None

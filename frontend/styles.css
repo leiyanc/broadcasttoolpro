@@ -690,6 +690,67 @@ main {
   line-height: 1.5;
 }
 
+.billing-subscription-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.billing-pending-change {
+  margin-top: 14px;
+  padding: 14px 16px;
+  color: var(--navy);
+  background: var(--blue-light);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.billing-confirmation {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 19, 37, 0.68);
+}
+
+.billing-confirmation.is-hidden {
+  display: none;
+}
+
+.billing-confirmation-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.billing-confirmation-card h3 {
+  margin: 6px 0 18px;
+  color: var(--navy);
+}
+
+.billing-change-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.billing-change-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.billing-change-summary span {
+  color: var(--muted);
+}
+
 [data-theme="dark"] .billing-summary > div,
 [data-theme="dark"] .billing-entitlements > div {
   background: #0d1728;

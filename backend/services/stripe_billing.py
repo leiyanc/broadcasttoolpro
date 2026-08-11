@@ -16,6 +16,17 @@ PLAN_PRICE_ENV = {
 }
 STREAM_PRICE_ENV = "BTP_STRIPE_PRICE_STREAM_MONITORING"
 STRIPE_ACTIVE_STATUSES = {"active", "trialing"}
+PLAN_RANK = {
+    "programming_suite": 1,
+    "professional": 2,
+    "enterprise": 3,
+}
+PLAN_MONTHLY_CENTS = {
+    "programming_suite": 3900,
+    "professional": 9900,
+    "enterprise": 19900,
+}
+STREAM_MONTHLY_CENTS = 5900
 
 
 def _value(data: Any, key: str, default: Any = None) -> Any:
@@ -79,9 +90,12 @@ class StripeBillingService:
         secret_key = self._secret_key()
         if not secret_key or not self.is_configured():
             raise RuntimeError("Stripe Checkout is not available.")
-        if include_stream_monitoring and plan_code != "professional":
+        if include_stream_monitoring and plan_code not in {
+            "programming_suite", "professional"
+        }:
             raise ValueError(
-                "Stream Monitoring can be added to Professional. "
+                "Stream Monitoring can be added to Programming Suite or "
+                "Professional. "
                 "It is already included with Enterprise."
             )
         current = billing_store.get_subscription(organization_id)
@@ -116,6 +130,252 @@ class StripeBillingService:
             subscription_data={"metadata": metadata},
         )
         return session.url
+
+    def _target_prices(
+        self,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> list[str]:
+        if plan_code not in PLAN_RANK:
+            raise ValueError("Unknown subscription plan.")
+        if plan_code == "enterprise":
+            include_stream_monitoring = False
+        elif include_stream_monitoring and plan_code not in {
+            "programming_suite", "professional"
+        }:
+            raise ValueError("Stream Monitoring is not available for this plan.")
+        prices = [self.price_id(plan_code)]
+        if include_stream_monitoring:
+            prices.append(self.stream_price_id())
+        return prices
+
+    def _change_context(
+        self,
+        organization_id: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> tuple[dict, Any, str, bool, bool, list[Any], list[str]]:
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe" or local["status"] not in {
+            "active", "trialing", "past_due"
+        }:
+            raise ValueError("An active Stripe subscription is required.")
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        current_plan, current_monitoring = self._price_codes(subscription)
+        if plan_code == "enterprise":
+            include_stream_monitoring = False
+        if current_plan == plan_code and current_monitoring == include_stream_monitoring:
+            raise ValueError("The requested subscription is already active.")
+        target_prices = self._target_prices(plan_code, include_stream_monitoring)
+        is_upgrade = PLAN_RANK[plan_code] > PLAN_RANK[current_plan] or (
+            PLAN_RANK[plan_code] == PLAN_RANK[current_plan]
+            and include_stream_monitoring
+            and not current_monitoring
+        )
+        items = _value(_value(subscription, "items", {}), "data", []) or []
+        return (
+            local, subscription, current_plan, current_monitoring,
+            is_upgrade, items, target_prices,
+        )
+
+    def _change_items(self, items: list[Any], target_prices: list[str]) -> list[dict]:
+        plan_prices = {self.price_id(code) for code in PLAN_RANK}
+        plan_item = next(
+            item for item in items
+            if _value(_value(item, "price", {}), "id") in plan_prices
+        )
+        changes = [{
+            "id": _value(plan_item, "id"),
+            "price": target_prices[0],
+            "quantity": 1,
+        }]
+        addon_item = next(
+            (
+                item for item in items
+                if _value(_value(item, "price", {}), "id")
+                == self.stream_price_id()
+            ),
+            None,
+        )
+        target_has_addon = len(target_prices) == 2
+        if target_has_addon and not addon_item:
+            changes.append({"price": target_prices[1], "quantity": 1})
+        elif addon_item and not target_has_addon:
+            changes.append({"id": _value(addon_item, "id"), "deleted": True})
+        return changes
+
+    def preview_subscription_change(
+        self,
+        *,
+        organization_id: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> dict:
+        (
+            _local, subscription, _current_plan, _current_monitoring,
+            is_upgrade, items, target_prices,
+        ) = self._change_context(
+            organization_id, plan_code, include_stream_monitoring
+        )
+        normalized_monitoring = plan_code != "enterprise" and include_stream_monitoring
+        recurring_cents = PLAN_MONTHLY_CENTS[plan_code] + (
+            STREAM_MONTHLY_CENTS if normalized_monitoring else 0
+        )
+        period_end = _value(subscription, "current_period_end") or _value(
+            items[0] if items else {}, "current_period_end"
+        )
+        preview = {
+            "effective": "immediately" if is_upgrade else "period_end",
+            "effective_at": (
+                datetime.now(timezone.utc).isoformat()
+                if is_upgrade else _iso_timestamp(period_end)
+            ),
+            "currency": "usd",
+            "amount_due_now_cents": 0,
+            "recurring_monthly_cents": recurring_cents,
+            "plan_code": plan_code,
+            "include_stream_monitoring": normalized_monitoring,
+        }
+        if not is_upgrade:
+            return preview
+        invoice = stripe.Invoice.create_preview(
+            subscription=_value(subscription, "id"),
+            subscription_details={
+                "items": self._change_items(items, target_prices),
+                "proration_behavior": "always_invoice",
+            },
+        )
+        preview["amount_due_now_cents"] = int(
+            _value(invoice, "amount_due", _value(invoice, "total", 0)) or 0
+        )
+        preview["currency"] = _value(invoice, "currency", "usd") or "usd"
+        return preview
+
+    def change_subscription(
+        self,
+        *,
+        organization_id: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> dict:
+        (
+            local, subscription, current_plan, current_monitoring,
+            is_upgrade, items, target_prices,
+        ) = self._change_context(
+            organization_id, plan_code, include_stream_monitoring
+        )
+        if plan_code == "enterprise":
+            include_stream_monitoring = False
+        current_items = [
+            {
+                "price": _value(_value(item, "price", {}), "id"),
+                "quantity": int(_value(item, "quantity", 1) or 1),
+            }
+            for item in items
+        ]
+        if is_upgrade:
+            changes = self._change_items(items, target_prices)
+            schedule_id = _value(subscription, "schedule")
+            if schedule_id:
+                stripe.SubscriptionSchedule.release(schedule_id)
+            stripe.Subscription.modify(
+                _value(subscription, "id"),
+                items=changes,
+                proration_behavior="always_invoice",
+                payment_behavior="pending_if_incomplete",
+                metadata={
+                    "organization_id": organization_id,
+                    "plan_code": plan_code,
+                    "stream_monitoring": str(include_stream_monitoring).lower(),
+                },
+            )
+            billing_store.clear_scheduled_change(organization_id)
+            return {"effective": "immediately"}
+
+        schedule_id = _value(subscription, "schedule")
+        if schedule_id:
+            stripe.SubscriptionSchedule.release(schedule_id)
+            subscription = stripe.Subscription.retrieve(
+                local["provider_subscription_id"]
+            )
+        schedule = stripe.SubscriptionSchedule.create(
+            from_subscription=_value(subscription, "id")
+        )
+        period_start = _value(subscription, "current_period_start") or _value(
+            items[0] if items else {}, "current_period_start"
+        )
+        period_end = _value(subscription, "current_period_end") or _value(
+            items[0] if items else {}, "current_period_end"
+        )
+        target_items = [
+            {"price": price_id, "quantity": 1}
+            for price_id in target_prices
+        ]
+        stripe.SubscriptionSchedule.modify(
+            _value(schedule, "id"),
+            end_behavior="release",
+            phases=[
+                {
+                    "start_date": period_start,
+                    "end_date": period_end,
+                    "items": current_items,
+                    "proration_behavior": "none",
+                },
+                {
+                    "start_date": period_end,
+                    "items": target_items,
+                    "proration_behavior": "none",
+                    "metadata": {
+                        "organization_id": organization_id,
+                        "plan_code": plan_code,
+                        "stream_monitoring": str(
+                            include_stream_monitoring
+                        ).lower(),
+                    },
+                },
+            ],
+        )
+        change_at = _iso_timestamp(period_end)
+        billing_store.schedule_subscription_change(
+            organization_id,
+            plan_code=plan_code,
+            stream_monitoring=include_stream_monitoring,
+            change_at=change_at,
+        )
+        return {"effective": "period_end", "change_at": change_at}
+
+    def set_cancel_at_period_end(
+        self,
+        *,
+        organization_id: str,
+        cancel: bool,
+    ) -> dict:
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe" or not local.get(
+            "provider_subscription_id"
+        ):
+            raise ValueError("An active Stripe subscription is required.")
+        stripe.api_key = self._secret_key()
+        updated = stripe.Subscription.modify(
+            local["provider_subscription_id"],
+            cancel_at_period_end=cancel,
+            proration_behavior="none",
+        )
+        billing_store.update_subscription(
+            organization_id,
+            status=None,
+            billing_cycle=None,
+            current_period_end=None,
+            cancel_at_period_end=cancel,
+            lifecycle_note=(
+                "Customer scheduled subscription cancellation."
+                if cancel else "Customer resumed subscription renewal."
+            ),
+        )
+        return updated
 
     def construct_event(self, payload: bytes, signature: str) -> Any:
         secret = self.webhook_secret()
@@ -225,6 +485,10 @@ class StripeBillingService:
                 _value(subscription, "cancel_at_period_end", False)
             ),
         )
+        pending = previous.get("pending_plan_code")
+        pending_monitoring = previous.get("pending_stream_monitoring")
+        if pending == plan_code and bool(pending_monitoring) == stream_monitoring:
+            billing_store.clear_scheduled_change(organization_id)
         if payment_failure_cancellation:
             already_in_grace = bool(previous.get("grace_period_ends_at"))
             failed = billing_store.mark_payment_failed(

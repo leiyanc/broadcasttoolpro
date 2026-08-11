@@ -502,6 +502,7 @@
           aria-live="polite"
         ></p>
         <div class="billing-summary" id="billing-summary"></div>
+        <div class="billing-subscription-actions" id="billing-subscription-actions"></div>
         <div class="billing-section">
           <p class="eyebrow" data-i18n="billing.pricingEyebrow">PLANS &amp; PRICING</p>
           <h3 data-i18n="billing.pricingTitle">Choose the right operating package</h3>
@@ -542,6 +543,18 @@
           provider is connected. No payment method is stored by Broadcast Tool
           Pro at this stage.
         </p>
+        <div class="billing-confirmation is-hidden" id="billing-confirmation" role="dialog" aria-modal="true" aria-labelledby="billing-confirmation-title">
+          <div class="billing-confirmation-card">
+            <p class="eyebrow">CONFIRM SUBSCRIPTION CHANGE</p>
+            <h3 id="billing-confirmation-title">Review your cost summary</h3>
+            <div class="billing-change-summary" id="billing-change-summary"></div>
+            <p class="section-copy" id="billing-change-notice"></p>
+            <div class="form-actions">
+              <button class="button button-secondary" id="billing-change-back" type="button">Go Back</button>
+              <button class="button button-primary" id="billing-change-confirm" type="button">Confirm Change</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section
