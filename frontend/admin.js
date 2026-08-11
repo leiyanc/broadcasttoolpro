@@ -96,6 +96,34 @@ async function adminRequest(url, options = {}) {
   return payload;
 }
 
+function adminDate(value) {
+  return value ? new Date(value).toLocaleDateString() : "—";
+}
+
+function subscriptionTiming(subscription) {
+  if (!subscription) return "—";
+  if (subscription.provider === "stripe_pending") {
+    return "Begins after Stripe Checkout";
+  }
+  if (subscription.access_state === "payment_grace") {
+    return `Grace ends ${adminDate(subscription.grace_period_ends_at)}`;
+  }
+  if (subscription.access_state === "payment_suspended") {
+    return `Suspended after ${adminDate(subscription.grace_period_ends_at)}`;
+  }
+  if (subscription.provider === "complimentary") {
+    return `Access ends ${adminDate(
+      subscription.waiver_expires_at || subscription.current_period_end,
+    )}`;
+  }
+  if (subscription.provider === "stripe") {
+    return subscription.cancel_at_period_end
+      ? `Access ends ${adminDate(subscription.current_period_end)}`
+      : `Renews ${adminDate(subscription.current_period_end)} ↻`;
+  }
+  return adminDate(subscription.current_period_end);
+}
+
 function adminCell(row, value) {
   const cell = document.createElement("td");
   cell.textContent = value;
@@ -390,16 +418,15 @@ function renderAccessRequests(requests) {
           ? "Awaiting Stripe payment"
           : subscription.provider === "complimentary"
             ? "Complimentary access"
+            : subscription.access_state === "payment_grace"
+              ? `Past due · ${subscription.payment_grace_hours || 72}-hour grace`
+              : subscription.access_state === "payment_suspended"
+                ? "Payment suspended"
             : subscription.provider === "stripe"
-              ? "Paid via Stripe"
+              ? "Active via Stripe"
               : subscription.status;
       adminCell(row, paymentLabel);
-      adminCell(
-        row,
-        subscription?.waiver_expires_at
-          ? new Date(subscription.waiver_expires_at).toLocaleDateString()
-          : "—",
-      );
+      adminCell(row, subscriptionTiming(subscription));
       adminCell(row, subscription?.waiver_reason || "—");
       adminCell(
         row,
@@ -409,11 +436,11 @@ function renderAccessRequests(requests) {
       return;
     }
     const planCell = document.createElement("td");
-    const plan = adminSelect(
-      ["programming_suite", "professional", "enterprise"],
-      requestedPlan,
-    );
-    plan.className = "admin-plan-select";
+    const plan = document.createElement("input");
+    plan.type = "hidden";
+    plan.value = requestedPlan;
+    const approvedPlan = document.createElement("strong");
+    approvedPlan.textContent = requestedPlan.replaceAll("_", " ");
     const monitoringLabel = document.createElement("label");
     monitoringLabel.className = "admin-inline-checkbox";
     const monitoring = document.createElement("input");
@@ -425,13 +452,8 @@ function renderAccessRequests(requests) {
     const monitoringText = document.createElement("span");
     monitoringText.textContent = "Stream Monitoring";
     monitoringLabel.append(monitoring, monitoringText);
-    const updateMonitoringChoice = () => {
-      monitoring.disabled = plan.value !== "professional";
-      if (monitoring.disabled) monitoring.checked = false;
-    };
-    plan.addEventListener("change", updateMonitoringChoice);
-    updateMonitoringChoice();
-    planCell.append(plan, monitoringLabel);
+    monitoring.disabled = true;
+    planCell.append(approvedPlan, plan, monitoringLabel);
     row.appendChild(planCell);
     const paymentCell = document.createElement("td");
     const payment = adminSelect(
@@ -449,6 +471,10 @@ function renderAccessRequests(requests) {
     defaultExpiration.setDate(defaultExpiration.getDate() + 30);
     expiration.value = defaultExpiration.toISOString().slice(0, 10);
     expirationCell.appendChild(expiration);
+    const recurringNote = document.createElement("small");
+    recurringNote.className = "admin-row-status";
+    recurringNote.textContent = "Renews automatically after payment ↻";
+    expirationCell.appendChild(recurringNote);
     row.appendChild(expirationCell);
     const reasonCell = document.createElement("td");
     const reason = document.createElement("input");
@@ -461,8 +487,11 @@ function renderAccessRequests(requests) {
     payment.addEventListener("change", () => {
       const complimentary = payment.value === "Complimentary access";
       expiration.disabled = !complimentary;
+      expiration.classList.toggle("is-hidden", !complimentary);
+      recurringNote.classList.toggle("is-hidden", complimentary);
       reason.disabled = !complimentary;
     });
+    expiration.classList.add("is-hidden");
     const actionCell = document.createElement("td");
     const actionGroup = document.createElement("div");
     actionGroup.className = "admin-action-group";
@@ -677,12 +706,16 @@ async function saveOrganization(context) {
       {
         method: "PATCH",
         body: JSON.stringify({
-          status: subscriptionStatus.value,
-          billing_cycle: billingCycle.value,
-          current_period_end: accessEnd.value
+          status: subscriptionStatus.disabled
+            ? null
+            : subscriptionStatus.value,
+          billing_cycle: billingCycle.disabled ? null : billingCycle.value,
+          current_period_end: !accessEnd.disabled && accessEnd.value
             ? `${accessEnd.value}T23:59:59Z`
             : null,
-          cancel_at_period_end: endAccess.checked,
+          cancel_at_period_end: endAccess.disabled
+            ? null
+            : endAccess.checked,
           lifecycle_note: lifecycleNote.value.trim() || null,
         }),
       },
@@ -740,6 +773,10 @@ function renderOrganizations(organizations) {
       organization.plan,
     );
     planCell.replaceChildren(plan);
+    const stripeManaged = ["stripe", "stripe_pending"].includes(
+      organization.subscription.provider,
+    );
+    plan.disabled = stripeManaged;
     const statusCell = adminCell(row, "");
     const status = adminSelect(
       ["active", "suspended"],
@@ -752,6 +789,7 @@ function renderOrganizations(organizations) {
       organization.subscription.status,
     );
     subscriptionStatusCell.replaceChildren(subscriptionStatus);
+    subscriptionStatus.disabled = stripeManaged;
     adminCell(
       row,
       organization.entitlements.access.active ? "Enabled" : "Blocked",
@@ -762,6 +800,7 @@ function renderOrganizations(organizations) {
       organization.subscription.billing_cycle,
     );
     billingCycleCell.replaceChildren(billingCycle);
+    billingCycle.disabled = stripeManaged;
     adminCell(row, organization.member_count);
     adminCell(row, organization.channel_count);
     const trafficCell = adminCell(row, "");
@@ -789,17 +828,31 @@ function renderOrganizations(organizations) {
       ? "Included"
       : (monitoring.input.checked ? "Enabled" : "Disabled");
     monitoringCell.replaceChildren(monitoring.control);
-    adminCell(
-      row,
-      organization.subscription.payment_waived ? "Waived" : "Paid",
-    );
+    const paymentLabel = organization.subscription.payment_waived
+      ? "Complimentary"
+      : organization.subscription.access_state === "awaiting_payment"
+        ? "Awaiting payment"
+        : organization.subscription.access_state === "payment_grace"
+          ? "Past due · grace"
+          : organization.subscription.access_state === "payment_suspended"
+            ? "Suspended"
+            : organization.subscription.provider === "stripe"
+              ? "Stripe active"
+              : organization.subscription.status;
+    adminCell(row, paymentLabel);
     const accessEndCell = adminCell(row, "");
     const accessEnd = document.createElement("input");
     accessEnd.type = "date";
     accessEnd.value = organization.subscription.current_period_end
       ? organization.subscription.current_period_end.slice(0, 10)
       : "";
-    accessEndCell.replaceChildren(accessEnd);
+    const accessTiming = document.createElement("small");
+    accessTiming.className = "admin-row-status";
+    accessTiming.textContent = subscriptionTiming(organization.subscription);
+    const fixedAccess = organization.subscription.provider === "complimentary";
+    accessEnd.disabled = !fixedAccess;
+    accessEnd.classList.toggle("is-hidden", !fixedAccess);
+    accessEndCell.replaceChildren(accessTiming, accessEnd);
     const endAccessCell = adminCell(row, "");
     const endAccess = addonToggle(
       organization.subscription.cancel_at_period_end,
@@ -807,6 +860,12 @@ function renderOrganizations(organizations) {
         ? "Ends on date"
         : "No scheduled end",
     );
+    endAccess.input.disabled = stripeManaged || fixedAccess;
+    if (stripeManaged) {
+      endAccess.control.querySelector("span").textContent = "Managed by Stripe";
+    } else if (fixedAccess) {
+      endAccess.control.querySelector("span").textContent = "Fixed end date";
+    }
     endAccessCell.replaceChildren(endAccess.control);
     const lifecycleNoteCell = adminCell(row, "");
     const lifecycleNote = document.createElement("input");

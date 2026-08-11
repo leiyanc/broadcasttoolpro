@@ -241,7 +241,21 @@ the user identity, organization, configuration, and history. A subscription
 marked to cancel at period end remains usable through its recorded period end
 and is blocked automatically afterward. The Super Admin organization view must
 show the account owner, organization status, subscription status, effective
-product access, and access end date as separate fields.
+product access, and subscription timing as separate fields. Recurring Stripe
+subscriptions display their next renewal rather than an artificial access-end
+date. Complimentary access always has a mandatory fixed expiration. A Stripe
+subscription set to cancel at period end displays that date as **Access Ends**.
+
+A failed recurring payment starts a configurable grace period of 72 hours by
+default. Product access remains available during grace. Broadcast Tool Pro
+queues an immediate payment-failure notice, a 24-hour reminder, and a suspension
+notice. If payment is still unresolved when grace expires, module entitlements
+are blocked automatically while identities, files, history, and settings remain
+preserved. A confirmed Stripe payment clears the failure state, cancels pending
+grace notifications, restores access automatically, and queues a recovery
+confirmation. Stripe remains authoritative for recurring plan, billing-cycle,
+renewal, and cancellation state; these fields are read-only in the Control
+Panel for provider-managed subscriptions.
 
 ## Account Access and Trial Lifecycle
 

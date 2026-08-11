@@ -29,6 +29,8 @@ services:
         value: "14"
       - key: BTP_TEMP_RETENTION_HOURS
         value: "24"
+      - key: BTP_PAYMENT_GRACE_HOURS
+        value: "72"
       - key: BTP_EMAIL_PROVIDER
         value: ses
       - key: BTP_APPLICATION_URL

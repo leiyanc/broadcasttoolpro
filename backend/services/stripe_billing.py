@@ -5,6 +5,8 @@ from typing import Any
 import stripe
 
 from backend.services.billing_store import billing_store
+from backend.services.email_outbox import email_outbox_store
+from backend.services.identity_store import identity_store
 
 
 PLAN_PRICE_ENV = {
@@ -31,6 +33,13 @@ def _iso_timestamp(value: Any, fallback: datetime | None = None) -> str:
 
 
 class StripeBillingService:
+    def payment_grace_hours(self) -> int:
+        try:
+            value = int(os.getenv("BTP_PAYMENT_GRACE_HOURS", "72"))
+        except ValueError:
+            value = 72
+        return min(max(value, 1), 168)
+
     def _secret_key(self) -> str:
         return os.getenv("BTP_STRIPE_SECRET_KEY", "").strip()
 
@@ -128,8 +137,12 @@ class StripeBillingService:
             "customer.subscription.deleted",
         }:
             self._apply_subscription(data)
-        elif event_type in {"invoice.paid", "invoice.payment_failed"}:
-            self._apply_invoice(data)
+        elif event_type in {
+            "invoice.paid",
+            "invoice.payment_failed",
+            "invoice.payment_action_required",
+        }:
+            self._apply_invoice(data, event_type=event_type)
         billing_store.record_provider_event(event_id, event_type)
 
     def _price_codes(self, subscription: Any) -> tuple[str, bool]:
@@ -211,15 +224,39 @@ class StripeBillingService:
         details = _value(parent, "subscription_details", {}) or {}
         return _value(details, "subscription")
 
-    def _apply_invoice(self, invoice: Any) -> None:
+    def _billing_recipient(self, organization_id: str, invoice: Any) -> str:
+        invoice_email = _value(invoice, "customer_email", "") or ""
+        if invoice_email.strip():
+            return invoice_email.strip().lower()
+        members = identity_store.list_members(organization_id)
+        preferred = next(
+            (
+                member for member in members
+                if member["status"] == "active"
+                and member["role"] in {"owner", "admin"}
+            ),
+            None,
+        )
+        return preferred["email"] if preferred else ""
+
+    def _apply_invoice(self, invoice: Any, *, event_type: str) -> None:
         subscription_id = self._invoice_subscription_id(invoice)
         if not subscription_id:
             return
         stripe.api_key = self._secret_key()
         subscription = stripe.Subscription.retrieve(subscription_id)
-        self._apply_subscription(subscription)
         organization_id = billing_store.organization_for_provider_subscription(
             subscription_id
+        )
+        previous = (
+            billing_store.get_subscription(organization_id)
+            if organization_id else None
+        )
+        self._apply_subscription(subscription)
+        organization_id = organization_id or (
+            billing_store.organization_for_provider_subscription(
+                subscription_id
+            )
         )
         if not organization_id:
             raise ValueError(
@@ -244,6 +281,41 @@ class StripeBillingService:
             ),
             hosted_invoice_url=_value(invoice, "hosted_invoice_url"),
         )
+        recipient = self._billing_recipient(organization_id, invoice)
+        if event_type in {
+            "invoice.payment_failed",
+            "invoice.payment_action_required",
+        }:
+            already_in_grace = bool(
+                previous and previous.get("grace_period_ends_at")
+            )
+            failed = billing_store.mark_payment_failed(
+                organization_id,
+                grace_hours=self.payment_grace_hours(),
+            )
+            if recipient and not already_in_grace:
+                email_outbox_store.schedule_payment_failure_lifecycle(
+                    organization_id=organization_id,
+                    recipient_email=recipient,
+                    grace_ends_at=failed["grace_period_ends_at"],
+                    grace_hours=self.payment_grace_hours(),
+                    hosted_invoice_url=_value(
+                        invoice, "hosted_invoice_url"
+                    ),
+                )
+        elif event_type == "invoice.paid":
+            recovered = bool(
+                previous and previous.get("grace_period_ends_at")
+            )
+            billing_store.clear_payment_failure(organization_id)
+            email_outbox_store.cancel_payment_failure_lifecycle(
+                organization_id=organization_id,
+            )
+            if recipient and recovered:
+                email_outbox_store.schedule_payment_recovered(
+                    organization_id=organization_id,
+                    recipient_email=recipient,
+                )
 
 
 stripe_billing = StripeBillingService()

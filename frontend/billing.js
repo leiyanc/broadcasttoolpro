@@ -87,6 +87,17 @@ function billingDate(value) {
   });
 }
 
+function billingDateTime(value) {
+  if (!value) return billingText("billing.notScheduled", "Not scheduled");
+  return new Date(value).toLocaleString(billingLocale(), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function billingMoney(cents, currency) {
   if (cents === null || cents === undefined) {
     return billingText("billing.pricingPending", "Pricing pending");
@@ -144,9 +155,14 @@ function pricingButton(plan, currentPlan) {
   const isStripeCurrent = (
     isCurrent
     && latestBillingPayload?.subscription?.provider === "stripe"
-    && ["active", "trialing"].includes(
-      latestBillingPayload?.subscription?.status,
-    )
+    && latestBillingPayload?.subscription?.status !== "canceled"
+  );
+  const paymentProblem = isStripeCurrent && [
+    "payment_grace", "payment_suspended",
+  ].includes(latestBillingPayload?.subscription?.access_state);
+  const payableInvoice = (latestBillingPayload?.invoices || []).find(
+    (invoice) => invoice.hosted_invoice_url
+      && !["paid", "void"].includes(invoice.status),
   );
   const canSubscribeCurrent = (
     isCurrent && billingPaymentsAvailable && !isStripeCurrent
@@ -160,7 +176,9 @@ function pricingButton(plan, currentPlan) {
   );
   button.type = "button";
   button.textContent = (isCurrent && !canSubscribeCurrent)
-    ? billingText("billing.currentPlan", "Current Plan")
+    ? (paymentProblem
+      ? billingText("billing.updatePayment", "Update Payment")
+      : billingText("billing.currentPlan", "Current Plan"))
     : (billingPaymentsAvailable
       ? (isCurrent
         ? (awaitingPayment
@@ -168,10 +186,15 @@ function pricingButton(plan, currentPlan) {
           : billingText("billing.subscribe", "Subscribe"))
         : billingText("billing.choosePlan", "Choose Plan"))
       : billingText("billing.requestPlan", "Request Plan Change"));
-  button.disabled = (isCurrent && !canSubscribeCurrent)
+  button.disabled = (isCurrent && !canSubscribeCurrent && !paymentProblem)
+    || (paymentProblem && !payableInvoice)
     || (awaitingPayment && !isCurrent);
   if (!button.disabled) {
     button.addEventListener("click", () => {
+      if (paymentProblem && payableInvoice) {
+        window.location.assign(payableInvoice.hosted_invoice_url);
+        return;
+      }
       if (billingPaymentsAvailable) {
         const monitoringApproved = (
           plan.code === "professional"
@@ -315,12 +338,114 @@ function renderBilling(payload) {
   latestBillingPayload = payload;
   billingPaymentsAvailable = Boolean(payload.payments_available);
   const subscription = payload.subscription;
-  const pricing = payload.pricing;
+  const approvedPlan = payload.approved_checkout?.plan_code;
+  const pricing = (
+    approvedPlan && approvedPlan !== payload.pricing.plan_code
+      ? {
+          ...payload.pricing,
+          plan_code: approvedPlan,
+          display_name: {
+            programming_suite: "Programming Suite",
+            professional: "Professional",
+            enterprise: "Enterprise",
+          }[approvedPlan],
+          monthly_cents: {
+            programming_suite: 3900,
+            professional: 9900,
+            enterprise: 19900,
+          }[approvedPlan],
+          billing_total_cents: {
+            programming_suite: 3900,
+            professional: 9900,
+            enterprise: 19900,
+          }[approvedPlan] + (
+            payload.approved_checkout?.include_stream_monitoring ? 5900 : 0
+          ),
+        }
+      : payload.pricing
+  );
+  latestBillingPayload = {...payload, pricing};
   const complimentary = subscription.payment_waived;
   const awaitingPayment = (
     subscription.provider === "stripe_pending"
     && subscription.status === "past_due"
   );
+  const paymentGrace = subscription.access_state === "payment_grace";
+  const paymentSuspended = (
+    subscription.access_state === "payment_suspended"
+  );
+  let subscriptionValue = billingStatus(subscription.status);
+  let subscriptionDetail = billingText(
+    "billing.billingCycle",
+    "{cycle} billing",
+    {cycle: billingStatus(subscription.billing_cycle)},
+  );
+  if (complimentary) {
+    subscriptionValue = billingText(
+      "billing.complimentary",
+      "Complimentary access",
+    );
+    subscriptionDetail = billingText(
+      "billing.paymentWaived",
+      "Payment waived by Broadcast Tool Pro",
+    );
+  } else if (awaitingPayment) {
+    subscriptionValue = billingText(
+      "billing.awaitingPayment",
+      "Awaiting Payment",
+    );
+    subscriptionDetail = billingText(
+      "billing.paymentRequired",
+      "Complete secure Stripe Checkout to activate access",
+    );
+  } else if (paymentGrace) {
+    subscriptionValue = billingText(
+      "billing.paymentPastDue",
+      "Payment Past Due",
+    );
+    subscriptionDetail = billingText(
+      "billing.graceActive",
+      "Access remains active during the {hours}-hour grace period",
+      {hours: subscription.payment_grace_hours || 72},
+    );
+  } else if (paymentSuspended) {
+    subscriptionValue = billingText(
+      "billing.paymentSuspended",
+      "Payment Suspended",
+    );
+    subscriptionDetail = billingText(
+      "billing.restorePayment",
+      "Pay the open invoice to restore access automatically",
+    );
+  }
+  let timingLabel = billingText("billing.renews", "Renews");
+  let timingValue = billingDate(subscription.current_period_end);
+  let timingDetail = `${billingMoney(
+    pricing.billing_total_cents,
+    pricing.currency,
+  )}/${pricing.billing_period}`;
+  if (awaitingPayment) {
+    timingLabel = billingText("billing.startsAfterPayment", "Starts After Payment");
+    timingValue = billingText("billing.checkoutRequired", "Stripe Checkout required");
+    timingDetail = billingText("billing.recurringAfterPayment", "Renews automatically after activation");
+  } else if (paymentGrace || paymentSuspended) {
+    timingLabel = paymentGrace
+      ? billingText("billing.graceEnds", "Grace Ends")
+      : billingText("billing.suspendedSince", "Suspended Since");
+    timingValue = billingDateTime(subscription.grace_period_ends_at);
+    timingDetail = billingText(
+      "billing.dataPreserved",
+      "Files, history, and settings remain preserved",
+    );
+  } else if (complimentary || subscription.cancel_at_period_end) {
+    timingLabel = billingText("billing.accessUntil", "Access Until");
+    timingValue = billingDate(
+      subscription.waiver_expires_at || subscription.current_period_end,
+    );
+    timingDetail = complimentary
+      ? billingText("billing.noPayment", "No payment due")
+      : billingText("billing.willNotRenew", "Will not renew automatically");
+  }
   billingSummary.replaceChildren(
     billingCard(
       billingText("billing.plan", "Plan"),
@@ -329,39 +454,13 @@ function renderBilling(payload) {
     ),
     billingCard(
       billingText("billing.subscription", "Subscription"),
-      complimentary
-        ? billingText("billing.complimentary", "Complimentary access")
-        : awaitingPayment
-          ? billingText("billing.awaitingPayment", "Awaiting Payment")
-        : billingStatus(subscription.status),
-      complimentary
-        ? billingText(
-          "billing.paymentWaived",
-          "Payment waived by Broadcast Tool Pro",
-        )
-        : awaitingPayment
-          ? billingText(
-            "billing.paymentRequired",
-            "Complete secure Stripe Checkout to activate access",
-          )
-          : billingText("billing.billingCycle", "{cycle} billing", {
-          cycle: billingStatus(subscription.billing_cycle),
-          }),
+      subscriptionValue,
+      subscriptionDetail,
     ),
     billingCard(
-      complimentary || subscription.cancel_at_period_end
-        ? billingText("billing.accessUntil", "Access Until")
-        : billingText("billing.renews", "Renews"),
-      billingDate(
-        subscription.waiver_expires_at
-        || subscription.current_period_end,
-      ),
-      complimentary
-        ? billingText("billing.noPayment", "No payment due")
-        : `${billingMoney(
-          pricing.billing_total_cents,
-          pricing.currency,
-        )}/${pricing.billing_period}`,
+      timingLabel,
+      timingValue,
+      timingDetail,
     ),
   );
   renderPricing(pricing);

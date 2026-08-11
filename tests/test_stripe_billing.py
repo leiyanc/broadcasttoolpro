@@ -117,3 +117,96 @@ def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
         assert access["modules"]["prelogs"]["enabled"] is True
         assert access["modules"]["hls_monitor"]["enabled"] is True
         assert billing.provider_event_processed("evt_subscription_1") is True
+
+
+def test_invoice_failure_starts_grace_and_payment_restores_access(monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setenv("BTP_PAYMENT_GRACE_HOURS", "72")
+
+    class RecordingOutbox:
+        def __init__(self):
+            self.failed = []
+            self.recovered = []
+            self.canceled = []
+
+        def schedule_payment_failure_lifecycle(self, **kwargs):
+            self.failed.append(kwargs)
+
+        def cancel_payment_failure_lifecycle(self, **kwargs):
+            self.canceled.append(kwargs)
+
+        def schedule_payment_recovered(self, **kwargs):
+            self.recovered.append(kwargs)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Renewal Network", slug=None, plan="professional"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        outbox = RecordingOutbox()
+        monkeypatch.setattr(stripe_module, "email_outbox_store", outbox)
+        monkeypatch.setattr(
+            stripe_module.identity_store,
+            "list_members",
+            lambda _organization_id: [],
+        )
+        status = {"value": "past_due"}
+
+        def subscription():
+            return {
+                "id": "sub_renewal",
+                "customer": "cus_renewal",
+                "status": status["value"],
+                "metadata": {"organization_id": organization["id"]},
+                "cancel_at_period_end": False,
+                "current_period_start": 1_786_000_000,
+                "current_period_end": 1_788_592_000,
+                "items": {"data": [{
+                    "price": {
+                        "id": "price_professional",
+                        "unit_amount": 9900,
+                        "currency": "usd",
+                    },
+                    "quantity": 1,
+                }]},
+            }
+
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _subscription_id: subscription(),
+        )
+        invoice = {
+            "id": "in_renewal",
+            "subscription": "sub_renewal",
+            "customer_email": "owner@example.com",
+            "status": "open",
+            "currency": "usd",
+            "amount_due": 9900,
+            "amount_paid": 0,
+            "created": 1_786_000_000,
+            "hosted_invoice_url": "https://invoice.stripe.test/renewal",
+        }
+        service = StripeBillingService()
+
+        service._apply_invoice(
+            invoice, event_type="invoice.payment_failed"
+        )
+        failed = billing.get_subscription(organization["id"])
+        assert failed["access_state"] == "payment_grace"
+        assert outbox.failed[0]["grace_hours"] == 72
+
+        status["value"] = "active"
+        invoice["status"] = "paid"
+        invoice["amount_paid"] = 9900
+        service._apply_invoice(invoice, event_type="invoice.paid")
+        recovered = billing.get_subscription(organization["id"])
+        assert recovered["access_state"] == "active"
+        assert len(outbox.canceled) == 1
+        assert len(outbox.recovered) == 1

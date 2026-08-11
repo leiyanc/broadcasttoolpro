@@ -771,7 +771,7 @@ class IdentityStore:
         email: str,
         plan: str,
     ) -> tuple[dict, dict, str]:
-        if plan not in {"professional", "enterprise"}:
+        if plan not in {"starter", "professional", "enterprise"}:
             raise ValueError("A valid paid plan is required.")
         now = datetime.now(timezone.utc)
         organization_id = str(uuid4())
@@ -904,7 +904,7 @@ class IdentityStore:
         email: str,
         plan: str,
     ) -> tuple[dict, dict]:
-        if plan not in {"professional", "enterprise"}:
+        if plan not in {"starter", "professional", "enterprise"}:
             raise ValueError("A valid paid plan is required.")
         existing = self.existing_customer_account(email)
         if existing is None:

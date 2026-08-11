@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -119,3 +119,49 @@ def test_email_html_keeps_a_text_brand_fallback(monkeypatch):
 
     assert "Broadcast Tool Pro</div>" in content
     assert "<img" not in content
+
+
+def test_payment_failure_schedules_grace_notifications_and_recovery():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "email.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Grace Email Test", slug=None, plan="professional"
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+        grace_end = (
+            datetime.now(timezone.utc) + timedelta(hours=72)
+        ).isoformat()
+
+        created = outbox.schedule_payment_failure_lifecycle(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            grace_ends_at=grace_end,
+            grace_hours=72,
+            hosted_invoice_url="https://invoice.stripe.test/pay",
+        )
+
+        assert len(created) == 3
+        assert "72-hour" in created[0]["subject"]
+        assert "invoice.stripe.test" in created[0]["body_text"]
+
+        outbox.cancel_payment_failure_lifecycle(
+            organization_id=organization["id"]
+        )
+        outbox.schedule_payment_recovered(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+        )
+        messages = outbox.list_for_organization(organization["id"])
+        statuses = {
+            message["template_code"]: message["status"]
+            for message in messages
+        }
+        assert any(code.startswith("payment_recovered_") for code in statuses)
+        assert all(
+            status == "canceled"
+            for code, status in statuses.items()
+            if code.startswith(("payment_grace_24h_", "payment_suspended_"))
+        )

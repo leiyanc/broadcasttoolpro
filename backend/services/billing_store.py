@@ -125,10 +125,90 @@ class BillingStore:
                 "plan_code": (
                     "ALTER TABLE subscriptions ADD COLUMN plan_code TEXT"
                 ),
+                "payment_failed_at": (
+                    "ALTER TABLE subscriptions ADD COLUMN payment_failed_at TEXT"
+                ),
+                "grace_period_ends_at": (
+                    "ALTER TABLE subscriptions ADD COLUMN "
+                    "grace_period_ends_at TEXT"
+                ),
             }
             for column, statement in migrations.items():
                 if column not in columns:
                     connection.execute(statement)
+
+    def mark_payment_failed(
+        self,
+        organization_id: str,
+        *,
+        grace_hours: int,
+    ) -> dict:
+        if grace_hours < 1:
+            raise ValueError("Payment grace period must be positive.")
+        now = datetime.now(timezone.utc)
+        current = self.get_subscription(organization_id)
+        existing_end = current.get("grace_period_ends_at")
+        if existing_end:
+            return current
+        grace_end = now + timedelta(hours=grace_hours)
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE subscriptions
+                SET status = 'past_due', payment_failed_at = ?,
+                    grace_period_ends_at = ?, updated_at = ?
+                WHERE organization_id = ? AND provider = 'stripe'
+                """,
+                (
+                    now.isoformat(), grace_end.isoformat(),
+                    now.isoformat(), organization_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError(
+                    "Payment failure requires an active Stripe subscription."
+                )
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, event_type, details, created_at
+                ) VALUES (?, ?, 'payment_failed', ?, ?)
+                """,
+                (
+                    str(uuid4()), organization_id,
+                    f"Payment failed. Access grace period ends in "
+                    f"{grace_hours} hours.", now.isoformat(),
+                ),
+            )
+        return self.get_subscription(organization_id)
+
+    def clear_payment_failure(self, organization_id: str) -> tuple[dict, bool]:
+        current = self.get_subscription(organization_id)
+        recovered = bool(current.get("grace_period_ends_at"))
+        now = _utc_now()
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET payment_failed_at = NULL, grace_period_ends_at = NULL,
+                    updated_at = ?
+                WHERE organization_id = ?
+                """,
+                (now, organization_id),
+            )
+            if recovered:
+                connection.execute(
+                    """
+                    INSERT INTO subscription_events (
+                        id, organization_id, event_type, details, created_at
+                    ) VALUES (?, ?, 'payment_recovered', ?, ?)
+                    """,
+                    (
+                        str(uuid4()), organization_id,
+                        "Payment recovered and full access restored.", now,
+                    ),
+                )
+        return self.get_subscription(organization_id), recovered
 
     def ensure_subscription(self, organization_id: str) -> dict:
         with self._connection() as connection:
@@ -310,6 +390,8 @@ class BillingStore:
                     waiver_reason = NULL,
                     waiver_expires_at = NULL,
                     waived_by_user_id = NULL,
+                    payment_failed_at = NULL,
+                    grace_period_ends_at = NULL,
                     updated_at = excluded.updated_at
                 """,
                 (
@@ -335,6 +417,37 @@ class BillingStore:
                     f"Stripe payment requested for {plan_code}.",
                     now.isoformat(),
                 ),
+            )
+        return self.get_subscription(organization_id)
+
+    def revise_pending_stripe_subscription(
+        self,
+        organization_id: str,
+        *,
+        plan_code: str,
+        amount_cents: int,
+    ) -> dict:
+        if plan_code not in {
+            "programming_suite", "professional", "enterprise"
+        }:
+            raise ValueError("A valid subscription plan is required.")
+        internal_plan = (
+            "starter" if plan_code == "programming_suite" else plan_code
+        )
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE subscriptions
+                SET plan_code = ?, amount_cents = ?, updated_at = ?
+                WHERE organization_id = ? AND provider = 'stripe_pending'
+                """,
+                (plan_code, amount_cents, _utc_now(), organization_id),
+            )
+            if cursor.rowcount == 0:
+                raise ValueError("No pending Stripe subscription was found.")
+            connection.execute(
+                "UPDATE organizations SET plan = ?, updated_at = ? WHERE id = ?",
+                (internal_plan, _utc_now(), organization_id),
             )
         return self.get_subscription(organization_id)
 
@@ -576,7 +689,7 @@ class BillingStore:
         }:
             raise ValueError("Stripe subscription contains an unknown plan.")
         internal_plan = (
-            "enterprise" if plan_code == "enterprise" else "professional"
+            "starter" if plan_code == "programming_suite" else plan_code
         )
         traffic_enabled = plan_code == "professional"
         if plan_code == "enterprise":
@@ -640,6 +753,14 @@ class BillingStore:
                     waiver_reason = NULL,
                     waiver_expires_at = NULL,
                     waived_by_user_id = NULL,
+                    payment_failed_at = CASE
+                        WHEN excluded.status = 'active' THEN NULL
+                        ELSE subscriptions.payment_failed_at
+                    END,
+                    grace_period_ends_at = CASE
+                        WHEN excluded.status = 'active' THEN NULL
+                        ELSE subscriptions.grace_period_ends_at
+                    END,
                     updated_at = excluded.updated_at
                 """,
                 (
@@ -690,6 +811,26 @@ class BillingStore:
     ) -> None:
         subscription = self.get_subscription(organization_id)
         with self._connection() as connection:
+            existing = connection.execute(
+                "SELECT id FROM invoices WHERE provider_invoice_id = ?",
+                (provider_invoice_id,),
+            ).fetchone()
+            if existing is not None:
+                connection.execute(
+                    """
+                    UPDATE invoices
+                    SET status = ?, currency = ?, amount_due_cents = ?,
+                        amount_paid_cents = ?, invoice_date = ?, due_date = ?,
+                        paid_at = ?, hosted_invoice_url = ?
+                    WHERE provider_invoice_id = ?
+                    """,
+                    (
+                        status, currency.upper(), amount_due_cents,
+                        amount_paid_cents, invoice_date, due_date, paid_at,
+                        hosted_invoice_url, provider_invoice_id,
+                    ),
+                )
+                return
             connection.execute(
                 """
                 INSERT INTO invoices (
@@ -698,14 +839,6 @@ class BillingStore:
                     due_date, paid_at, provider_invoice_id,
                     hosted_invoice_url, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (provider_invoice_id)
-                DO UPDATE SET
-                    status = excluded.status,
-                    amount_due_cents = excluded.amount_due_cents,
-                    amount_paid_cents = excluded.amount_paid_cents,
-                    due_date = excluded.due_date,
-                    paid_at = excluded.paid_at,
-                    hosted_invoice_url = excluded.hosted_invoice_url
                 """,
                 (
                     str(uuid4()), organization_id, subscription["id"],
@@ -722,6 +855,39 @@ class BillingStore:
             result["cancel_at_period_end"]
         )
         result["payment_waived"] = bool(result["payment_waived"])
+        grace_end = result.get("grace_period_ends_at")
+        grace_end_value = None
+        if grace_end:
+            grace_end_value = datetime.fromisoformat(grace_end)
+            if grace_end_value.tzinfo is None:
+                grace_end_value = grace_end_value.replace(tzinfo=timezone.utc)
+        result["in_payment_grace"] = bool(
+            result.get("provider") == "stripe"
+            and result.get("status") == "past_due"
+            and grace_end_value
+            and grace_end_value > datetime.now(timezone.utc)
+        )
+        failed_at = result.get("payment_failed_at")
+        result["payment_grace_hours"] = None
+        if failed_at and grace_end_value:
+            failed_at_value = datetime.fromisoformat(failed_at)
+            if failed_at_value.tzinfo is None:
+                failed_at_value = failed_at_value.replace(tzinfo=timezone.utc)
+            result["payment_grace_hours"] = round(
+                (grace_end_value - failed_at_value).total_seconds() / 3600
+            )
+        result["access_state"] = (
+            "awaiting_payment"
+            if result.get("provider") == "stripe_pending"
+            else "payment_grace"
+            if result["in_payment_grace"]
+            else "payment_suspended"
+            if result.get("provider") == "stripe"
+            and result.get("status") == "past_due"
+            else "active"
+            if result.get("status") in {"active", "trialing"}
+            else "canceled"
+        )
         return result
 
 

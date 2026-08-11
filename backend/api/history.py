@@ -20,6 +20,9 @@ def report_history(
     user: dict = Depends(require_active_organization),
 ):
     organization_id = access_for_user(user)["organization"]["id"]
+    entitlements = access_for_user(user)["entitlements"]
+    if not entitlements["access"]["active"]:
+        raise HTTPException(status_code=403, detail="Complete payment to access report history.")
     return {
         "reports": list_reports(organization_id, limit),
     }
@@ -31,6 +34,9 @@ def download_historical_report(
     user: dict = Depends(require_active_organization),
 ):
     organization_id = access_for_user(user)["organization"]["id"]
+    entitlements = access_for_user(user)["entitlements"]
+    if not entitlements["access"]["active"]:
+        raise HTTPException(status_code=403, detail="Complete payment to download reports.")
     report = get_report(report_id, organization_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found.")

@@ -249,6 +249,22 @@ class AccessRequestStore:
             results.append(result)
         return results
 
+    def approved_for_organization(
+        self,
+        organization_id: str,
+    ) -> dict | None:
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM access_requests
+                WHERE organization_id = ? AND status = 'approved'
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (organization_id,),
+            ).fetchone()
+        return self.get(row["id"]) if row else None
+
     def approve(
         self,
         request_id: str,

@@ -6,16 +6,23 @@ This procedure controls paid and complimentary account activation when Stripe
 Checkout is unavailable or an approved commercial exception requires manual
 handling.
 
-## Paid access
+## Stripe recurring access
 
-1. Confirm that cleared payment was received outside the platform.
-2. Open the access request in the Control Panel.
-3. Select the approved plan.
-4. Select **Payment received** under Payment Approval.
-5. Approve the request.
+1. Open the access request in the Control Panel.
+2. Confirm or override the requested plan.
+3. Select **Stripe checkout required** under Payment Setup.
+4. Approve the request. This creates an account awaiting payment, not active
+   paid access.
+5. The customer completes hosted Stripe Checkout. Only the confirmed webhook
+   activates recurring access and establishes the renewal date.
 
-An access request or plan selection is not proof of payment. Never select
-**Payment received** until the payment has been independently verified.
+An access request, approval, Checkout redirect, or return page is not proof of
+payment. Stripe stores the payment method and performs monthly renewal; Broadcast
+Tool Pro stores no card details.
+
+If renewal fails, access remains active for the configured 72-hour grace period.
+At grace expiration, module access is suspended without deleting customer data.
+Confirmed recovery restores access automatically.
 
 ## Complimentary access
 
@@ -31,7 +38,8 @@ documented administrative decision.
 
 - Broadcast Tool Pro never collects or stores payment methods; Stripe hosts the
   payment form.
-- Manual subscriptions still require independent proof of cleared payment.
+- Manual subscriptions, if exceptionally used, require independent proof of
+  cleared payment.
 - Refunds and manual cancellations remain controlled outside the platform until
   the Stripe Customer Portal and final commercial policies are approved.
 - Self-service checkout must not be advertised until the Sandbox webhook and

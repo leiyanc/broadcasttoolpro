@@ -162,10 +162,20 @@ def approve_access_request(
                 raise ValueError(
                     "A reason is required when payment is waived."
                 )
+        if request.plan != access_request["requested_plan"]:
+            raise ValueError(
+                "The approved plan must match the plan requested by the customer."
+            )
+        if request.include_stream_monitoring != access_request[
+            "include_stream_monitoring"
+        ]:
+            raise ValueError(
+                "The approved add-ons must match the customer request."
+            )
         internal_plan = (
-            "enterprise"
-            if request.plan == "enterprise"
-            else "professional"
+            "starter"
+            if request.plan == "programming_suite"
+            else request.plan
         )
         existing_account = identity_store.existing_customer_account(
             access_request["email"]

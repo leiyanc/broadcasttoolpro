@@ -621,9 +621,7 @@ def test_access_request_collects_requested_plan_and_addon():
     assert 'name="include_stream_monitoring"' in html
     assert 'name="billing_cycle"' in html
     assert "updateAccessRequestPricing" in auth_javascript
-    assert '"programming_suite", "professional", "enterprise"' in (
-        admin_javascript
-    )
+    assert "requestedPlan.replaceAll" in admin_javascript
 
 
 def test_frontend_does_not_render_server_messages_as_html():

@@ -63,6 +63,9 @@ const accountPanelOrganization = document.querySelector(
 const trialReminderPreference = document.querySelector(
   "#trial-reminder-preference",
 );
+const trialReminderSetting = document.querySelector(
+  "#trial-reminder-setting",
+);
 const accountPreferenceMessage = document.querySelector(
   "#account-preference-message",
 );
@@ -194,6 +197,16 @@ async function refreshOrganizationEntitlements() {
     const modules = entitlements.modules || {};
     currentEntitlements = entitlements;
     document.body.dataset.accessType = entitlements.access?.type || "paid";
+    trialReminderSetting.classList.toggle(
+      "is-hidden",
+      entitlements.access?.type !== "trial",
+    );
+    const productAccessActive = Boolean(entitlements.access?.active);
+    document.querySelector("#report-history")?.classList.toggle(
+      "is-hidden",
+      !productAccessActive
+        || !(modules.prelogs?.enabled || modules.postlogs?.enabled),
+    );
     const trialExpired = (
       entitlements.access?.type === "trial"
       && !entitlements.access?.active
@@ -205,7 +218,10 @@ async function refreshOrganizationEntitlements() {
     for (const [moduleCode, selectors] of Object.entries(moduleSurfaces)) {
       for (const selector of selectors) {
         document.querySelectorAll(selector).forEach((element) => {
-          setModuleAvailability(element, Boolean(modules[moduleCode]?.enabled));
+          setModuleAvailability(
+            element,
+            productAccessActive && Boolean(modules[moduleCode]?.enabled),
+          );
         });
       }
     }

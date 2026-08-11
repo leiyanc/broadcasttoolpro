@@ -130,7 +130,7 @@ class EntitlementStore:
                     """
                     SELECT status, current_period_end, provider,
                            payment_waived, waiver_expires_at,
-                           cancel_at_period_end
+                           cancel_at_period_end, grace_period_ends_at
                     FROM subscriptions
                     WHERE organization_id = ?
                     """,
@@ -155,7 +155,26 @@ class EntitlementStore:
             access_type = "trial"
             access_ends_at = trial_ends_at
         elif subscription:
-            access_active = subscription["status"] == "active"
+            grace_end = subscription["grace_period_ends_at"]
+            parsed_grace_end = None
+            if grace_end:
+                parsed_grace_end = datetime.fromisoformat(grace_end)
+                if parsed_grace_end.tzinfo is None:
+                    parsed_grace_end = parsed_grace_end.replace(
+                        tzinfo=timezone.utc
+                    )
+            in_payment_grace = bool(
+                subscription["provider"] == "stripe"
+                and subscription["status"] == "past_due"
+                and parsed_grace_end
+                and parsed_grace_end > datetime.now(timezone.utc)
+            )
+            access_active = (
+                subscription["status"] == "active" or in_payment_grace
+            )
+            if in_payment_grace:
+                access_type = "payment_grace"
+                access_ends_at = grace_end
             if subscription["cancel_at_period_end"]:
                 access_ends_at = subscription["current_period_end"]
                 if (
@@ -208,6 +227,10 @@ class EntitlementStore:
                 "type": access_type,
                 "active": access_active,
                 "ends_at": access_ends_at,
+                "grace_period_ends_at": (
+                    subscription["grace_period_ends_at"]
+                    if subscription else None
+                ),
                 "download_formats": (
                     ["pdf"] if subscription and subscription[
                         "status"

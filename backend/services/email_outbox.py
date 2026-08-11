@@ -395,6 +395,140 @@ class EmailOutboxStore:
             ).fetchone()
         return dict(row)
 
+    def schedule_payment_failure_lifecycle(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        grace_ends_at: str,
+        grace_hours: int = 72,
+        hosted_invoice_url: str | None = None,
+    ) -> list[dict]:
+        grace_end = datetime.fromisoformat(grace_ends_at)
+        if grace_end.tzinfo is None:
+            grace_end = grace_end.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        payment_link = (
+            f"\n\nUpdate payment details: {hosted_invoice_url}"
+            if hosted_invoice_url else ""
+        )
+        cycle_key = str(int(grace_end.timestamp()))
+        messages = (
+            (
+                f"payment_failed_{cycle_key}",
+                f"Payment failed — {grace_hours}-hour access grace period",
+                (
+                    "We could not renew your Broadcast Tool Pro subscription. "
+                    f"Access remains available until {grace_end.isoformat()}. "
+                    "Update your payment method to prevent suspension."
+                    f"{payment_link}"
+                ),
+                now,
+            ),
+            (
+                f"payment_grace_24h_{cycle_key}",
+                "24 hours remain before subscription suspension",
+                (
+                    "Your Broadcast Tool Pro payment remains past due. "
+                    "Approximately 24 hours of access remain before automatic "
+                    f"suspension at {grace_end.isoformat()}."
+                    f"{payment_link}"
+                ),
+                grace_end - timedelta(hours=24),
+            ),
+            (
+                f"payment_suspended_{cycle_key}",
+                "Broadcast Tool Pro access suspended",
+                (
+                    f"The {grace_hours}-hour payment grace period has ended "
+                    "and product "
+                    "access is now suspended. Your files, history, and settings "
+                    "have not been deleted. Restore payment to reactivate access."
+                    f"{payment_link}"
+                ),
+                grace_end,
+            ),
+        )
+        created: list[dict] = []
+        with self._connection() as connection:
+            for code, subject, body, scheduled_for in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        message_id, organization_id,
+                        recipient_email.strip().lower(), code, subject, body,
+                        max(scheduled_for, now).isoformat(), now.isoformat(),
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?",
+                    (message_id,),
+                ).fetchone()
+                if row is not None:
+                    created.append(dict(row))
+        return created
+
+    def cancel_payment_failure_lifecycle(
+        self,
+        *,
+        organization_id: str,
+    ) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE email_outbox
+                SET status = 'canceled',
+                    last_error = 'Payment recovered before notification.'
+                WHERE organization_id = ? AND status = 'queued'
+                  AND (
+                      template_code LIKE 'payment_grace_24h_%'
+                      OR template_code LIKE 'payment_suspended_%'
+                  )
+                """,
+                (organization_id,),
+            )
+
+    def schedule_payment_recovered(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+    ) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid4())
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO email_outbox (
+                    id, organization_id, recipient_email, template_code,
+                    subject, body_text, scheduled_for, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                """,
+                (
+                    message_id, organization_id,
+                    recipient_email.strip().lower(),
+                    f"payment_recovered_{message_id}",
+                    "Payment received — access restored",
+                    (
+                        "Your Broadcast Tool Pro payment was received. Your "
+                        "subscription is active and full product access has "
+                        "been restored automatically."
+                    ),
+                    now, now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM email_outbox WHERE id = ?",
+                (message_id,),
+            ).fetchone()
+        return dict(row)
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

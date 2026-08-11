@@ -6,6 +6,7 @@ from backend.main import app
 from backend.services.billing_store import BillingStore
 from backend.services.commercial_pricing import commercial_pricing
 from backend.services.tenant_store import TenantStore
+from backend.services.entitlements import EntitlementStore
 
 
 def test_subscription_is_created_once_for_an_organization():
@@ -122,6 +123,97 @@ def test_complimentary_extension_updates_the_enforced_expiration():
 
         assert result["waiver_expires_at"] == extended_end.isoformat()
         assert result["current_period_end"] == extended_end.isoformat()
+
+
+def test_failed_stripe_payment_has_grace_then_suspends_access():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Grace Network", slug=None, plan="professional"
+        )
+        entitlements = EntitlementStore(database_path)
+        entitlements.initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        now = datetime.now(timezone.utc)
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=False,
+            status="active",
+            amount_cents=9900,
+            currency="usd",
+            customer_id="cus_grace",
+            subscription_id="sub_grace",
+            period_start=now.isoformat(),
+            period_end=(now + timedelta(days=30)).isoformat(),
+            cancel_at_period_end=False,
+        )
+
+        failed = billing.mark_payment_failed(
+            organization["id"], grace_hours=72
+        )
+        during_grace = entitlements.effective_entitlements(
+            organization["id"]
+        )
+
+        assert failed["status"] == "past_due"
+        assert failed["access_state"] == "payment_grace"
+        assert during_grace["access"]["active"] is True
+        assert during_grace["access"]["type"] == "payment_grace"
+
+        with billing._connection() as connection:
+            connection.execute(
+                "UPDATE subscriptions SET grace_period_ends_at = ? "
+                "WHERE organization_id = ?",
+                (
+                    (now - timedelta(minutes=1)).isoformat(),
+                    organization["id"],
+                ),
+            )
+
+        suspended = billing.get_subscription(organization["id"])
+        blocked = entitlements.effective_entitlements(organization["id"])
+        assert suspended["access_state"] == "payment_suspended"
+        assert blocked["access"]["active"] is False
+
+
+def test_successful_stripe_renewal_clears_payment_grace():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Recovered Network", slug=None, plan="professional"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        now = datetime.now(timezone.utc)
+        common = {
+            "organization_id": organization["id"],
+            "plan_code": "professional",
+            "stream_monitoring": False,
+            "amount_cents": 9900,
+            "currency": "usd",
+            "customer_id": "cus_recovered",
+            "subscription_id": "sub_recovered",
+            "period_start": now.isoformat(),
+            "period_end": (now + timedelta(days=30)).isoformat(),
+            "cancel_at_period_end": False,
+        }
+        billing.apply_stripe_subscription(status="active", **common)
+        billing.mark_payment_failed(organization["id"], grace_hours=72)
+
+        recovered = billing.apply_stripe_subscription(
+            status="active", **common
+        )
+
+        assert recovered["access_state"] == "active"
+        assert recovered["payment_failed_at"] is None
+        assert recovered["grace_period_ends_at"] is None
 
 
 def test_billing_routes_are_registered():
