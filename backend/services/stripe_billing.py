@@ -281,7 +281,7 @@ class StripeBillingService:
             schedule_id = _value(subscription, "schedule")
             if schedule_id:
                 stripe.SubscriptionSchedule.release(schedule_id)
-            stripe.Subscription.modify(
+            updated = stripe.Subscription.modify(
                 _value(subscription, "id"),
                 items=changes,
                 proration_behavior="always_invoice",
@@ -292,7 +292,19 @@ class StripeBillingService:
                     "stream_monitoring": str(include_stream_monitoring).lower(),
                 },
             )
+            if _value(updated, "pending_update"):
+                return {
+                    "effective": "pending_payment",
+                    "message": "Payment must complete before the plan changes.",
+                }
+            self._apply_subscription(updated)
             billing_store.clear_scheduled_change(organization_id)
+            billing_store.record_subscription_change(
+                organization_id,
+                plan_code=plan_code,
+                stream_monitoring=include_stream_monitoring,
+                effective="immediately",
+            )
             return {"effective": "immediately"}
 
         schedule_id = _value(subscription, "schedule")

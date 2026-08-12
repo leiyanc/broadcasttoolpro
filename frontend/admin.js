@@ -777,10 +777,24 @@ function renderOrganizations(organizations) {
     );
     const planCell = adminCell(row, "");
     const plan = adminSelect(
-      ["professional", "enterprise"],
+      ["starter", "professional", "enterprise"],
       organization.plan,
     );
-    planCell.replaceChildren(plan);
+    const pendingPlan = document.createElement("small");
+    pendingPlan.className = "admin-row-status";
+    const pendingPlanName = {
+      programming_suite: "Programming Suite",
+      professional: "Professional",
+      enterprise: "Enterprise",
+    }[organization.subscription.pending_plan_code];
+    pendingPlan.textContent = pendingPlanName
+      ? `Pending: ${pendingPlanName}${
+        organization.subscription.pending_stream_monitoring
+          ? " + Stream Monitoring"
+          : ""
+      } · ${billingDate(organization.subscription.pending_change_at)}`
+      : "No pending plan change";
+    planCell.replaceChildren(plan, pendingPlan);
     const stripeManaged = ["stripe", "stripe_pending"].includes(
       organization.subscription.provider,
     );

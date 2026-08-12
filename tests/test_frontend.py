@@ -442,6 +442,8 @@ def test_secure_account_interface_is_present():
     assert "hasSubscriptionChange" in admin_javascript
     assert 'awaitingPayment' in admin_javascript
     assert "subscription_events" in admin_javascript
+    assert "pending_plan_code" in admin_javascript
+    assert "No pending plan change" in admin_javascript
     assert "/api/admin/incidents/" in admin_javascript
     assert "openAdminTicket" in admin_javascript
     assert 'id="admin-ticket-panel"' in html

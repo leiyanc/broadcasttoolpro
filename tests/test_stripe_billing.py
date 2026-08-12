@@ -163,6 +163,110 @@ def test_downgrade_preview_is_scheduled_without_proration(monkeypatch):
     assert result["effective_at"].startswith("2026-")
 
 
+def test_successful_upgrade_updates_current_plan_immediately(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Upgrade Network", slug=None, plan="professional"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=False,
+            status="active",
+            amount_cents=9900,
+            currency="usd",
+            customer_id="cus_upgrade",
+            subscription_id="sub_upgrade",
+            period_start="2026-08-11T00:00:00+00:00",
+            period_end="2026-09-11T00:00:00+00:00",
+            cancel_at_period_end=False,
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        current = {
+            "id": "sub_upgrade",
+            "customer": "cus_upgrade",
+            "status": "active",
+            "metadata": {"organization_id": organization["id"]},
+            "current_period_start": 1_786_406_400,
+            "current_period_end": 1_789_084_800,
+            "items": {"data": [{
+                "id": "si_plan",
+                "price": {"id": "price_professional", "unit_amount": 9900,
+                          "currency": "usd"},
+                "quantity": 1,
+            }]},
+        }
+        upgraded = {
+            **current,
+            "items": {"data": [{
+                "id": "si_plan",
+                "price": {"id": "price_enterprise", "unit_amount": 19900,
+                          "currency": "usd"},
+                "quantity": 1,
+            }]},
+        }
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription, "retrieve", lambda _id: current
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription, "modify", lambda _id, **_kw: upgraded
+        )
+
+        result = StripeBillingService().change_subscription(
+            organization_id=organization["id"],
+            plan_code="enterprise",
+            include_stream_monitoring=False,
+        )
+
+        assert result["effective"] == "immediately"
+        assert billing.get_subscription(organization["id"])["plan"] == "enterprise"
+        events = billing.subscription_events(organization["id"])
+        assert events[0]["event_type"] == "subscription_change_applied"
+
+
+def test_incomplete_upgrade_keeps_current_plan(monkeypatch):
+    _configure(monkeypatch)
+    current = {
+        "id": "sub_pending_upgrade",
+        "status": "active",
+        "items": {"data": [{
+            "id": "si_plan",
+            "price": {"id": "price_professional"},
+            "quantity": 1,
+        }]},
+    }
+    store = SimpleNamespace(
+        get_subscription=lambda _id: {
+            "provider": "stripe", "status": "active",
+            "provider_subscription_id": "sub_pending_upgrade",
+        }
+    )
+    monkeypatch.setattr(stripe_module, "billing_store", store)
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription, "retrieve", lambda _id: current
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription,
+        "modify",
+        lambda _id, **_kw: {**current, "pending_update": {"expires_at": 1}},
+    )
+
+    result = StripeBillingService().change_subscription(
+        organization_id="org_1",
+        plan_code="enterprise",
+        include_stream_monitoring=False,
+    )
+
+    assert result["effective"] == "pending_payment"
+
+
 def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
     _configure(monkeypatch)
     with TemporaryDirectory() as directory:

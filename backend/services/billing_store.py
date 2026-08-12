@@ -624,7 +624,9 @@ class BillingStore:
         stream_monitoring: bool,
         change_at: str,
     ) -> dict:
+        self.get_subscription(organization_id)
         with self._connection() as connection:
+            now = _utc_now()
             connection.execute(
                 """
                 UPDATE subscriptions
@@ -634,10 +636,48 @@ class BillingStore:
                 """,
                 (
                     plan_code, int(stream_monitoring), change_at,
-                    _utc_now(), organization_id,
+                    now, organization_id,
+                ),
+            )
+            monitoring = " with Stream Monitoring" if stream_monitoring else ""
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, event_type, details, created_at
+                ) VALUES (?, ?, 'subscription_change_scheduled', ?, ?)
+                """,
+                (
+                    str(uuid4()), organization_id,
+                    f"Subscription change to {plan_code}{monitoring} "
+                    f"scheduled for {change_at}.",
+                    now,
                 ),
             )
         return self.get_subscription(organization_id)
+
+    def record_subscription_change(
+        self,
+        organization_id: str,
+        *,
+        plan_code: str,
+        stream_monitoring: bool,
+        effective: str,
+    ) -> None:
+        monitoring = " with Stream Monitoring" if stream_monitoring else ""
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, event_type, details, created_at
+                ) VALUES (?, ?, 'subscription_change_applied', ?, ?)
+                """,
+                (
+                    str(uuid4()), organization_id,
+                    f"Subscription changed to {plan_code}{monitoring} "
+                    f"{effective}.",
+                    _utc_now(),
+                ),
+            )
 
     def clear_scheduled_change(self, organization_id: str) -> dict:
         with self._connection() as connection:

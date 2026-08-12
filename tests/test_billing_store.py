@@ -91,6 +91,30 @@ def test_pending_stripe_subscription_preserves_commercial_plan():
         assert events[0]["event_type"] == "payment_requested"
 
 
+def test_scheduled_subscription_change_is_recorded_in_history():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Scheduled Network", slug=None, plan="professional"
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+
+        result = billing.schedule_subscription_change(
+            organization["id"],
+            plan_code="programming_suite",
+            stream_monitoring=False,
+            change_at="2026-09-11T00:00:00+00:00",
+        )
+
+        assert result["pending_plan_code"] == "programming_suite"
+        events = billing.subscription_events(organization["id"])
+        assert events[0]["event_type"] == "subscription_change_scheduled"
+        assert "2026-09-11" in events[0]["details"]
+
+
 def test_complimentary_extension_updates_the_enforced_expiration():
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "billing.db"

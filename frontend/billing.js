@@ -248,7 +248,9 @@ async function confirmSubscriptionChange() {
     await loadBilling();
     billingMessage.textContent = result.effective === "immediately"
       ? "Your subscription was updated immediately."
-      : `Your subscription change is scheduled for ${billingDate(result.change_at)}.`;
+      : result.effective === "pending_payment"
+        ? "Payment must complete before your current plan changes."
+        : `Your subscription change is scheduled for ${billingDate(result.change_at)}.`;
   } catch (error) {
     billingChangeNotice.textContent = error.message;
     billingChangeNotice.classList.add("is-error");
