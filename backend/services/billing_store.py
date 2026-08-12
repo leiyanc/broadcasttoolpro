@@ -639,6 +639,11 @@ class BillingStore:
                     now, organization_id,
                 ),
             )
+            plan_name = {
+                "programming_suite": "Programming Suite",
+                "professional": "Professional",
+                "enterprise": "Enterprise",
+            }.get(plan_code, plan_code)
             monitoring = " with Stream Monitoring" if stream_monitoring else ""
             connection.execute(
                 """
@@ -648,7 +653,7 @@ class BillingStore:
                 """,
                 (
                     str(uuid4()), organization_id,
-                    f"Subscription change to {plan_code}{monitoring} "
+                    f"Subscription change to {plan_name}{monitoring} "
                     f"scheduled for {change_at}.",
                     now,
                 ),
@@ -663,6 +668,11 @@ class BillingStore:
         stream_monitoring: bool,
         effective: str,
     ) -> None:
+        plan_name = {
+            "programming_suite": "Programming Suite",
+            "professional": "Professional",
+            "enterprise": "Enterprise",
+        }.get(plan_code, plan_code)
         monitoring = " with Stream Monitoring" if stream_monitoring else ""
         with self._connection() as connection:
             connection.execute(
@@ -673,7 +683,7 @@ class BillingStore:
                 """,
                 (
                     str(uuid4()), organization_id,
-                    f"Subscription changed to {plan_code}{monitoring} "
+                    f"Subscription changed to {plan_name}{monitoring} "
                     f"{effective}.",
                     _utc_now(),
                 ),

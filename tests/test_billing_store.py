@@ -112,6 +112,8 @@ def test_scheduled_subscription_change_is_recorded_in_history():
         assert result["pending_plan_code"] == "programming_suite"
         events = billing.subscription_events(organization["id"])
         assert events[0]["event_type"] == "subscription_change_scheduled"
+        assert "Programming Suite" in events[0]["details"]
+        assert "programming_suite" not in events[0]["details"]
         assert "2026-09-11" in events[0]["details"]
 
 
