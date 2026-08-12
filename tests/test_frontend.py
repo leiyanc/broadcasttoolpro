@@ -460,6 +460,8 @@ def test_secure_account_interface_is_present():
     assert 'title: "Privacy & Data Requests"' in help_javascript
     assert 'helpCurrentGuide === "privacy"' in help_javascript
     assert 'id="admin-email-attempt-body"' in html
+    assert 'id="admin-email-detail"' in html
+    assert "View Details" in admin_javascript
     assert 'id="admin-suppression-body"' in html
     assert 'id="admin-email-event-body"' in html
     assert "/api/admin/email-health" in admin_javascript

@@ -32,6 +32,15 @@ const adminEmailAttemptTable = document.querySelector(
 const adminEmailAttemptBody = document.querySelector(
   "#admin-email-attempt-body",
 );
+const adminEmailDetail = document.querySelector("#admin-email-detail");
+const adminEmailDetailSubject = document.querySelector(
+  "#admin-email-detail-subject",
+);
+const adminEmailDetailRecipient = document.querySelector(
+  "#admin-email-detail-recipient",
+);
+const adminEmailDetailBody = document.querySelector("#admin-email-detail-body");
+const adminEmailDetailClose = document.querySelector("#admin-email-detail-close");
 const adminSuppressionStatus = document.querySelector(
   "#admin-suppression-status",
 );
@@ -257,6 +266,28 @@ function renderEmailHealth(health) {
     );
     adminCell(row, attempt.last_error || "—");
     const actionCell = adminCell(row, "");
+    const actions = [];
+    if (attempt.template_code.startsWith("subscription_")) {
+      const viewButton = document.createElement("button");
+      viewButton.className = "button button-secondary admin-save";
+      viewButton.type = "button";
+      viewButton.textContent = "View Details";
+      viewButton.addEventListener("click", async () => {
+        try {
+          const detail = await adminRequest(
+            `/api/admin/email-outbox/${encodeURIComponent(attempt.id)}`,
+          );
+          adminEmailDetailSubject.textContent = detail.subject;
+          adminEmailDetailRecipient.textContent = `To: ${detail.recipient_email}`;
+          adminEmailDetailBody.textContent = detail.body_text;
+          adminEmailDetail.showModal();
+        } catch (error) {
+          adminEmailMessage.textContent = error.message;
+          adminEmailMessage.classList.add("is-error");
+        }
+      });
+      actions.push(viewButton);
+    }
     if (["queued", "failed"].includes(attempt.status)) {
       const retryButton = document.createElement("button");
       retryButton.className = "button button-secondary admin-save";
@@ -286,7 +317,10 @@ function renderEmailHealth(health) {
           retryButton.disabled = false;
         }
       });
-      actionCell.replaceChildren(retryButton);
+      actions.push(retryButton);
+    }
+    if (actions.length) {
+      actionCell.replaceChildren(...actions);
     } else {
       actionCell.textContent = "—";
     }
@@ -360,6 +394,8 @@ function renderEmailHealth(health) {
     adminEmailEventBody.appendChild(row);
   });
 }
+
+adminEmailDetailClose.addEventListener("click", () => adminEmailDetail.close());
 
 async function loadEmailHealth() {
   const health = await adminRequest("/api/admin/email-health");

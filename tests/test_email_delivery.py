@@ -121,6 +121,17 @@ def test_email_html_keeps_a_text_brand_fallback(monkeypatch):
     assert "<img" not in content
 
 
+def test_email_html_renders_billing_link_as_a_button(monkeypatch):
+    monkeypatch.delenv("BTP_APPLICATION_URL", raising=False)
+
+    content = AmazonSesProvider._html_body({
+        "body_text": "Review the change.\nOpen Billing: https://example.test/app"
+    })
+
+    assert 'href="https://example.test/app"' in content
+    assert ">Open Billing</a>" in content
+
+
 def test_payment_failure_schedules_grace_notifications_and_recovery():
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "email.db"
@@ -188,6 +199,7 @@ def test_subscription_change_queues_customer_and_admin_confirmations():
             effective="period_end",
             effective_at="2026-09-11T22:02:57+00:00",
             recurring_monthly_cents=15800,
+            billing_url="https://example.test/app",
         )
 
         assert len(created) == 2
@@ -196,10 +208,15 @@ def test_subscription_change_queues_customer_and_admin_confirmations():
             if message["recipient_email"] == "owner@example.com"
         )
         assert "Previous plan: Enterprise" in customer["body_text"]
+        assert "Organization: Plan Change Test" in customer["body_text"]
         assert "New plan: Professional" in customer["body_text"]
         assert "Stream Monitoring: Included" in customer["body_text"]
         assert "New monthly total: $158.00" in customer["body_text"]
-        assert "2026-09-11" in customer["body_text"]
+        assert "Charged today: $0.00" in customer["body_text"]
+        assert "September 11, 2026" in customer["body_text"]
+        assert "Open Billing: https://example.test/app" in customer["body_text"]
+        detail = outbox.subscription_message_detail(customer["id"])
+        assert detail["body_text"] == customer["body_text"]
 
 
 def test_cancellation_and_renewal_queue_transactional_notices():

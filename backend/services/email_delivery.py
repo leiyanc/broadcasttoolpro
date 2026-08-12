@@ -1,5 +1,6 @@
 import html
 import os
+import re
 from dataclasses import dataclass
 from typing import Protocol
 from urllib.parse import urljoin
@@ -55,9 +56,26 @@ class AmazonSesProvider:
 
     @staticmethod
     def _html_body(message: dict) -> str:
-        body = "<br>".join(
-            html.escape(line) for line in message["body_text"].splitlines()
-        )
+        rendered_lines = []
+        for line in message["body_text"].splitlines():
+            if line.startswith("Open Billing: "):
+                url = line.removeprefix("Open Billing: ").strip()
+                safe_url = html.escape(url, quote=True)
+                rendered_lines.append(
+                    f'<a href="{safe_url}" style="display:inline-block;'
+                    'padding:12px 18px;background:#1765ff;color:#ffffff;'
+                    'text-decoration:none;border-radius:8px;font-weight:700">'
+                    "Open Billing</a>"
+                )
+            else:
+                safe_line = html.escape(line)
+                safe_line = re.sub(
+                    r"(https://[^\s<]+)",
+                    r'<a href="\1">\1</a>',
+                    safe_line,
+                )
+                rendered_lines.append(safe_line)
+        body = "<br>".join(rendered_lines)
         application_url = os.getenv("BTP_APPLICATION_URL", "").strip()
         logo_url = (
             urljoin(

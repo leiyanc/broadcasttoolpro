@@ -84,6 +84,9 @@ class StripeBillingService:
                         include_stream_monitoring and new_plan != "enterprise"
                     ) else 0)
                 ),
+                billing_url=os.getenv(
+                    "BTP_APPLICATION_URL", "http://127.0.0.1:8000/app"
+                ).strip(),
             )
         except (OSError, RuntimeError, sqlite3.Error):
             pass

@@ -541,6 +541,7 @@ class EmailOutboxStore:
         effective: str,
         effective_at: str | None,
         recurring_monthly_cents: int,
+        billing_url: str,
     ) -> list[dict]:
         now = datetime.now(timezone.utc).isoformat()
         change_id = str(uuid4())
@@ -554,18 +555,40 @@ class EmailOutboxStore:
         monitoring = "Included" if (
             new_plan == "enterprise" or include_stream_monitoring
         ) else "Not included"
+        effective_label = None
+        if effective_at:
+            effective_date = datetime.fromisoformat(effective_at)
+            if effective_date.tzinfo is None:
+                effective_date = effective_date.replace(tzinfo=timezone.utc)
+            effective_label = effective_date.astimezone(timezone.utc).strftime(
+                "%B %d, %Y at %H:%M UTC"
+            ).replace(" 0", " ")
         timing = {
             "immediately": "The change is effective immediately.",
             "pending_payment": (
                 "The current plan remains active until Stripe confirms payment."
             ),
-            "period_end": f"The change is scheduled for {effective_at}.",
+            "period_end": f"The change is scheduled for {effective_label}.",
         }[effective]
+        with self._connection() as connection:
+            organization = connection.execute(
+                "SELECT name FROM organizations WHERE id = ?",
+                (organization_id,),
+            ).fetchone()
+        organization_name = (
+            organization["name"] if organization else organization_id
+        )
+        charged_today = (
+            "$0.00" if effective == "period_end"
+            else "See your Stripe payment receipt"
+        )
         summary = (
+            f"Organization: {organization_name}\n"
             f"Previous plan: {previous_name}\n"
             f"New plan: {new_name}\n"
             f"Stream Monitoring: {monitoring}\n"
             f"New monthly total: ${recurring_monthly_cents / 100:.2f}\n"
+            f"Charged today: {charged_today}\n"
             f"{timing}"
         )
         messages = [{
@@ -575,7 +598,7 @@ class EmailOutboxStore:
             "body": (
                 "Your subscription change request was received.\n\n"
                 f"{summary}\n\n"
-                "You can review the current status at any time in Billing."
+                f"Open Billing: {billing_url}"
             ),
         }]
         for position, email in enumerate(dict.fromkeys(
@@ -589,7 +612,7 @@ class EmailOutboxStore:
                 "subject": "Customer subscription change recorded",
                 "body": (
                     "A customer subscription change was recorded.\n\n"
-                    f"Organization ID: {organization_id}\n{summary}"
+                    f"{summary}"
                 ),
             })
         created: list[dict] = []
@@ -697,6 +720,26 @@ class EmailOutboxStore:
                 (min(max(limit, 1), 500),),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def subscription_message_detail(self, message_id: str) -> dict:
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT id, recipient_email, template_code, subject, body_text,
+                       status, attempts, last_error, created_at, sent_at
+                FROM email_outbox WHERE id = ?
+                """,
+                (message_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError("Email message not found.")
+        if not row["template_code"].startswith((
+            "subscription_change_", "subscription_renewal_"
+        )):
+            raise ValueError(
+                "Message details are available only for subscription notices."
+            )
+        return dict(row)
 
     def retry_delivery(self, message_id: str) -> dict:
         now = datetime.now(timezone.utc).isoformat()

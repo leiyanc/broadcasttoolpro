@@ -751,6 +751,18 @@ main {
   color: var(--muted);
 }
 
+.admin-email-detail-body {
+  max-height: 360px;
+  overflow: auto;
+  padding: 16px;
+  color: var(--navy);
+  background: var(--blue-light);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
 [data-theme="dark"] .billing-summary > div,
 [data-theme="dark"] .billing-entitlements > div {
   background: #0d1728;

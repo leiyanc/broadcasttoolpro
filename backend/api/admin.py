@@ -97,6 +97,19 @@ def retry_email_delivery(
     }
 
 
+@router.get("/email-outbox/{message_id}")
+def email_message_detail(
+    message_id: str,
+    _: dict = Depends(superuser),
+):
+    try:
+        return email_outbox_store.subscription_message_detail(message_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=exc.args[0]) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.delete("/email-suppressions/{recipient_email}")
 def remove_email_suppression(
     recipient_email: str,
