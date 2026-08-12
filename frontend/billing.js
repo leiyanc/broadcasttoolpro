@@ -341,12 +341,7 @@ function pricingButton(plan, currentPlan) {
       if (billingPaymentsAvailable) {
         const monitoringApproved = isApprovedPlan
           ? Boolean(approvedCheckout.include_stream_monitoring)
-          : (
-            plan.code === "professional"
-          && (latestBillingPayload?.entitlements?.addons || []).some(
-            (addon) => addon.code === "stream_monitoring" && addon.enabled,
-          )
-          );
+          : false;
         if (latestBillingPayload?.subscription?.provider === "stripe") {
           requestSubscriptionChange(plan.code, monitoringApproved);
         } else {

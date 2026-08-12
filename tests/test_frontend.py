@@ -472,6 +472,11 @@ def test_secure_account_interface_is_present():
 def test_billing_and_subscription_interface_is_present():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "billing.js").read_text()
+    assert (
+        "const monitoringApproved = isApprovedPlan\n"
+        "          ? Boolean(approvedCheckout.include_stream_monitoring)\n"
+        "          : false;"
+    ) in javascript
 
     assert (FRONTEND_DIR / "billing.js").is_file()
     assert 'id="open-billing-button"' in html
