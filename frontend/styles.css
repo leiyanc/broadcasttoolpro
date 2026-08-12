@@ -734,6 +734,24 @@ main {
   color: var(--navy);
 }
 
+.billing-monitoring-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  color: var(--navy);
+  background: var(--blue-light);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.billing-monitoring-choice.is-hidden {
+  display: none;
+}
+
 .billing-change-summary {
   display: grid;
   gap: 10px;

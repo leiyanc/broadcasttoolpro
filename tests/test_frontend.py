@@ -486,6 +486,10 @@ def test_billing_and_subscription_interface_is_present():
     assert 'id="billing-pricing-grid"' in html
     assert 'id="billing-pricing-addons"' in html
     assert 'id="billing-invoice-body"' in html
+    assert 'id="billing-monitoring-choice-input"' in html
+    assert "Keep Stream Monitoring for +$59.00/month" in html
+    assert "renderSubscriptionChangePreview" in javascript
+    assert 'billingMonitoringChoiceInput.addEventListener("change"' in javascript
     assert "/api/billing/organizations/" in javascript
     assert '["owner", "admin"]' in javascript
     assert 'module.source === "professional"' in javascript

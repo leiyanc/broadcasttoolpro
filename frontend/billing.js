@@ -25,6 +25,12 @@ const billingChangeSummary = document.querySelector("#billing-change-summary");
 const billingChangeNotice = document.querySelector("#billing-change-notice");
 const billingChangeBack = document.querySelector("#billing-change-back");
 const billingChangeConfirm = document.querySelector("#billing-change-confirm");
+const billingMonitoringChoice = document.querySelector(
+  "#billing-monitoring-choice",
+);
+const billingMonitoringChoiceInput = document.querySelector(
+  "#billing-monitoring-choice-input",
+);
 let billingOrganization = null;
 let latestBillingPayload = null;
 let billingPaymentsAvailable = false;
@@ -173,6 +179,46 @@ function closeBillingConfirmation() {
   billingConfirmation.classList.add("is-hidden");
 }
 
+function renderSubscriptionChangePreview(planCode, includeStreamMonitoring, preview) {
+  pendingBillingChange = {planCode, includeStreamMonitoring, preview};
+  const planName = {
+    programming_suite: "Programming Suite",
+    professional: "Professional",
+    enterprise: "Enterprise",
+  }[planCode];
+  const canChooseMonitoring = ["programming_suite", "professional"].includes(
+    planCode,
+  );
+  billingMonitoringChoice.classList.toggle("is-hidden", !canChooseMonitoring);
+  billingMonitoringChoiceInput.checked = preview.include_stream_monitoring;
+  billingChangeSummary.replaceChildren(
+    changeSummaryRow("New plan", planName),
+    changeSummaryRow(
+      "Stream Monitoring",
+      preview.include_stream_monitoring
+        ? "Added — $59.00/month"
+        : (planCode === "enterprise" ? "Included" : "Not included"),
+    ),
+    changeSummaryRow(
+      "Due now",
+      billingMoney(preview.amount_due_now_cents, preview.currency),
+    ),
+    changeSummaryRow(
+      "New monthly total",
+      billingMoney(preview.recurring_monthly_cents, preview.currency),
+    ),
+    changeSummaryRow(
+      "Effective",
+      preview.effective === "immediately"
+        ? "Immediately"
+        : billingDate(preview.effective_at),
+    ),
+  );
+  billingChangeNotice.textContent = preview.effective === "immediately"
+    ? "The amount due now includes Stripe's prorated charge and credit for the current billing period. Your plan updates after payment succeeds."
+    : "No charge is due today. Your current plan remains active through the end of this billing period, then the new monthly total begins.";
+}
+
 async function requestSubscriptionChange(planCode, includeStreamMonitoring) {
   billingMessage.textContent = "Calculating your exact cost summary…";
   billingMessage.classList.remove("is-error");
@@ -188,43 +234,16 @@ async function requestSubscriptionChange(planCode, includeStreamMonitoring) {
         }),
       },
     );
-    pendingBillingChange = {planCode, includeStreamMonitoring, preview};
-    const planName = {
-      programming_suite: "Programming Suite",
-      professional: "Professional",
-      enterprise: "Enterprise",
-    }[planCode];
-    billingChangeSummary.replaceChildren(
-      changeSummaryRow("New plan", planName),
-      changeSummaryRow(
-        "Stream Monitoring",
-        preview.include_stream_monitoring
-          ? "Added — $59.00/month"
-          : (planCode === "enterprise" ? "Included" : "Not included"),
-      ),
-      changeSummaryRow(
-        "Due now",
-        billingMoney(preview.amount_due_now_cents, preview.currency),
-      ),
-      changeSummaryRow(
-        "New monthly total",
-        billingMoney(preview.recurring_monthly_cents, preview.currency),
-      ),
-      changeSummaryRow(
-        "Effective",
-        preview.effective === "immediately"
-          ? "Immediately"
-          : billingDate(preview.effective_at),
-      ),
+    renderSubscriptionChangePreview(
+      planCode, includeStreamMonitoring, preview,
     );
-    billingChangeNotice.textContent = preview.effective === "immediately"
-      ? "The amount due now includes Stripe's prorated charge and credit for the current billing period. Your plan updates after payment succeeds."
-      : "No charge is due today. Your current plan remains active through the end of this billing period, then the new monthly total begins.";
     billingConfirmation.classList.remove("is-hidden");
     billingMessage.textContent = "";
+    return true;
   } catch (error) {
     billingMessage.textContent = error.message;
     billingMessage.classList.add("is-error");
+    return false;
   }
 }
 
@@ -757,6 +776,21 @@ billingCloseButton.addEventListener("click", () => {
 
 billingChangeBack.addEventListener("click", closeBillingConfirmation);
 billingChangeConfirm.addEventListener("click", confirmSubscriptionChange);
+billingMonitoringChoiceInput.addEventListener("change", async () => {
+  if (!pendingBillingChange) return;
+  const planCode = pendingBillingChange.planCode;
+  const previousMonitoring = pendingBillingChange.includeStreamMonitoring;
+  const includeStreamMonitoring = billingMonitoringChoiceInput.checked;
+  billingMonitoringChoiceInput.disabled = true;
+  billingChangeConfirm.disabled = true;
+  billingChangeNotice.textContent = "Recalculating your cost summary…";
+  const updated = await requestSubscriptionChange(
+    planCode, includeStreamMonitoring,
+  );
+  if (!updated) billingMonitoringChoiceInput.checked = previousMonitoring;
+  billingMonitoringChoiceInput.disabled = false;
+  billingChangeConfirm.disabled = false;
+});
 
 window.addEventListener("btp:languagechange", () => {
   if (latestBillingPayload) renderBilling(latestBillingPayload);
