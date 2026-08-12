@@ -267,6 +267,78 @@ def test_incomplete_upgrade_keeps_current_plan(monkeypatch):
     assert result["effective"] == "pending_payment"
 
 
+def test_cancellation_releases_pending_plan_schedule(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Cancellation Network", slug=None, plan="enterprise"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="enterprise",
+            stream_monitoring=True,
+            status="active",
+            amount_cents=19900,
+            currency="usd",
+            customer_id="cus_cancel",
+            subscription_id="sub_cancel",
+            period_start="2026-08-11T00:00:00+00:00",
+            period_end="2026-09-11T00:00:00+00:00",
+            cancel_at_period_end=False,
+        )
+        billing.schedule_subscription_change(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=False,
+            change_at="2026-09-11T00:00:00+00:00",
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        subscriptions = [
+            {"id": "sub_cancel", "schedule": "sub_sched_cancel"},
+            {"id": "sub_cancel", "schedule": None},
+        ]
+        released = []
+        modified = []
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _id: subscriptions.pop(0),
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.SubscriptionSchedule,
+            "release",
+            lambda schedule_id: released.append(schedule_id),
+        )
+
+        def modify(subscription_id, **kwargs):
+            modified.append((subscription_id, kwargs))
+            return {"id": subscription_id, **kwargs}
+
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription, "modify", modify
+        )
+        monkeypatch.setattr(
+            stripe_module.identity_store, "list_members", lambda _id: []
+        )
+
+        result = StripeBillingService().set_cancel_at_period_end(
+            organization_id=organization["id"], cancel=True
+        )
+
+        assert result["cancel_at_period_end"] is True
+        assert released == ["sub_sched_cancel"]
+        assert modified[0][0] == "sub_cancel"
+        current = billing.get_subscription(organization["id"])
+        assert current["cancel_at_period_end"] is True
+        assert current["pending_plan_code"] is None
+
+
 def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
     _configure(monkeypatch)
     with TemporaryDirectory() as directory:

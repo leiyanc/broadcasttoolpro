@@ -440,11 +440,22 @@ class StripeBillingService:
         ):
             raise ValueError("An active Stripe subscription is required.")
         stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        schedule_id = _value(subscription, "schedule")
+        if cancel and schedule_id:
+            stripe.SubscriptionSchedule.release(schedule_id)
+            subscription = stripe.Subscription.retrieve(
+                local["provider_subscription_id"]
+            )
         updated = stripe.Subscription.modify(
-            local["provider_subscription_id"],
+            _value(subscription, "id", local["provider_subscription_id"]),
             cancel_at_period_end=cancel,
             proration_behavior="none",
         )
+        if cancel and local.get("pending_plan_code"):
+            billing_store.clear_scheduled_change(organization_id)
         billing_store.update_subscription(
             organization_id,
             status=None,
