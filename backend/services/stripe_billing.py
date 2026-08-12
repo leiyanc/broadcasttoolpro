@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
@@ -44,6 +45,49 @@ def _iso_timestamp(value: Any, fallback: datetime | None = None) -> str:
 
 
 class StripeBillingService:
+    def _subscription_recipient(self, organization_id: str) -> str:
+        members = identity_store.list_members(organization_id)
+        preferred = next((
+            member for member in members
+            if member["status"] == "active"
+            and member["role"] in {"owner", "admin"}
+        ), None)
+        return preferred["email"] if preferred else ""
+
+    def _queue_change_notifications(
+        self,
+        *,
+        organization_id: str,
+        previous_plan: str,
+        new_plan: str,
+        include_stream_monitoring: bool,
+        effective: str,
+        effective_at: str | None = None,
+    ) -> None:
+        recipient = self._subscription_recipient(organization_id)
+        if not recipient:
+            return
+        administrators = identity_store.superuser_notification_targets()
+        try:
+            email_outbox_store.schedule_subscription_change_notifications(
+                organization_id=organization_id,
+                recipient_email=recipient,
+                administrator_emails=[item["email"] for item in administrators],
+                previous_plan=previous_plan,
+                new_plan=new_plan,
+                include_stream_monitoring=include_stream_monitoring,
+                effective=effective,
+                effective_at=effective_at,
+                recurring_monthly_cents=(
+                    PLAN_MONTHLY_CENTS[new_plan]
+                    + (STREAM_MONTHLY_CENTS if (
+                        include_stream_monitoring and new_plan != "enterprise"
+                    ) else 0)
+                ),
+            )
+        except (OSError, RuntimeError, sqlite3.Error):
+            pass
+
     def payment_grace_hours(self) -> int:
         try:
             value = int(os.getenv("BTP_PAYMENT_GRACE_HOURS", "72"))
@@ -293,6 +337,13 @@ class StripeBillingService:
                 },
             )
             if _value(updated, "pending_update"):
+                self._queue_change_notifications(
+                    organization_id=organization_id,
+                    previous_plan=current_plan,
+                    new_plan=plan_code,
+                    include_stream_monitoring=include_stream_monitoring,
+                    effective="pending_payment",
+                )
                 return {
                     "effective": "pending_payment",
                     "message": "Payment must complete before the plan changes.",
@@ -303,6 +354,13 @@ class StripeBillingService:
                 organization_id,
                 plan_code=plan_code,
                 stream_monitoring=include_stream_monitoring,
+                effective="immediately",
+            )
+            self._queue_change_notifications(
+                organization_id=organization_id,
+                previous_plan=current_plan,
+                new_plan=plan_code,
+                include_stream_monitoring=include_stream_monitoring,
                 effective="immediately",
             )
             return {"effective": "immediately"}
@@ -357,6 +415,14 @@ class StripeBillingService:
             stream_monitoring=include_stream_monitoring,
             change_at=change_at,
         )
+        self._queue_change_notifications(
+            organization_id=organization_id,
+            previous_plan=current_plan,
+            new_plan=plan_code,
+            include_stream_monitoring=include_stream_monitoring,
+            effective="period_end",
+            effective_at=change_at,
+        )
         return {"effective": "period_end", "change_at": change_at}
 
     def set_cancel_at_period_end(
@@ -387,6 +453,21 @@ class StripeBillingService:
                 if cancel else "Customer resumed subscription renewal."
             ),
         )
+        recipient = self._subscription_recipient(organization_id)
+        if recipient:
+            try:
+                email_outbox_store.schedule_subscription_renewal_notice(
+                    organization_id=organization_id,
+                    recipient_email=recipient,
+                    administrator_emails=[
+                        item["email"] for item
+                        in identity_store.superuser_notification_targets()
+                    ],
+                    cancel=cancel,
+                    effective_at=local.get("current_period_end"),
+                )
+            except (OSError, RuntimeError, sqlite3.Error):
+                pass
         return updated
 
     def construct_event(self, payload: bytes, signature: str) -> Any:

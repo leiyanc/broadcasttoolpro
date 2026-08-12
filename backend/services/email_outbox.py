@@ -529,6 +529,148 @@ class EmailOutboxStore:
             ).fetchone()
         return dict(row)
 
+    def schedule_subscription_change_notifications(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        administrator_emails: list[str],
+        previous_plan: str,
+        new_plan: str,
+        include_stream_monitoring: bool,
+        effective: str,
+        effective_at: str | None,
+        recurring_monthly_cents: int,
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        change_id = str(uuid4())
+        plan_names = {
+            "programming_suite": "Programming Suite",
+            "professional": "Professional",
+            "enterprise": "Enterprise",
+        }
+        previous_name = plan_names.get(previous_plan, previous_plan)
+        new_name = plan_names.get(new_plan, new_plan)
+        monitoring = "Included" if (
+            new_plan == "enterprise" or include_stream_monitoring
+        ) else "Not included"
+        timing = {
+            "immediately": "The change is effective immediately.",
+            "pending_payment": (
+                "The current plan remains active until Stripe confirms payment."
+            ),
+            "period_end": f"The change is scheduled for {effective_at}.",
+        }[effective]
+        summary = (
+            f"Previous plan: {previous_name}\n"
+            f"New plan: {new_name}\n"
+            f"Stream Monitoring: {monitoring}\n"
+            f"New monthly total: ${recurring_monthly_cents / 100:.2f}\n"
+            f"{timing}"
+        )
+        messages = [{
+            "recipient": recipient_email,
+            "code": f"subscription_change_customer_{change_id}",
+            "subject": "Your Broadcast Tool Pro subscription change",
+            "body": (
+                "Your subscription change request was received.\n\n"
+                f"{summary}\n\n"
+                "You can review the current status at any time in Billing."
+            ),
+        }]
+        for position, email in enumerate(dict.fromkeys(
+            address.strip().lower()
+            for address in administrator_emails
+            if address.strip()
+        )):
+            messages.append({
+                "recipient": email,
+                "code": f"subscription_change_admin_{change_id}_{position}",
+                "subject": "Customer subscription change recorded",
+                "body": (
+                    "A customer subscription change was recorded.\n\n"
+                    f"Organization ID: {organization_id}\n{summary}"
+                ),
+            })
+        created: list[dict] = []
+        with self._connection() as connection:
+            for message in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        message_id, organization_id,
+                        message["recipient"].strip().lower(), message["code"],
+                        message["subject"], message["body"], now, now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?", (message_id,)
+                ).fetchone()
+                created.append(dict(row))
+        return created
+
+    def schedule_subscription_renewal_notice(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        administrator_emails: list[str],
+        cancel: bool,
+        effective_at: str | None,
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid4())
+        subject = (
+            "Your Broadcast Tool Pro cancellation is scheduled"
+            if cancel else "Your Broadcast Tool Pro renewal was resumed"
+        )
+        body = (
+            "Your subscription will not renew. Product access remains active "
+            f"through {effective_at}."
+            if cancel else
+            "Automatic renewal has been resumed for your subscription."
+        )
+        messages = [(recipient_email, subject, body)]
+        admin_action = "scheduled cancellation" if cancel else "resumed renewal"
+        for email in dict.fromkeys(
+            address.strip().lower()
+            for address in administrator_emails
+            if address.strip()
+        ):
+            messages.append((
+                email,
+                f"Customer subscription {admin_action}",
+                f"Organization ID: {organization_id}\n{body}",
+            ))
+        created: list[dict] = []
+        with self._connection() as connection:
+            for position, (email, message_subject, message_body) in enumerate(messages):
+                row_id = message_id if position == 0 else str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        row_id, organization_id, email.strip().lower(),
+                        f"subscription_renewal_{message_id}_{position}",
+                        message_subject, message_body, now, now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?", (row_id,)
+                ).fetchone()
+                created.append(dict(row))
+        return created
+
     def list_for_organization(self, organization_id: str) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(

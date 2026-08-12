@@ -165,3 +165,72 @@ def test_payment_failure_schedules_grace_notifications_and_recovery():
             for code, status in statuses.items()
             if code.startswith(("payment_grace_24h_", "payment_suspended_"))
         )
+
+
+def test_subscription_change_queues_customer_and_admin_confirmations():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "email.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Plan Change Test", slug=None, plan="enterprise"
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        created = outbox.schedule_subscription_change_notifications(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["admin@example.com", "admin@example.com"],
+            previous_plan="enterprise",
+            new_plan="professional",
+            include_stream_monitoring=True,
+            effective="period_end",
+            effective_at="2026-09-11T22:02:57+00:00",
+            recurring_monthly_cents=15800,
+        )
+
+        assert len(created) == 2
+        customer = next(
+            message for message in created
+            if message["recipient_email"] == "owner@example.com"
+        )
+        assert "Previous plan: Enterprise" in customer["body_text"]
+        assert "New plan: Professional" in customer["body_text"]
+        assert "Stream Monitoring: Included" in customer["body_text"]
+        assert "New monthly total: $158.00" in customer["body_text"]
+        assert "2026-09-11" in customer["body_text"]
+
+
+def test_cancellation_and_renewal_queue_transactional_notices():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "email.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Renewal Notice Test", slug=None, plan="professional"
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        canceled = outbox.schedule_subscription_renewal_notice(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["admin@example.com"],
+            cancel=True,
+            effective_at="2026-09-11T22:02:57+00:00",
+        )
+        resumed = outbox.schedule_subscription_renewal_notice(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["admin@example.com"],
+            cancel=False,
+            effective_at=None,
+        )
+
+        assert len(canceled) == 2
+        assert len(resumed) == 2
+        assert "cancellation is scheduled" in canceled[0]["subject"]
+        assert "2026-09-11" in canceled[0]["body_text"]
+        assert "renewal was resumed" in resumed[0]["subject"]
+        assert canceled[1]["recipient_email"] == "admin@example.com"
