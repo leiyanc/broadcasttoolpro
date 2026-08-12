@@ -339,6 +339,37 @@ def test_cancellation_releases_pending_plan_schedule(monkeypatch):
         assert current["pending_plan_code"] is None
 
 
+def test_customer_can_cancel_a_scheduled_plan_change(monkeypatch):
+    _configure(monkeypatch)
+    store = SimpleNamespace(
+        get_subscription=lambda _id: {
+            "provider": "stripe",
+            "provider_subscription_id": "sub_keep_enterprise",
+            "pending_plan_code": "professional",
+        },
+        cancel_scheduled_change=lambda _id: {"pending_plan_code": None},
+    )
+    released = []
+    monkeypatch.setattr(stripe_module, "billing_store", store)
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription,
+        "retrieve",
+        lambda _id: {"id": "sub_keep_enterprise", "schedule": "sched_change"},
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.SubscriptionSchedule,
+        "release",
+        lambda schedule_id: released.append(schedule_id),
+    )
+
+    result = StripeBillingService().cancel_scheduled_change(
+        organization_id="org_1"
+    )
+
+    assert result["pending_plan_code"] is None
+    assert released == ["sched_change"]
+
+
 def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
     _configure(monkeypatch)
     with TemporaryDirectory() as directory:

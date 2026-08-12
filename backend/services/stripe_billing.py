@@ -484,6 +484,24 @@ class StripeBillingService:
                 pass
         return updated
 
+    def cancel_scheduled_change(self, *, organization_id: str) -> dict:
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe" or not local.get(
+            "provider_subscription_id"
+        ):
+            raise ValueError("An active Stripe subscription is required.")
+        if not local.get("pending_plan_code"):
+            raise ValueError("There is no scheduled subscription change.")
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        schedule_id = _value(subscription, "schedule")
+        if not schedule_id:
+            raise ValueError("Stripe has no scheduled subscription change.")
+        stripe.SubscriptionSchedule.release(schedule_id)
+        return billing_store.cancel_scheduled_change(organization_id)
+
     def construct_event(self, payload: bytes, signature: str) -> Any:
         secret = self.webhook_secret()
         if not secret:

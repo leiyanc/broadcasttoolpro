@@ -181,6 +181,26 @@ def preview_subscription_change(
         ) from exc
 
 
+@router.post("/organizations/{organization_id}/change/cancel")
+def cancel_scheduled_subscription_change(
+    organization_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        stripe_billing.cancel_scheduled_change(
+            organization_id=organization_id,
+        )
+        return {"canceled": True}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not cancel the scheduled change.",
+        ) from exc
+
+
 @router.post("/organizations/{organization_id}/cancellation")
 def change_cancellation(
     organization_id: str,

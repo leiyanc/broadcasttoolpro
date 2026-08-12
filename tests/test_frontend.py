@@ -492,6 +492,8 @@ def test_billing_and_subscription_interface_is_present():
         FRONTEND_DIR / "styles.css"
     ).read_text()
     assert "renderSubscriptionChangePreview" in javascript
+    assert "Cancel Scheduled Change" in javascript
+    assert "cancelScheduledSubscriptionChange" in javascript
     assert 'billingMonitoringChoiceInput.addEventListener("change"' in javascript
     assert "/api/billing/organizations/" in javascript
     assert '["owner", "admin"]' in javascript

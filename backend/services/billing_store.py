@@ -703,6 +703,36 @@ class BillingStore:
             )
         return self.get_subscription(organization_id)
 
+    def cancel_scheduled_change(self, organization_id: str) -> dict:
+        current = self.get_subscription(organization_id)
+        if not current.get("pending_plan_code"):
+            raise ValueError("There is no scheduled subscription change.")
+        with self._connection() as connection:
+            now = _utc_now()
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET pending_plan_code = NULL,
+                    pending_stream_monitoring = NULL,
+                    pending_change_at = NULL, updated_at = ?
+                WHERE organization_id = ?
+                """,
+                (now, organization_id),
+            )
+            connection.execute(
+                """
+                INSERT INTO subscription_events (
+                    id, organization_id, event_type, details, created_at
+                ) VALUES (?, ?, 'subscription_change_canceled', ?, ?)
+                """,
+                (
+                    str(uuid4()), organization_id,
+                    "Customer canceled the scheduled subscription change.",
+                    now,
+                ),
+            )
+        return self.get_subscription(organization_id)
+
     def subscription_events(
         self,
         organization_id: str,

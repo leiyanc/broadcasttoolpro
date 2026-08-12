@@ -303,6 +303,25 @@ async function setCancellation(cancel) {
   }
 }
 
+async function cancelScheduledSubscriptionChange() {
+  if (!window.confirm(
+    "Cancel the scheduled plan change and keep your current subscription?",
+  )) return;
+  billingMessage.textContent = "Canceling the scheduled change…";
+  billingMessage.classList.remove("is-error");
+  try {
+    await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/change/cancel`,
+      {method: "POST"},
+    );
+    await loadBilling();
+    billingMessage.textContent = "Scheduled change canceled. Your current plan remains active.";
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
 function pricingButton(plan, currentPlan) {
   const button = document.createElement("button");
   const isCurrent = plan.name === currentPlan;
@@ -313,6 +332,10 @@ function pricingButton(plan, currentPlan) {
     isCurrent
     && latestBillingPayload?.subscription?.provider === "stripe"
     && latestBillingPayload?.subscription?.status !== "canceled"
+  );
+  const canCancelScheduledChange = Boolean(
+    isStripeCurrent
+    && latestBillingPayload?.subscription?.pending_plan_code,
   );
   const paymentProblem = isStripeCurrent && [
     "payment_grace", "payment_suspended",
@@ -339,7 +362,9 @@ function pricingButton(plan, currentPlan) {
       : (isCurrent && !canSubscribeCurrent)
     ? (paymentProblem
       ? billingText("billing.updatePayment", "Update Payment")
-      : billingText("billing.currentPlan", "Current Plan"))
+      : (canCancelScheduledChange
+        ? "Cancel Scheduled Change"
+        : billingText("billing.currentPlan", "Current Plan")))
     : (billingPaymentsAvailable
       ? (isCurrent
         ? (awaitingPayment
@@ -348,11 +373,16 @@ function pricingButton(plan, currentPlan) {
         : billingText("billing.choosePlan", "Choose Plan"))
       : billingText("billing.requestPlan", "Request Plan Change")));
   button.disabled = (lockedToApprovedPlan && !isApprovedPlan)
-    || (isCurrent && !canSubscribeCurrent && !paymentProblem && !isApprovedPlan)
+    || (isCurrent && !canSubscribeCurrent && !paymentProblem
+      && !isApprovedPlan && !canCancelScheduledChange)
     || (paymentProblem && !payableInvoice)
     || (awaitingPayment && !isCurrent);
   if (!button.disabled) {
     button.addEventListener("click", () => {
+      if (canCancelScheduledChange) {
+        cancelScheduledSubscriptionChange();
+        return;
+      }
       if (paymentProblem && payableInvoice) {
         window.location.assign(payableInvoice.hosted_invoice_url);
         return;

@@ -116,6 +116,12 @@ def test_scheduled_subscription_change_is_recorded_in_history():
         assert "programming_suite" not in events[0]["details"]
         assert "2026-09-11" in events[0]["details"]
 
+        canceled = billing.cancel_scheduled_change(organization["id"])
+        assert canceled["pending_plan_code"] is None
+        assert billing.subscription_events(organization["id"])[0][
+            "event_type"
+        ] == "subscription_change_canceled"
+
 
 def test_complimentary_extension_updates_the_enforced_expiration():
     with TemporaryDirectory() as directory:
