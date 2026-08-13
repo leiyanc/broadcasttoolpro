@@ -9,7 +9,7 @@ def test_render_staging_blueprint_is_isolated_and_persistent():
 
     assert "plan: starter" in blueprint
     assert "autoDeployTrigger: off" in blueprint
-    assert "branch: feature/xmltv-generator" in blueprint
+    assert "branch: staging" in blueprint
     assert "BTP_ALLOW_WEB_BOOTSTRAP" in blueprint
     assert 'value: "false"' in blueprint
     assert "BTP_DATA_DIR" in blueprint
