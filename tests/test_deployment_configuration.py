@@ -26,3 +26,11 @@ def test_deployment_documentation_lists_required_secrets():
     assert "BTP_INITIAL_ADMIN_EMAIL" in documentation
     assert "BTP_INITIAL_ADMIN_PASSWORD" in documentation
     assert "remove `BTP_INITIAL_ADMIN_PASSWORD`" in documentation
+
+
+def test_quality_workflow_runs_for_staging_branch():
+    workflow = (
+        PROJECT_ROOT / ".github" / "workflows" / "quality-security.yml"
+    ).read_text()
+
+    assert "      - staging" in workflow

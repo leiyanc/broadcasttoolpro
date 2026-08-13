@@ -3,6 +3,7 @@ name: Quality and Security
 on:
   push:
     branches:
+      - staging
       - feature/xmltv-generator
       - main
   pull_request:
