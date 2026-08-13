@@ -39,6 +39,7 @@ async def lifespan(_: FastAPI):
     async def backup_loop():
         while not stop_event.is_set():
             try:
+                await asyncio.to_thread(google_drive_backup.check_if_due)
                 backup = await asyncio.to_thread(
                     backup_manager.create_if_due
                 )
@@ -222,6 +223,7 @@ def health():
     return {
         "status": "healthy",
         "backup": backup_manager.status()["status"],
+        "remote_backup": google_drive_backup.health_status(),
         "email_delivery": (
             "enabled" if email_delivery_service.is_enabled() else "disabled"
         ),

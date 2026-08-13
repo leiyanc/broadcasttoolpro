@@ -50,6 +50,8 @@ def check_deployment(base_url: str) -> list[CheckResult]:
             for key, expected in required.items()
             if health.get(key) != expected
         ]
+        if health.get("remote_backup") == "error":
+            mismatches.append("remote_backup='error'")
         results.append(
             CheckResult(
                 "Application health",

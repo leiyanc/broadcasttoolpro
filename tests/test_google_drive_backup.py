@@ -45,3 +45,78 @@ def test_retention_keeps_recent_daily_and_older_weekly_sets():
         f"backup-{day}" for day in range(DAILY_BACKUPS)
     }.issubset(retained)
     assert len(retained) <= DAILY_BACKUPS + 4
+
+
+def test_connection_check_is_persisted_and_reloaded(monkeypatch):
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        token = root / "token.json"
+        key = root / "backup.key"
+        state = root / "drive-state.json"
+        token.write_text("{}", encoding="utf-8")
+        key.write_bytes(Fernet.generate_key())
+        backup = GoogleDriveBackup(
+            token_path=token,
+            key_path=key,
+            state_path=state,
+        )
+        monkeypatch.setattr(backup, "_service", lambda: object())
+        monkeypatch.setattr(
+            backup,
+            "_quota",
+            lambda _: {"usage": 100, "limit": 1_000},
+        )
+        monkeypatch.setattr(backup, "_folder", lambda _: "folder-id")
+        monkeypatch.setattr(
+            backup,
+            "_files",
+            lambda _service, _folder_id: [
+                {
+                    "id": "database",
+                    "size": "50",
+                    "appProperties": {
+                        "backup_id": "backup-1",
+                        "kind": "encrypted_database",
+                    },
+                },
+                {
+                    "id": "manifest",
+                    "size": "10",
+                    "appProperties": {
+                        "backup_id": "backup-1",
+                        "kind": "manifest",
+                    },
+                },
+            ],
+        )
+
+        result = backup.check_connection()
+        restored = GoogleDriveBackup(
+            token_path=token,
+            key_path=key,
+            state_path=state,
+        )
+
+        assert result["status"] == "healthy"
+        assert result["complete_backup_sets"] == 1
+        assert restored.status()["last_check"] == result
+        assert restored.health_status() == "healthy"
+
+
+def test_missing_credentials_are_reported_without_replacing_key():
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        key = root / "backup.key"
+        original_key = Fernet.generate_key()
+        key.write_bytes(original_key)
+        backup = GoogleDriveBackup(
+            token_path=root / "missing-token.json",
+            key_path=key,
+            state_path=root / "drive-state.json",
+        )
+
+        result = backup.check_connection()
+
+        assert result["status"] == "failed"
+        assert "authorization token" in result["error"]
+        assert key.read_bytes() == original_key

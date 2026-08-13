@@ -452,7 +452,11 @@ def test_secure_account_interface_is_present():
     assert 'id="admin-ticket-resolution"' in html
     assert 'id="admin-backup-status"' in html
     assert 'id="run-backup-button"' in html
+    assert 'id="check-drive-button"' in html
+    assert 'id="upload-backup-button"' in html
     assert "/api/admin/backups" in admin_javascript
+    assert "/api/admin/backups/google-drive/check" in admin_javascript
+    assert "/api/admin/backups/google-drive/upload-latest" in admin_javascript
     assert 'id="admin-email-metrics"' in html
     assert '<option value="privacy">Privacy or data request</option>' in html
     assert 'id="help-request-type"' in html

@@ -4,7 +4,7 @@ import json
 import os
 import sqlite3
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
@@ -33,6 +33,7 @@ class GoogleDriveBackup:
         *,
         token_path: Path | None = None,
         key_path: Path | None = None,
+        state_path: Path | None = None,
         folder_name: str | None = None,
     ):
         self.token_path = Path(
@@ -45,13 +46,53 @@ class GoogleDriveBackup:
             or os.getenv("BTP_BACKUP_ENCRYPTION_KEY")
             or DEFAULT_KEY_PATH
         )
+        self.state_path = Path(
+            state_path
+            or os.getenv("BTP_GOOGLE_DRIVE_STATE")
+            or self.token_path.with_suffix(".state.json")
+        )
         self.folder_name = (
             folder_name
             or os.getenv("BTP_GOOGLE_DRIVE_FOLDER")
             or DEFAULT_FOLDER_NAME
         )
-        self._last_error: str | None = None
-        self._last_upload: dict[str, Any] | None = None
+        state = self._load_state()
+        self._last_error: str | None = state.get("last_error")
+        self._last_upload: dict[str, Any] | None = state.get("last_upload")
+        self._last_check: dict[str, Any] | None = state.get("last_check")
+
+    def _load_state(self) -> dict[str, Any]:
+        try:
+            return json.loads(self.state_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+
+    def _save_state(self) -> None:
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.state_path.with_suffix(f"{self.state_path.suffix}.tmp")
+        temporary.write_text(
+            json.dumps(
+                {
+                    "last_error": self._last_error,
+                    "last_upload": self._last_upload,
+                    "last_check": self._last_check,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        temporary.chmod(0o600)
+        temporary.replace(self.state_path)
+
+    def _record_check(self, *, status: str, **details: Any) -> dict[str, Any]:
+        self._last_check = {
+            "status": status,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            **details,
+        }
+        self._last_error = details.get("error") if status == "failed" else None
+        self._save_state()
+        return self._last_check
 
     def is_authorized(self) -> bool:
         return self.token_path.is_file() and self.key_path.is_file()
@@ -351,6 +392,12 @@ class GoogleDriveBackup:
             }
             self._last_upload = result
             self._last_error = None
+            self._record_check(
+                status="healthy",
+                complete_backup_sets=None,
+                drive_usage_bytes=quota["usage"],
+                drive_limit_bytes=quota["limit"],
+            )
             return result
 
     def upload_safely(
@@ -366,6 +413,7 @@ class GoogleDriveBackup:
             )
         except Exception as exc:
             self._last_error = str(exc)
+            self._record_check(status="failed", error=self._last_error)
             return {
                 "status": "failed",
                 "error": self._last_error,
@@ -450,6 +498,70 @@ class GoogleDriveBackup:
             "created_at": manifest["created_at"],
         }
 
+    def check_connection(self) -> dict[str, Any]:
+        if not self.is_authorized():
+            missing = []
+            if not self.token_path.is_file():
+                missing.append("Google Drive authorization token")
+            if not self.key_path.is_file():
+                missing.append("backup encryption key")
+            return self._record_check(
+                status="failed",
+                error=f"Missing {' and '.join(missing)}.",
+            )
+        try:
+            service = self._service()
+            quota = self._quota(service)
+            folder_id = self._folder(service)
+            groups = self._backup_groups(self._files(service, folder_id))
+            complete_sets = sum(
+                1
+                for group in groups
+                if {
+                    (item.get("appProperties") or {}).get("kind")
+                    for item in group["files"]
+                } >= {"encrypted_database", "manifest"}
+            )
+            return self._record_check(
+                status="healthy",
+                complete_backup_sets=complete_sets,
+                drive_usage_bytes=quota["usage"],
+                drive_limit_bytes=quota["limit"],
+            )
+        except Exception as exc:
+            return self._record_check(status="failed", error=str(exc))
+
+    def check_if_due(self, hours: int = 24) -> dict[str, Any] | None:
+        if self._last_check:
+            try:
+                checked_at = datetime.fromisoformat(self._last_check["checked_at"])
+                if datetime.now(timezone.utc) - checked_at < timedelta(hours=hours):
+                    return None
+            except (KeyError, TypeError, ValueError):
+                pass
+        return self.check_connection()
+
+    def health_status(self) -> str:
+        required = os.getenv("BTP_REQUIRE_REMOTE_BACKUP", "").lower() in {
+            "1", "true", "yes", "on",
+        }
+        healthy = False
+        if self.is_authorized() and self._last_check:
+            try:
+                checked_at = datetime.fromisoformat(
+                    self._last_check["checked_at"]
+                )
+                healthy = bool(
+                    self._last_check.get("status") == "healthy"
+                    and datetime.now(timezone.utc) - checked_at
+                    < timedelta(hours=26)
+                )
+            except (KeyError, TypeError, ValueError):
+                healthy = False
+        if healthy:
+            return "healthy"
+        return "error" if required else "not_required"
+
     def status(self) -> dict[str, Any]:
         result = {
             "authorized": self.is_authorized(),
@@ -458,16 +570,13 @@ class GoogleDriveBackup:
             "hard_limit_bytes": HARD_TOTAL_USAGE_BYTES,
             "last_upload": self._last_upload,
             "last_error": self._last_error,
+            "last_check": self._last_check,
+            "health_status": self.health_status(),
         }
-        if not self.is_authorized():
-            return result
-        try:
-            quota = self._quota(self._service())
-            result["drive_usage_bytes"] = quota["usage"]
-            result["drive_limit_bytes"] = quota["limit"]
-        except Exception as exc:
-            self._last_error = str(exc)
-            result["last_error"] = self._last_error
+        if self._last_check:
+            for key in ("drive_usage_bytes", "drive_limit_bytes"):
+                if key in self._last_check:
+                    result[key] = self._last_check[key]
         return result
 
 

@@ -338,6 +338,52 @@ def create_backup(_: dict = Depends(superuser)):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.post("/backups/google-drive/check")
+def check_google_drive_backup(_: dict = Depends(superuser)):
+    check = google_drive_backup.check_connection()
+    return {
+        "check": check,
+        "status": {
+            **backup_manager.status(),
+            "google_drive": google_drive_backup.status(),
+        },
+    }
+
+
+@router.post("/backups/google-drive/upload-latest")
+def upload_latest_google_drive_backup(_: dict = Depends(superuser)):
+    if not google_drive_backup.is_authorized():
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Google Drive is not connected. Restore its token and "
+                "encryption key first."
+            ),
+        )
+    try:
+        manifest = backup_manager.verify_latest()
+        if manifest is None:
+            raise HTTPException(
+                status_code=404,
+                detail="No verified local backup is available.",
+            )
+        upload = google_drive_backup.upload_safely(
+            backup_directory=backup_manager.backup_directory,
+            manifest=manifest,
+        )
+        if upload["status"] == "failed":
+            raise HTTPException(status_code=502, detail=upload["error"])
+        return {
+            "upload": upload,
+            "status": {
+                **backup_manager.status(),
+                "google_drive": google_drive_backup.status(),
+            },
+        }
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @router.get("/organizations")
 def admin_organizations(_: dict = Depends(superuser)):
     organizations = admin_store.organizations()

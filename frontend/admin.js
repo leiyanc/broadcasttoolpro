@@ -14,6 +14,8 @@ const adminBackupStatus = document.querySelector("#admin-backup-status");
 const adminBackupDetails = document.querySelector("#admin-backup-details");
 const adminBackupMessage = document.querySelector("#admin-backup-message");
 const runBackupButton = document.querySelector("#run-backup-button");
+const checkDriveButton = document.querySelector("#check-drive-button");
+const uploadBackupButton = document.querySelector("#upload-backup-button");
 const adminSecurityBody = document.querySelector("#admin-security-body");
 const adminSecurityTable = document.querySelector("#admin-security-table");
 const adminSecurityStatus = document.querySelector("#admin-security-status");
@@ -178,6 +180,7 @@ function renderBackupStatus(backup) {
   const drive = backup.google_drive || {};
   const driveUsage = Number(drive.drive_usage_bytes || 0);
   const driveTarget = Number(drive.target_usage_bytes || 0);
+  const lastCheck = drive.last_check;
   const details = {
     Status: backup.status,
     Retention: `${backup.retention_days} days`,
@@ -192,6 +195,10 @@ function renderBackupStatus(backup) {
       : drive.authorized
         ? "Connected — awaiting first upload"
         : "Not connected",
+    "Drive check": lastCheck
+      ? `${lastCheck.status} · ${new Date(lastCheck.checked_at).toLocaleString()}`
+      : "Not checked yet",
+    "Remote sets": lastCheck?.complete_backup_sets ?? "Unknown",
   };
   Object.entries(details).forEach(([label, value]) => {
     const item = document.createElement("div");
@@ -1175,6 +1182,47 @@ runBackupButton.addEventListener("click", async () => {
     adminBackupMessage.classList.add("is-error");
   } finally {
     runBackupButton.disabled = false;
+  }
+});
+
+checkDriveButton.addEventListener("click", async () => {
+  checkDriveButton.disabled = true;
+  adminBackupMessage.textContent = "Checking Google Drive connection…";
+  adminBackupMessage.classList.remove("is-error", "is-success");
+  try {
+    const result = await adminRequest(
+      "/api/admin/backups/google-drive/check",
+      { method: "POST" },
+    );
+    renderBackupStatus(result.status);
+    if (result.check.status !== "healthy") throw new Error(result.check.error);
+    adminBackupMessage.textContent = "Google Drive connection verified.";
+    adminBackupMessage.classList.add("is-success");
+  } catch (error) {
+    adminBackupMessage.textContent = error.message;
+    adminBackupMessage.classList.add("is-error");
+  } finally {
+    checkDriveButton.disabled = false;
+  }
+});
+
+uploadBackupButton.addEventListener("click", async () => {
+  uploadBackupButton.disabled = true;
+  adminBackupMessage.textContent = "Uploading the latest verified backup…";
+  adminBackupMessage.classList.remove("is-error", "is-success");
+  try {
+    const result = await adminRequest(
+      "/api/admin/backups/google-drive/upload-latest",
+      { method: "POST" },
+    );
+    renderBackupStatus(result.status);
+    adminBackupMessage.textContent = "Latest verified backup uploaded to Google Drive.";
+    adminBackupMessage.classList.add("is-success");
+  } catch (error) {
+    adminBackupMessage.textContent = error.message;
+    adminBackupMessage.classList.add("is-error");
+  } finally {
+    uploadBackupButton.disabled = false;
   }
 });
 
