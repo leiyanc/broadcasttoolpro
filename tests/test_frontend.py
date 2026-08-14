@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from backend.main import (
@@ -310,6 +311,20 @@ def test_public_landing_page_presents_the_platform():
     assert 'href="/privacy"' in html
     assert 'href="/terms"' in html
     assert 'href="/email-policy"' in html
+
+
+def test_public_landing_page_has_complete_bilingual_copy():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+    landing_keys = set(re.findall(r'data-i18n="(landing\.[^"]+)"', html))
+
+    assert len(landing_keys) >= 100
+    for key in landing_keys:
+        assert translations.count(f'"{key}"') >= 2, key
+
+    assert '"landing.products.traffic.title": "Convierte playlists y datos As-Run en evidencia."' in translations
+    assert '"landing.products.streaming.title": "Inspecciona la entrega antes de que se convierta en un incidente."' in translations
+    assert '"landing.footer.copyright": "© 2026 Broadcast Tool Pro. Todos los derechos reservados."' in translations
 
 
 def test_frontend_uses_xmltv_endpoints():
