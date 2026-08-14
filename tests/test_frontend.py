@@ -315,6 +315,7 @@ def test_public_landing_page_presents_the_platform():
 
 def test_public_landing_page_has_complete_bilingual_copy():
     html = (FRONTEND_DIR / "landing.html").read_text()
+    css = (FRONTEND_DIR / "landing.css").read_text()
     translations = (FRONTEND_DIR / "i18n.js").read_text()
     landing_keys = set(re.findall(r'data-i18n="(landing\.[^"]+)"', html))
 
@@ -325,6 +326,9 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.products.traffic.title": "Convierte playlists y datos As-Run en evidencia."' in translations
     assert '"landing.products.streaming.title": "Inspecciona la entrega antes de que se convierta en un incidente."' in translations
     assert '"landing.footer.copyright": "© 2026 Broadcast Tool Pro. Todos los derechos reservados."' in translations
+    assert ".landing-kicker > span:first-child" in css
+    assert ".landing-kicker span {" not in css
+    assert "/static/landing.css?v=20260814-2" in html
 
 
 def test_frontend_uses_xmltv_endpoints():

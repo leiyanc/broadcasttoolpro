@@ -182,7 +182,7 @@ a {
   letter-spacing: 0.15em;
 }
 
-.landing-kicker span {
+.landing-kicker > span:first-child {
   width: 8px;
   height: 8px;
   background: var(--landing-cyan);
