@@ -1,5 +1,8 @@
 from pathlib import Path
 from collections import Counter
+from datetime import date
+import re
+import unicodedata
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
@@ -39,6 +42,29 @@ router = APIRouter(
 
 ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
 EXCEL_TEMPLATE = ASSETS_DIR / "Broadcast_Tool_Pro_XMLTV_Template.xlsx"
+
+
+def _filename_channel(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "", ascii_value.lower()) or "channel"
+
+
+def xmltv_output_filename(
+    channel_name: str,
+    channel_id: str,
+    programmes: list[dict],
+) -> str:
+    dates = sorted(
+        date.fromisoformat(str(programme["air_date"]))
+        for programme in programmes
+    )
+    channel = _filename_channel(channel_name or channel_id)
+    period = (
+        f"{dates[0].strftime('%m%d%Y')}-"
+        f"{dates[-1].strftime('%m%d%Y')}"
+    )
+    return f"{channel}_{period}.xml"
 
 
 def fix_category(fix: dict) -> str:
@@ -436,13 +462,18 @@ async def generate_schedule(
         rating_system=rating_system.strip(),
         timestamp_format=timestamp_format.strip(),
     )
+    output_name = xmltv_output_filename(
+        channel_name.strip(),
+        channel_id.strip(),
+        result["programmes"],
+    )
 
     return Response(
         content=xml,
         media_type="application/xml",
         headers={
             "Content-Disposition": (
-                f'attachment; filename="{channel_id.strip()}-xmltv.xml"'
+                f'attachment; filename="{output_name}"'
             ),
         },
     )

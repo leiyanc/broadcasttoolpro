@@ -6,7 +6,7 @@ from xml.etree import ElementTree
 from fastapi import HTTPException
 from starlette.datastructures import UploadFile
 
-from backend.api.xmltv import generate_schedule
+from backend.api.xmltv import generate_schedule, xmltv_output_filename
 from backend.services.xmltv.generator import generate_xmltv
 from backend.services.xmltv.timezone import build_utc_schedule
 from tests.test_xmltv_validator import make_programme
@@ -58,10 +58,24 @@ def test_generate_endpoint_returns_downloadable_xml():
     root = ElementTree.fromstring(response.body)
 
     assert response.media_type == "application/xml"
-    assert "comercio-tv-xmltv.xml" in response.headers[
+    assert "comerciotv_07182026-07182026.xml" in response.headers[
         "content-disposition"
     ]
     assert len(root.findall("./programme")) == 2
+
+
+def test_output_filename_uses_safe_channel_name_and_local_date_period():
+    filename = xmltv_output_filename(
+        "Televisión Ñandú 24/7",
+        "fallback-channel",
+        [
+            {"air_date": "2026-08-23"},
+            {"air_date": "2026-08-17"},
+            {"air_date": "2026-08-20"},
+        ],
+    )
+
+    assert filename == "televisionnandu247_08172026-08232026.xml"
 
 
 def localized_upload() -> UploadFile:
