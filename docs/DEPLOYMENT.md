@@ -32,6 +32,10 @@ The initial staging environment was deployed and verified on July 30, 2026:
 - Super Admin organization plan verified as Enterprise
 - Public health, privacy, terms, and email-policy routes verified
 - SES sandbox delivery verified for controlled recipients
+- Google Drive connection, encrypted upload, download, and isolated recovery
+  drill verified
+- Signed SNS delivery, permanent-bounce suppression, and complaint suppression
+  verified end to end with the Amazon SES mailbox simulator
 
 No credentials or customer operational data are recorded in this document.
 
@@ -44,10 +48,37 @@ The first Blueprint creation prompts for:
 - `BTP_INITIAL_ADMIN_NAME`: the initial Super Admin display name
 - `BTP_INITIAL_ADMIN_EMAIL`: the initial Super Admin email
 - `BTP_INITIAL_ADMIN_PASSWORD`: a unique password of at least 10 characters
+- `BTP_EMAIL_FROM`: the verified transactional sender
+- `BTP_EMAIL_REPLY_TO`: the monitored support reply address
+- `BTP_SES_SNS_TOPIC_ARN`: the authorized SNS topic for SES feedback
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: restricted SES credentials
 
 The password must not be copied from local development. After administrator
 creation succeeds, remove `BTP_INITIAL_ADMIN_PASSWORD` from the Render
 environment because it is no longer needed.
+
+Existing Blueprint services are not prompted when a new `sync: false` key is
+added. Set each new secret manually in the Render Dashboard before syncing.
+Never store its value in `render.yaml`.
+
+## Required Render secret files
+
+Provision these files manually under **Environment → Secret Files**:
+
+- `google-drive-token.json`
+- `backup-encryption.key`
+
+Do not commit either file. Copy them once into the persistent paths declared
+by the Blueprint:
+
+```text
+/opt/render/project/src/data/google-drive/google-drive-token.json
+/opt/render/project/src/data/google-drive/backup-encryption.key
+```
+
+The OAuth token is writable at its persistent location so Google can refresh
+it. Preserve the original encryption key in a protected recovery vault; never
+replace it while encrypted recovery points depend on it.
 
 ## Deployment sequence
 
@@ -85,9 +116,11 @@ introduced.
 Staging uses `BTP_EMAIL_PROVIDER=ses` with credentials stored only in Render's
 secret manager. Delivery remains restricted by the provider's sandbox rules;
 commercial customer delivery cannot begin until SES production access is
-approved. The signed SNS event endpoint must be configured before production
-so bounces and complaints remain actionable. Never commit provider
-credentials.
+approved. SES bounce, complaint, and delivery notifications use the dedicated
+SNS topic configured in `BTP_SES_SNS_TOPIC_ARN` and the signed HTTPS endpoint
+`/api/email-events/amazon-sns`. The endpoint and automatic suppression were
+verified with the SES mailbox simulator on August 13, 2026. Never commit
+provider credentials or the topic ARN value.
 
 ## Blueprint synchronization
 

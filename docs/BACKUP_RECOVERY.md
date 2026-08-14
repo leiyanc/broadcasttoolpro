@@ -37,6 +37,10 @@ independent of the application filesystem and set:
 ```text
 BTP_BACKUP_DIR=/mounted-backup-location/broadcast-tool-pro
 BTP_BACKUP_RETENTION_DAYS=14
+BTP_GOOGLE_DRIVE_TOKEN=/mounted-data/google-drive/google-drive-token.json
+BTP_BACKUP_ENCRYPTION_KEY=/mounted-data/google-drive/backup-encryption.key
+BTP_GOOGLE_DRIVE_STATE=/mounted-data/google-drive/google-drive-state.json
+BTP_REQUIRE_REMOTE_BACKUP=true
 ```
 
 The Control Panel must display `External backup location configured` before
@@ -52,6 +56,12 @@ The local configured directory may be:
 Google Drive authorization files and the backup encryption key live outside
 the repository under the protected user configuration directory. They must
 never be committed or copied into the application source.
+
+The Super Admin control panel checks the remote connection on demand, and the
+application records a persistent connection check at least once every 24
+hours. When `BTP_REQUIRE_REMOTE_BACKUP=true`, a missing, failed, or stale
+remote check reports `remote_backup=error` from `/health` so external
+monitoring can open an incident.
 
 The encryption key is required for disaster recovery. Keep a protected copy
 in the owner's password manager or offline recovery vault. Do not store that
@@ -122,3 +132,9 @@ At least once before commercial launch, and quarterly afterward:
 
 A backup is not considered operationally reliable until restoration has been
 tested successfully.
+
+The staging recovery drill completed successfully on August 13, 2026. The
+latest encrypted Google Drive recovery point was downloaded, decrypted,
+checksum-verified, restored into an isolated temporary database, and verified
+with 24 tables. The live database was not touched and the temporary recovery
+files were removed afterward.
