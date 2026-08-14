@@ -15,16 +15,17 @@ and deployment testing. Local development remains independent.
 - Automatic application-code deploys disabled; Blueprint configuration changes
   may still synchronize and trigger a service update
 - Transactional email enabled for controlled SES sandbox recipients
-- No custom domain during initial verification
-
-The service uses its Render-provided `onrender.com` address. The production
-domain is not connected at this stage.
+- The verified custom domain terminates HTTPS at Render and currently routes to
+  the staging service
+- The Render-provided `onrender.com` address remains available as a platform
+  fallback
 
 ## Verified staging environment
 
 The initial staging environment was deployed and verified on July 30, 2026:
 
-- URL: `https://broadcast-tool-pro-staging.onrender.com/app`
+- Primary URL: `https://broadcasttoolpro.com/app`
+- Render fallback URL: `https://broadcast-tool-pro-staging.onrender.com/app`
 - Render service: `broadcast-tool-pro-staging`
 - Estimated baseline cost: USD 7.25 per month before taxes or overages
 - Persistent account, session, and plan data verified across a service restart
@@ -36,6 +37,9 @@ The initial staging environment was deployed and verified on July 30, 2026:
   drill verified
 - Signed SNS delivery, permanent-bounce suppression, and complaint suppression
   verified end to end with the Amazon SES mailbox simulator
+- Stripe Sandbox webhook delivery verified at
+  `https://broadcasttoolpro.com/api/billing/stripe/webhook` with two real
+  `customer.subscription.updated` events returning HTTP 200
 
 No credentials or customer operational data are recorded in this document.
 
@@ -43,7 +47,9 @@ No credentials or customer operational data are recorded in this document.
 
 The first Blueprint creation prompts for:
 
-- `BTP_APPLICATION_URL`: the final Render URL followed by `/app`
+- `BTP_APPLICATION_URL`: the public application URL. The Blueprint sets this to
+  `https://broadcasttoolpro.com/app`; change it only as part of an approved
+  domain migration.
 - `BTP_INITIAL_ORGANIZATION_NAME`: the owner organization
 - `BTP_INITIAL_ADMIN_NAME`: the initial Super Admin display name
 - `BTP_INITIAL_ADMIN_EMAIL`: the initial Super Admin email
@@ -52,6 +58,8 @@ The first Blueprint creation prompts for:
 - `BTP_EMAIL_REPLY_TO`: the monitored support reply address
 - `BTP_SES_SNS_TOPIC_ARN`: the authorized SNS topic for SES feedback
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: restricted SES credentials
+- `BTP_STRIPE_WEBHOOK_SECRET`: the signing secret for the active custom-domain
+  Stripe event destination; never reuse the secret from a deleted destination
 
 The password must not be copied from local development. After administrator
 creation succeeds, remove `BTP_INITIAL_ADMIN_PASSWORD` from the Render

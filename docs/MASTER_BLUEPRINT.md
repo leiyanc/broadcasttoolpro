@@ -229,6 +229,12 @@ period, invoice history, or product entitlements. A Checkout redirect or return
 page is not proof of payment. Provider-event processing remains isolated from
 broadcast-processing workflows.
 
+The active Stripe Sandbox event destination is the custom-domain endpoint
+`https://broadcasttoolpro.com/api/billing/stripe/webhook`. Its signing secret is
+stored only in Render as `BTP_STRIPE_WEBHOOK_SECRET`. The earlier staging
+`onrender.com` destination was removed after two real subscription-update
+deliveries returned HTTP 200 through the custom domain.
+
 The initial Stripe release uses monthly recurring subscriptions for Programming
 Suite, Professional, Enterprise, and the Professional Stream Monitoring add-on.
 Enterprise includes Stream Monitoring. Existing Stripe subscriptions cannot be

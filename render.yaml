@@ -54,7 +54,7 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       - key: BTP_APPLICATION_URL
-        sync: false
+        value: https://broadcasttoolpro.com/app
       - key: BTP_INITIAL_ORGANIZATION_NAME
         sync: false
       - key: BTP_INITIAL_ADMIN_NAME

@@ -29,10 +29,10 @@ accounts. It must not yet be presented as the final paid production service.
 | Legal | Privacy Policy, Terms, and Email Policy are publicly accessible | Draft ready | Routes exist and are linked publicly |
 | Legal | Policies receive jurisdiction-appropriate professional review | **Blocking** | Legal review required before accepting paid customers |
 | Email | Sending domain, DKIM, and controlled SES delivery are verified | Ready for staging | Verified domain and staging delivery |
-| Email | SES production access and bounce/complaint event handling are operational | **Blocking** | Obtain production access and verify signed SNS events end to end |
-| Domain | Production domain and HTTPS are connected without changing staging | **Blocking** | Create a separate production service and connect final domain only there |
-| Billing | Published prices and server-side entitlements agree | Integration ready for sandbox verification | Stripe Price IDs are server-controlled and confirmed webhooks provision plans and add-ons; complete an end-to-end Sandbox payment before deployment approval |
-| Billing | Payment, invoices, cancellation, refunds, and failed-payment ownership are defined | Partially ready | Checkout, webhook synchronization, recurring renewal display, and the 72-hour failed-payment grace lifecycle are implemented; verify them end to end in Stripe Sandbox, then finalize Customer Portal and refund procedures before self-service launch |
+| Email | SES production access and bounce/complaint event handling are operational | **Blocking** | Signed SNS delivery, bounce suppression, and complaint suppression are verified; AWS production-access approval remains pending |
+| Domain | Production domain and HTTPS are connected without changing staging | **Blocking** | `broadcasttoolpro.com` and `www` have verified HTTPS on the staging service; create a separate production service before commercial launch |
+| Billing | Published prices and server-side entitlements agree | Sandbox webhook verified | Stripe Price IDs are server-controlled; custom-domain webhook signature verification and reversible subscription updates returned HTTP 200; complete an end-to-end Sandbox Checkout payment before deployment approval |
+| Billing | Payment, invoices, cancellation, refunds, and failed-payment ownership are defined | Partially ready | Checkout, webhook synchronization, cancellation/resumption, recurring renewal display, and the 72-hour failed-payment grace lifecycle are implemented; finalize Customer Portal and refund procedures before self-service launch |
 | Support | Customers can submit and follow support requests; Super Admin can reply and resolve | Ready | Help Center and Control Panel workflow |
 | Privacy | Retention, deletion, and customer data-request procedure are operational | Partially ready | Intake and controlled handling are defined in [`DATA_PRIVACY_OPERATIONS.md`](DATA_PRIVACY_OPERATIONS.md); approve the final post-closure retention schedule before launch |
 | Product | Pilot acceptance test succeeds with representative customer files | Corrective release deployed; retest pending | Tester 2 findings are recorded in [`PILOT_ACCEPTANCE.md`](PILOT_ACCEPTANCE.md); obtain external confirmation for XML ampersands, Tarima As-Run import, and SCTE-35 summaries |
@@ -63,7 +63,7 @@ Run the provider-neutral smoke test against the candidate environment:
 
 ```bash
 python -m tools.release_readiness \
-  https://broadcast-tool-pro-staging.onrender.com
+  https://broadcasttoolpro.com
 ```
 
 It verifies the health response and the permanent public trust pages. It does

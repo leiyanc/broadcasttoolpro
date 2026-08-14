@@ -24,6 +24,20 @@ If renewal fails, access remains active for the configured 72-hour grace period.
 At grace expiration, module access is suspended without deleting customer data.
 Confirmed recovery restores access automatically.
 
+## Stripe webhook operations
+
+- The active Sandbox destination is
+  `https://broadcasttoolpro.com/api/billing/stripe/webhook`.
+- It listens for subscription created, updated, and deleted events plus invoice
+  paid and payment-failed events.
+- Its signing secret is stored only in the Render environment as
+  `BTP_STRIPE_WEBHOOK_SECRET`.
+- When rotating or migrating the destination, deploy the new signing secret,
+  verify a real reversible subscription update returns HTTP 200, restore the
+  subscription state, and only then delete the old destination.
+- Stripe-generated test payloads are not an entitlement test because they may
+  omit the Broadcast Tool Pro organization metadata.
+
 ## Complimentary access
 
 1. Select **Complimentary access** under Payment Approval.
