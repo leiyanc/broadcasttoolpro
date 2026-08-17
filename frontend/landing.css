@@ -970,21 +970,19 @@ a {
 }
 
 .landing-client-logo {
+  width: auto;
+  height: 44px;
   display: block;
   object-fit: contain;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .landing-client-logo-tarima {
-  width: 172px;
-  max-height: 54px;
+  filter: brightness(0) invert(1);
 }
 
 .landing-client-logo-comercio {
-  width: 196px;
-  max-height: 52px;
-  opacity: 1;
-  filter: brightness(0) invert(1);
+  height: 44px;
 }
 
 .landing-cta {
@@ -1261,7 +1259,9 @@ a {
 
   .landing-client-logo-tarima,
   .landing-client-logo-comercio {
-    width: min(38vw, 150px);
+    width: auto;
+    height: min(10vw, 38px);
+    max-width: 40vw;
   }
 
   .addon-row,
