@@ -342,7 +342,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260817-5" in html
+    assert "/static/landing.css?v=20260817-6" in html
 
 
 def test_frontend_uses_xmltv_endpoints():

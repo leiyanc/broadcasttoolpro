@@ -978,7 +978,7 @@ a {
 }
 
 .landing-client-logo-tarima {
-  filter: brightness(0) invert(1);
+  height: 52px;
 }
 
 .landing-client-logo-comercio {
@@ -1260,8 +1260,15 @@ a {
   .landing-client-logo-tarima,
   .landing-client-logo-comercio {
     width: auto;
-    height: min(10vw, 38px);
     max-width: 40vw;
+  }
+
+  .landing-client-logo-tarima {
+    height: min(12vw, 45px);
+  }
+
+  .landing-client-logo-comercio {
+    height: min(10vw, 38px);
   }
 
   .addon-row,
