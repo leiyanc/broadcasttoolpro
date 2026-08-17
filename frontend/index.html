@@ -2219,6 +2219,50 @@
               </select>
             </label>
           </div>
+          <p class="eyebrow" data-i18n="hls.optionalDetails">
+            OPTIONAL REPORT DETAILS
+          </p>
+          <div class="hls-monitor-controls">
+            <label>
+              <span data-i18n="hls.channelOptional">Channel / Service (Optional)</span>
+              <input id="hls-channel-name" type="text" />
+            </label>
+            <label>
+              <span data-i18n="hls.clientOptional">Client / Organization (Optional)</span>
+              <input id="hls-client-name" type="text" />
+            </label>
+            <label>
+              <span data-i18n="hls.referenceOptional">Test Reference (Optional)</span>
+              <input id="hls-test-reference" type="text" />
+            </label>
+            <label>
+              <span data-i18n="hls.operatorOptional">Operator (Optional)</span>
+              <input id="hls-operator-name" type="text" />
+            </label>
+            <label>
+              <span data-i18n="hls.purposeOptional">Purpose (Optional)</span>
+              <input id="hls-monitoring-purpose" type="text" />
+            </label>
+            <label>
+              <span data-i18n="hls.expectedCueOptional">Expected Cue Time (Optional)</span>
+              <input id="hls-expected-cue-at" type="datetime-local" />
+            </label>
+            <label>
+              <span data-i18n="hls.expectedDurationOptional">Expected Break Duration (Optional)</span>
+              <input id="hls-expected-break-duration" type="number" min="1" step="1" />
+            </label>
+            <label>
+              <span data-i18n="hls.timezoneOptional">Report Time Zone (Optional)</span>
+              <select id="hls-report-timezone">
+                <option value="" data-i18n="hls.utcOnly">UTC only</option>
+                <option value="America/New_York">Eastern Time - New York</option>
+                <option value="America/Puerto_Rico">Atlantic Time - Puerto Rico</option>
+                <option value="America/Chicago">Central Time - Chicago</option>
+                <option value="America/Denver">Mountain Time - Denver</option>
+                <option value="America/Los_Angeles">Pacific Time - Los Angeles</option>
+              </select>
+            </label>
+          </div>
           <div class="form-actions hls-actions">
             <button
               class="button button-primary"

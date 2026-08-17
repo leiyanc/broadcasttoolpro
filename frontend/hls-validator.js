@@ -13,6 +13,16 @@ const hlsTriggerTable = document.querySelector("#hls-trigger-table");
 const hlsTriggerBody = document.querySelector("#hls-trigger-body");
 const hlsMonitorDuration = document.querySelector("#hls-monitor-duration");
 const hlsReportLanguage = document.querySelector("#hls-report-language");
+const hlsChannelName = document.querySelector("#hls-channel-name");
+const hlsClientName = document.querySelector("#hls-client-name");
+const hlsTestReference = document.querySelector("#hls-test-reference");
+const hlsOperatorName = document.querySelector("#hls-operator-name");
+const hlsMonitoringPurpose = document.querySelector("#hls-monitoring-purpose");
+const hlsExpectedCueAt = document.querySelector("#hls-expected-cue-at");
+const hlsExpectedBreakDuration = document.querySelector(
+  "#hls-expected-break-duration",
+);
+const hlsReportTimezone = document.querySelector("#hls-report-timezone");
 const hlsMonitorButton = document.querySelector("#monitor-hls-button");
 const hlsStopButton = document.querySelector("#stop-hls-monitor-button");
 const hlsMonitorPanel = document.querySelector("#hls-monitor-panel");
@@ -491,6 +501,15 @@ function hlsReportPayload() {
     ? [...hlsMonitorIssues.values()]
     : (result.issues || []);
 
+  const reportVariants = (
+    hlsInitialVariants.length ? hlsInitialVariants : (result.variants || [])
+  ).map((variant) => ({
+    ...variant,
+    trigger_count: triggers.filter((trigger) => (
+      trigger.source_url === variant.url
+    )).length || Number(variant.trigger_count || 0),
+  }));
+
   return {
     valid: Boolean(result.valid) && !hlsMonitorFailed,
     url: hlsUrl.value.trim(),
@@ -513,12 +532,18 @@ function hlsReportPayload() {
     scte35_track_detected: Boolean(result.scte35_track_detected),
     trigger_count: triggers.length,
     scte35_summary: summarizeScteBreaks(triggers),
-    variants: hlsInitialVariants.length
-      ? hlsInitialVariants
-      : (result.variants || []),
+    variants: reportVariants,
     triggers,
     bandwidth_samples: hlsBandwidthSamples,
     issues,
+    channel_name: hlsChannelName.value.trim(),
+    client_name: hlsClientName.value.trim(),
+    test_reference: hlsTestReference.value.trim(),
+    operator_name: hlsOperatorName.value.trim(),
+    monitoring_purpose: hlsMonitoringPurpose.value.trim(),
+    expected_cue_at: hlsExpectedCueAt.value,
+    expected_break_duration: hlsExpectedBreakDuration.value,
+    report_timezone: hlsReportTimezone.value,
   };
 }
 

@@ -104,6 +104,14 @@ def test_xmltv_generator_and_programming_grid_are_localized_independently():
     assert 'id="prelog-report-language"' in html
     assert 'id="postlog-report-language"' in html
     assert 'id="hls-report-language"' in html
+    assert 'id="hls-channel-name"' in html
+    assert 'id="hls-client-name"' in html
+    assert 'id="hls-test-reference"' in html
+    assert 'id="hls-operator-name"' in html
+    assert 'id="hls-monitoring-purpose"' in html
+    assert 'id="hls-expected-cue-at"' in html
+    assert 'id="hls-expected-break-duration"' in html
+    assert 'id="hls-report-timezone"' in html
 
 
 def test_xmltv_validator_and_repair_localize_ui_without_mutating_exports():

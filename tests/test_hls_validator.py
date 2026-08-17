@@ -331,6 +331,27 @@ def test_hls_pdf_report_is_branded_and_downloadable():
     ]
 
 
+def test_hls_pdf_report_accepts_optional_operational_context():
+    report = sample_report()
+    report.update({
+        "channel_name": "Example News",
+        "client_name": "Example Media",
+        "test_reference": "TEST-204",
+        "operator_name": "QC Operator",
+        "monitoring_purpose": "Scheduled ad break verification",
+        "expected_cue_at": "2026-07-27T11:59",
+        "expected_break_duration": "30",
+        "report_timezone": "America/New_York",
+        "monitoring_started_at": "2026-07-27T15:55:00Z",
+        "monitoring_ended_at": "2026-07-27T16:00:05Z",
+    })
+
+    content = generate_hls_report(report)
+
+    assert content.startswith(b"%PDF")
+    assert len(content) > 3_000
+
+
 def test_hls_pdf_report_supports_spanish():
     report = sample_report()
     report["report_language"] = "es"

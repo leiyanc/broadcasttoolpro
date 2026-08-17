@@ -1,6 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from xml.sax.saxutils import escape
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, String
@@ -101,7 +102,7 @@ def _scte_summary(payload: dict) -> dict:
 
 SPANISH = {
     "platform": "Plataforma de Operaciones Broadcast",
-    "title": "Reporte de Validacion HLS y Monitoreo SCTE-35",
+    "title": "Reporte de Validacion de Stream HLS y Monitoreo SCTE-35",
     "disclaimer": (
         "Reporte de validacion independiente. Broadcast Tool Pro no modifico, "
         "reparo ni reempaqueto el stream inspeccionado."
@@ -287,7 +288,7 @@ def generate_hls_report(
         bottomMargin=0.62 * inch,
         title=translated(
             "title",
-            "HLS Validation and SCTE-35 Monitoring Report",
+            "HLS Stream Validation & SCTE-35 Monitoring Report",
         ),
         author="Broadcast Tool Pro",
     )
@@ -344,7 +345,7 @@ def generate_hls_report(
         Paragraph(
             translated(
                 "title",
-                "HLS Validation and SCTE-35 Monitoring Report",
+                "HLS Stream Validation & SCTE-35 Monitoring Report",
             ),
             title,
         ),
@@ -375,7 +376,7 @@ def generate_hls_report(
             str(payload.get("playlist_type") or "Unknown").title(),
         ],
         [
-            translated("period", "Monitoring Period"),
+            "Periodo Solicitado" if spanish else "Requested Monitoring Period",
             (
                 f'{payload.get("monitoring_minutes", 0)} '
                 f'{translated("minutes", "minutes")}'
@@ -410,14 +411,65 @@ def generate_hls_report(
         ],
         [translated("generated", "Generated"), str(payload.get("generated_at") or "")],
     ]
+    optional_rows = [
+        ("Canal / Servicio" if spanish else "Channel / Service", payload.get("channel_name")),
+        ("Cliente / Organizacion" if spanish else "Client / Organization", payload.get("client_name")),
+        ("Referencia de Prueba" if spanish else "Test Reference", payload.get("test_reference")),
+        ("Operador" if spanish else "Operator", payload.get("operator_name")),
+        ("Proposito" if spanish else "Purpose", payload.get("monitoring_purpose")),
+        (
+            "Hora Esperada del Cue" if spanish else "Expected Cue Time",
+            (
+                f'{payload.get("expected_cue_at")} '
+                f'({payload.get("report_timezone")})'
+                if payload.get("expected_cue_at") and payload.get("report_timezone")
+                else payload.get("expected_cue_at")
+            ),
+        ),
+        (
+            "Duracion Esperada del Break" if spanish else "Expected Break Duration",
+            (
+                f'{payload.get("expected_break_duration")}s'
+                if payload.get("expected_break_duration") else None
+            ),
+        ),
+    ]
+    summary[1:1] = [
+        [label_text, str(value)]
+        for label_text, value in optional_rows
+        if value not in (None, "")
+    ]
     if payload.get("monitoring_started_at") or payload.get("monitoring_ended_at"):
-        summary.insert(4, [
+        started_at = payload.get("monitoring_started_at")
+        ended_at = payload.get("monitoring_ended_at")
+        summary.insert(4 + sum(bool(value) for _, value in optional_rows), [
             "Ventana Analizada" if spanish else "Analyzed Window",
             (
-                f"{_timestamp_label(payload.get('monitoring_started_at'))} - "
-                f"{_timestamp_label(payload.get('monitoring_ended_at'))}"
+                f"{_timestamp_label(started_at)} - "
+                f"{_timestamp_label(ended_at)}"
             ).strip(" -"),
         ])
+        try:
+            start_dt = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+            end_dt = datetime.fromisoformat(str(ended_at).replace("Z", "+00:00"))
+            observed_seconds = max(0, int((end_dt - start_dt).total_seconds()))
+            summary.insert(5 + sum(bool(value) for _, value in optional_rows), [
+                "Duracion Observada" if spanish else "Observed Duration",
+                f"{observed_seconds // 60}m {observed_seconds % 60}s",
+            ])
+            timezone_name = str(payload.get("report_timezone") or "")
+            if timezone_name:
+                local_zone = ZoneInfo(timezone_name)
+                local_format = "%Y-%m-%d %H:%M:%S %Z"
+                summary.insert(6 + sum(bool(value) for _, value in optional_rows), [
+                    "Ventana Local" if spanish else "Local Window",
+                    (
+                        f"{start_dt.astimezone(local_zone).strftime(local_format)} - "
+                        f"{end_dt.astimezone(local_zone).strftime(local_format)}"
+                    ),
+                ])
+        except (TypeError, ValueError, ZoneInfoNotFoundError):
+            pass
     summary_table = Table(
         [[_paragraph(key, label), _paragraph(value, body)] for key, value in summary],
         colWidths=[1.45 * inch, 5.45 * inch],
@@ -438,13 +490,13 @@ def generate_hls_report(
             float(sample.get("bandwidth_kbps") or 0)
             for sample in bandwidth_samples
         ]
-        story.append(Paragraph(
+        bandwidth_section = [Paragraph(
             "Comportamiento del Bandwidth"
             if spanish
             else "Bandwidth Behavior",
             heading,
-        ))
-        story.append(Paragraph(
+        )]
+        bandwidth_section.append(Paragraph(
             (
                 "Bitrate observado por segmento durante el periodo de "
                 "monitoreo."
@@ -454,8 +506,8 @@ def generate_hls_report(
             ),
             small,
         ))
-        story.append(Spacer(1, 0.05 * inch))
-        story.append(_bandwidth_chart(
+        bandwidth_section.append(Spacer(1, 0.05 * inch))
+        bandwidth_section.append(_bandwidth_chart(
             bandwidth_samples,
             spanish,
             payload.get("monitoring_started_at"),
@@ -489,10 +541,21 @@ def generate_hls_report(
             colWidths=[1.725 * inch] * 4,
         )
         bandwidth_table.setStyle(_table_style())
-        story.extend([
-            KeepTogether([bandwidth_table]),
+        bandwidth_section.extend([
+            bandwidth_table,
+            Paragraph(
+                (
+                    "Las muestras corresponden a segmentos nuevos con bitrate "
+                    "medible; por eso pueden ser menos que las inspecciones."
+                    if spanish else
+                    "Samples represent new segments with measurable bitrate, "
+                    "so the count may be lower than the number of inspections."
+                ),
+                small,
+            ),
             Spacer(1, 0.08 * inch),
         ])
+        story.append(KeepTogether(bandwidth_section))
 
     variants = list(payload.get("variants") or [])[:50]
     story.append(Paragraph(
