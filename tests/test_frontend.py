@@ -508,6 +508,7 @@ def test_secure_account_interface_is_present():
 def test_billing_and_subscription_interface_is_present():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "billing.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
     assert (
         "const monitoringApproved = isApprovedPlan\n"
         "          ? Boolean(approvedCheckout.include_stream_monitoring)\n"
@@ -522,12 +523,23 @@ def test_billing_and_subscription_interface_is_present():
     assert 'id="billing-pricing-grid"' in html
     assert 'id="billing-pricing-addons"' in html
     assert 'id="billing-invoice-body"' in html
+    assert 'id="billing-provider-note"' in html
     assert 'id="billing-monitoring-choice-input"' in html
     assert "Keep Stream Monitoring for +$59.00/month" in html
     assert '.billing-monitoring-choice input[type="checkbox"]' in (
         FRONTEND_DIR / "styles.css"
     ).read_text()
     assert "renderSubscriptionChangePreview" in javascript
+    assert '"billing.providerConnectedNote"' in javascript
+    assert (
+        "Payments and saved payment methods are securely managed by Stripe."
+        in translations
+    )
+    assert (
+        "Stripe administra de forma segura los pagos y los métodos de pago "
+        "guardados."
+        in translations
+    )
     assert "Cancel Scheduled Change" in javascript
     assert "cancelScheduledSubscriptionChange" in javascript
     assert 'billingMonitoringChoiceInput.addEventListener("change"' in javascript

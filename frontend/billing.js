@@ -17,6 +17,7 @@ const billingInvoiceTable = document.querySelector(
   "#billing-invoice-table",
 );
 const billingInvoiceBody = document.querySelector("#billing-invoice-body");
+const billingProviderNote = document.querySelector("#billing-provider-note");
 const billingSubscriptionActions = document.querySelector(
   "#billing-subscription-actions",
 );
@@ -540,6 +541,26 @@ function renderPricing(pricing) {
 function renderBilling(payload) {
   latestBillingPayload = payload;
   billingPaymentsAvailable = Boolean(payload.payments_available);
+  if (billingProviderNote) {
+    const providerKey = billingPaymentsAvailable
+      ? "billing.providerConnectedNote"
+      : "billing.providerNote";
+    const providerFallback = billingPaymentsAvailable
+      ? (
+          "Payments and saved payment methods are securely managed by Stripe. "
+          + "Broadcast Tool Pro does not store card details."
+        )
+      : (
+          "Online payment management will become available when the payment "
+          + "provider is connected. No payment method is stored by Broadcast "
+          + "Tool Pro at this stage."
+        );
+    billingProviderNote.dataset.i18n = providerKey;
+    billingProviderNote.textContent = billingText(
+      providerKey,
+      providerFallback,
+    );
+  }
   const subscription = payload.subscription;
   const approvedPlan = payload.approved_checkout?.plan_code;
   const pricing = (
