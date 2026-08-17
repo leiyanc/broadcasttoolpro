@@ -1,3 +1,4 @@
+import hashlib
 import re
 from pathlib import Path
 
@@ -307,8 +308,13 @@ def test_public_landing_page_presents_the_platform():
     assert "Media QC Engine" in html
     assert "COMING SOON" in html
     assert "OUR CLIENTS" in html
-    assert "/static/assets/tarima-logo-white.png" in html
+    assert "/static/assets/tarima-logo-white-v2.png" in html
+    assert "/static/assets/tarima-logo-white.png" not in html
     assert "/static/assets/comercio-logo-white.png" in html
+    tarima_logo = FRONTEND_DIR / "assets" / "tarima-logo-white-v2.png"
+    assert hashlib.sha256(tarima_logo.read_bytes()).hexdigest() == (
+        "7c7548599eda46dcb581ff12211002d6496220aa1ba5df63eda8d8710b53e0e0"
+    )
     assert "/app?mode=signin" in html
     assert "/app?mode=create" in html
     assert "/app?mode=trial" in html
