@@ -945,54 +945,45 @@ a {
 }
 
 .landing-clients {
-  width: min(1240px, calc(100% - 48px));
-  display: grid;
-  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
-  gap: 72px;
-  align-items: center;
-  margin: 0 auto 120px;
+  width: min(760px, calc(100% - 48px));
+  margin: 0 auto 88px;
+  padding: 34px 0;
+  text-align: center;
+  border-top: 1px solid var(--landing-line);
+  border-bottom: 1px solid var(--landing-line);
 }
 
-.landing-clients-heading h2 {
-  max-width: 560px;
-  margin: 0;
-  font-size: clamp(36px, 4vw, 54px);
-  line-height: 1.04;
-  letter-spacing: -0.045em;
-}
-
-.landing-clients-heading > p:last-child {
-  max-width: 560px;
-  margin: 22px 0 0;
-  color: var(--landing-muted);
-  font-size: 16px;
-  line-height: 1.65;
+.landing-clients h2 {
+  margin: 0 0 26px;
+  color: #71849b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .landing-client-logos {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.landing-client-logo {
-  min-height: 156px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 34px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #dbe3ed;
-  border-radius: 10px;
+  gap: 58px;
 }
 
-.landing-client-logo img {
-  width: 100%;
-  max-width: 260px;
-  max-height: 88px;
+.landing-client-logo {
   display: block;
   object-fit: contain;
+  opacity: 0.72;
+}
+
+.landing-client-logo-tarima {
+  width: 172px;
+  max-height: 54px;
+}
+
+.landing-client-logo-comercio {
+  width: 178px;
+  max-height: 48px;
+  filter: brightness(0) invert(1);
 }
 
 .landing-cta {
@@ -1259,17 +1250,17 @@ a {
   }
 
   .landing-clients {
-    gap: 42px;
-    margin-bottom: 90px;
+    margin-bottom: 72px;
+    padding: 30px 0;
   }
 
   .landing-client-logos {
-    grid-template-columns: 1fr;
+    gap: 34px;
   }
 
-  .landing-client-logo {
-    min-height: 132px;
-    padding: 28px;
+  .landing-client-logo-tarima,
+  .landing-client-logo-comercio {
+    width: min(38vw, 150px);
   }
 
   .addon-row,
