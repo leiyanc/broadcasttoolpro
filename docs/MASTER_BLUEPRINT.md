@@ -279,8 +279,9 @@ create a password. Activation links expire after seven days.
 After submission, the request form is replaced by a dedicated confirmation
 screen with the request reference and next steps. The platform queues an
 acknowledgement for the requester and a review notification for every active
-Super Admin. Email delivery depends on the configured provider; Amazon SES
-sandbox restrictions remain in effect until production access is approved.
+Super Admin. Email delivery depends on the configured provider. Amazon SES
+production access is enabled in `us-east-1`, with authenticated sending and
+signed delivery-event processing.
 
 A rejected request does not prevent the same email address from submitting a
 future request. Existing or suspended customer identities may also submit a
@@ -594,8 +595,9 @@ branding.
 ## Transactional Email Governance
 
 Transactional email is provider-neutral and passes through an auditable
-outbox. Public sending remains disabled while the selected provider account is
-restricted to sandbox operation.
+outbox. Public transactional sending is enabled only through the authenticated
+Amazon SES configuration in `us-east-1` and remains subject to recipient
+eligibility, suppression, preference, and reputation controls.
 
 - Every accepted send records the provider message identifier.
 - Permanent bounces and complaints immediately suppress the recipient.
@@ -610,9 +612,10 @@ restricted to sandbox operation.
 - Queued or failed messages can be explicitly retried after recipient
   eligibility is confirmed. Suppressed recipients remain blocked until an
   administrator removes the suppression.
-- While Amazon SES remains in sandbox, every external test recipient must be
-  verified in SES. Production launch remains blocked until SES production
-  access is approved.
+- Amazon SES production access was approved on August 17, 2026. A password
+  recovery message to a previously unverified recipient produced a provider
+  `send` event followed by a signed SNS `delivery` event, confirming end-to-end
+  production delivery without exposing message contents.
 - Production integration must authenticate provider event notifications before
   recording them.
 - Amazon SNS notifications are accepted only after cryptographic signature

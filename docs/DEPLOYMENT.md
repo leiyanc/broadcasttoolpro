@@ -14,7 +14,8 @@ and deployment testing. Local development remains independent.
 - SQLite and report history under the mounted data directory
 - Automatic application-code deploys disabled; Blueprint configuration changes
   may still synchronize and trigger a service update
-- Transactional email enabled for controlled SES sandbox recipients
+- Transactional email enabled through Amazon SES production access in
+  `us-east-1`
 - The verified custom domain terminates HTTPS at Render and currently routes to
   the staging service
 - The Render-provided `onrender.com` address remains available as a platform
@@ -32,11 +33,14 @@ The initial staging environment was deployed and verified on July 30, 2026:
 - Initial Super Admin authentication verified
 - Super Admin organization plan verified as Enterprise
 - Public health, privacy, terms, and email-policy routes verified
-- SES sandbox delivery verified for controlled recipients
+- SES production access approved with a 50,000-recipient rolling 24-hour quota
+  and a maximum acceptance rate of 14 recipients per second
 - Google Drive connection, encrypted upload, download, and isolated recovery
   drill verified
 - Signed SNS delivery, permanent-bounce suppression, and complaint suppression
   verified end to end with the Amazon SES mailbox simulator
+- Real transactional delivery to a previously unverified recipient and the
+  resulting `send` and `delivery` events verified on August 17, 2026
 - Stripe Sandbox webhook delivery verified at
   `https://broadcasttoolpro.com/api/billing/stripe/webhook` with two real
   `customer.subscription.updated` events returning HTTP 200
@@ -122,13 +126,15 @@ introduced.
 ## Email
 
 Staging uses `BTP_EMAIL_PROVIDER=ses` with credentials stored only in Render's
-secret manager. Delivery remains restricted by the provider's sandbox rules;
-commercial customer delivery cannot begin until SES production access is
-approved. SES bounce, complaint, and delivery notifications use the dedicated
-SNS topic configured in `BTP_SES_SNS_TOPIC_ARN` and the signed HTTPS endpoint
+secret manager. SES production access was approved in `us-east-1` on August 17,
+2026. The account is healthy with a 50,000-recipient rolling 24-hour quota and
+a maximum acceptance rate of 14 recipients per second. SES bounce, complaint,
+and delivery notifications use the dedicated SNS topic configured in
+`BTP_SES_SNS_TOPIC_ARN` and the signed HTTPS endpoint
 `/api/email-events/amazon-sns`. The endpoint and automatic suppression were
-verified with the SES mailbox simulator on August 13, 2026. Never commit
-provider credentials or the topic ARN value.
+verified with the SES mailbox simulator on August 13, and real delivery to a
+previously unverified recipient was recorded as `send` followed by `delivery`
+on August 17. Never commit provider credentials or the topic ARN value.
 
 ## Blueprint synchronization
 

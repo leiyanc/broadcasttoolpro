@@ -70,10 +70,10 @@ hosting provider's secret-variable manager, not uploaded as a file.
   backups, email, and organization isolation before a commercial deployment.
 - Restrict access to the database, OAuth files, encryption key, and backups.
 - Review rejected sign-ins and temporary locks in the Control Panel.
-- Amazon SES is the transactional email provider. The verified staging
-  environment may deliver only to verified sandbox recipients. Commercial
-  customer delivery requires SES production access, DKIM, SPF, DMARC, and
-  monitored bounces and complaints.
+- Amazon SES is the transactional email provider. Production access is enabled
+  in `us-east-1`; the verified sending domain uses DKIM, SPF, DMARC, custom
+  MAIL FROM, and monitored bounce and complaint handling. Continue to send only
+  expected transactional mail and review SES reputation metrics regularly.
 - Configure the SES notification topic to use the HTTPS endpoint
   `/api/email-events/amazon-sns`. The endpoint verifies the SNS signature,
   certificate URL, signature version, and exact configured topic ARN before it
