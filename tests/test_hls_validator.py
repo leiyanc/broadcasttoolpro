@@ -121,6 +121,43 @@ def test_media_playlist_reports_observed_segment_bandwidth():
     assert result["media"]["measured_bandwidth_kbps"] == 1600.0
 
 
+def test_monitor_inspects_every_new_segment_and_skips_seen_segments():
+    cue_content = (
+        _ts_packet(0, bytes.fromhex("00b00d0001c100000001e1e000000000"))
+        + _ts_packet(480, bytes.fromhex(
+            "02b01a0001c10000e1e1f0001be1e1f000"
+            "86e1e3f00352010000000000"
+        ))
+        + _ts_packet(483, bytes.fromhex(
+            "fc301100000000000000000000000000"
+        ))
+    )
+    fetched_segments = []
+
+    def segment_fetcher(url):
+        fetched_segments.append(url)
+        return cue_content if url.endswith("segment101.ts") else b""
+
+    result = validate_hls(
+        "https://cdn.example.com/live/index.m3u8",
+        fetcher=lambda _: MEDIA_PLAYLIST,
+        inspect_segments=True,
+        segment_fetcher=segment_fetcher,
+        inspected_segment_urls={
+            "https://cdn.example.com/live/segment100.ts",
+        },
+    )
+
+    assert fetched_segments == [
+        "https://cdn.example.com/live/segment101.ts",
+    ]
+    assert result["trigger_count"] == 1
+    trigger = result["media"]["triggers"][0]
+    assert trigger["segment_sequence"] == 101
+    assert trigger["segment_url"].endswith("segment101.ts")
+    assert result["inspected_segment_urls"] == fetched_segments
+
+
 def test_invalid_media_playlist_reports_blocking_issues():
     result = validate_hls(
         "https://cdn.example.com/live/index.m3u8",

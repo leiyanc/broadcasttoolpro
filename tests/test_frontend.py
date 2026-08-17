@@ -411,6 +411,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert 'value="15" data-i18n="hls.minutes15"' in html
     assert "pollHlsMonitor" in javascript
     assert "hlsSeenTriggers" in javascript
+    assert "hlsInspectedSegments" in javascript
+    assert '"inspected_segment_urls"' in javascript
     assert "/api/hls/report/pdf" in javascript
     assert "summarizeScteBreaks" in javascript
     assert "continuation_count" in javascript

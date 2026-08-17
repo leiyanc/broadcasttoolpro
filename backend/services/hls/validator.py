@@ -17,6 +17,7 @@ from urllib.request import (
 MAX_PLAYLIST_SIZE = 2 * 1024 * 1024
 MAX_SEGMENT_INSPECTION_SIZE = 256 * 1024
 MAX_VARIANTS_TO_INSPECT = 10
+MAX_SEGMENTS_TO_INSPECT = 20
 
 
 class HlsValidationError(ValueError):
@@ -463,6 +464,24 @@ def _inspect_media_playlist(
             "A segment duration exceeds EXT-X-TARGETDURATION.",
         ))
 
+    media_sequence = 0
+    for line in lines:
+        if line.startswith("#EXT-X-MEDIA-SEQUENCE:"):
+            try:
+                media_sequence = int(line.split(":", 1)[1])
+            except ValueError:
+                media_sequence = 0
+            break
+
+    segment_samples = [
+        {
+            "url": urljoin(url, segment_url),
+            "duration": durations[index] if index < len(durations) else None,
+            "sequence": media_sequence + index,
+        }
+        for index, segment_url in enumerate(segment_uris)
+    ]
+
     return {
         "url": url,
         "segments": len(segment_uris),
@@ -492,6 +511,7 @@ def _inspect_media_playlist(
             else None
         ),
         "last_segment_duration": durations[-1] if durations else None,
+        "segment_samples": segment_samples,
     }, issues
 
 
@@ -504,6 +524,7 @@ def validate_hls(
         bytes | tuple[bytes, int | None],
     ] = fetch_segment_sample,
     max_variants_to_inspect: int = MAX_VARIANTS_TO_INSPECT,
+    inspected_segment_urls: set[str] | None = None,
 ) -> dict:
     normalized_url = url.strip()
     if not normalized_url:
@@ -528,6 +549,8 @@ def validate_hls(
             "issues": issues,
         }
 
+    already_inspected = inspected_segment_urls or set()
+    inspected_urls = []
     variants = []
     for index, line in enumerate(lines):
         if not line.startswith("#EXT-X-STREAM-INF:"):
@@ -600,34 +623,47 @@ def validate_hls(
             )
             segment_inspection = None
             measured_bandwidth_kbps = None
-            if inspect_segments and variant_media["last_segment_url"]:
-                try:
-                    segment_sample = segment_fetcher(
-                        variant_media["last_segment_url"]
-                    )
+            new_segments = [
+                segment
+                for segment in variant_media["segment_samples"]
+                if segment["url"] not in already_inspected
+            ][-MAX_SEGMENTS_TO_INSPECT:]
+            if inspect_segments and new_segments:
+                segment_triggers = []
+                track_detected = False
+                scte_pids = set()
+                for segment in new_segments:
+                    try:
+                        segment_sample = segment_fetcher(segment["url"])
+                    except HlsValidationError:
+                        continue
                     if isinstance(segment_sample, tuple):
                         segment_content, segment_size = segment_sample
                     else:
                         segment_content = segment_sample
                         segment_size = len(segment_sample)
-                    segment_inspection = inspect_mpegts_scte35(
-                        segment_content
-                    )
-                    segment_duration = variant_media[
-                        "last_segment_duration"
-                    ]
+                    inspected_urls.append(segment["url"])
+                    inspection = inspect_mpegts_scte35(segment_content)
+                    track_detected = track_detected or inspection["track_detected"]
+                    scte_pids.update(inspection["pids"])
+                    for trigger in inspection["triggers"]:
+                        segment_triggers.append({
+                            **trigger,
+                            "segment_url": segment["url"],
+                            "segment_sequence": segment["sequence"],
+                        })
+                    segment_duration = segment["duration"]
                     if segment_size and segment_duration:
                         measured_bandwidth_kbps = round(
                             segment_size * 8 / segment_duration / 1000,
                             2,
                         )
-                except HlsValidationError:
-                    segment_inspection = None
-            segment_triggers = (
-                segment_inspection.get("triggers", [])
-                if segment_inspection
-                else []
-            )
+                segment_inspection = {
+                    "track_detected": track_detected,
+                    "pids": sorted(scte_pids),
+                }
+            else:
+                segment_triggers = []
             combined_triggers = (
                 variant_media["triggers"] + segment_triggers
             )
@@ -666,30 +702,36 @@ def validate_hls(
     else:
         media, media_issues = _inspect_media_playlist(text, normalized_url)
         issues.extend(media_issues)
-        if inspect_segments and media["last_segment_url"]:
-            try:
-                segment_sample = segment_fetcher(
-                    media["last_segment_url"]
-                )
+        new_segments = [
+            segment
+            for segment in media["segment_samples"]
+            if segment["url"] not in already_inspected
+        ][-MAX_SEGMENTS_TO_INSPECT:]
+        if inspect_segments and new_segments:
+            segment_triggers = []
+            track_detected = False
+            scte_pids = set()
+            for segment in new_segments:
+                try:
+                    segment_sample = segment_fetcher(segment["url"])
+                except HlsValidationError:
+                    continue
                 if isinstance(segment_sample, tuple):
                     segment_content, segment_size = segment_sample
                 else:
                     segment_content = segment_sample
                     segment_size = len(segment_sample)
-                segment_inspection = inspect_mpegts_scte35(
-                    segment_content
-                )
-                segment_triggers = segment_inspection["triggers"]
-                media["triggers"].extend(segment_triggers)
-                media["trigger_count"] = len(media["triggers"])
-                media["scte35_detected"] = (
-                    media["scte35_detected"] or bool(segment_triggers)
-                )
-                media["scte35_track_detected"] = (
-                    segment_inspection["track_detected"]
-                )
-                media["scte35_pids"] = segment_inspection["pids"]
-                segment_duration = media["last_segment_duration"]
+                inspected_urls.append(segment["url"])
+                inspection = inspect_mpegts_scte35(segment_content)
+                track_detected = track_detected or inspection["track_detected"]
+                scte_pids.update(inspection["pids"])
+                for trigger in inspection["triggers"]:
+                    segment_triggers.append({
+                        **trigger,
+                        "segment_url": segment["url"],
+                        "segment_sequence": segment["sequence"],
+                    })
+                segment_duration = segment["duration"]
                 media["measured_bandwidth_kbps"] = (
                     round(
                         segment_size * 8 / segment_duration / 1000,
@@ -698,9 +740,13 @@ def validate_hls(
                     if segment_size and segment_duration
                     else None
                 )
-            except HlsValidationError:
-                media["scte35_track_detected"] = False
-                media["scte35_pids"] = []
+            media["triggers"].extend(segment_triggers)
+            media["trigger_count"] = len(media["triggers"])
+            media["scte35_detected"] = (
+                media["scte35_detected"] or bool(segment_triggers)
+            )
+            media["scte35_track_detected"] = track_detected
+            media["scte35_pids"] = sorted(scte_pids)
 
     critical = sum(issue["severity"] == "critical" for issue in issues)
     warnings = sum(issue["severity"] == "warning" for issue in issues)
@@ -737,4 +783,5 @@ def validate_hls(
         "critical": critical,
         "warnings": warnings,
         "issues": issues,
+        "inspected_segment_urls": inspected_urls,
     }

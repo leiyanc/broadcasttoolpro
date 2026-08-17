@@ -41,6 +41,7 @@ const hlsMonitorTriggers = [];
 const hlsMonitorIssues = new Map();
 let hlsInitialVariants = [];
 const hlsBandwidthSamples = [];
+const hlsInspectedSegments = new Set();
 
 function hlsText(key, fallback, values = {}) {
   let text = window.BTPi18n?.t(key, fallback) ?? fallback;
@@ -214,6 +215,10 @@ async function requestHlsValidation(playlistUrl, monitorMode = false) {
   formData.append("playlist_url", playlistUrl);
   formData.append("inspect_segments", "true");
   formData.append("monitor_mode", String(monitorMode));
+  formData.append(
+    "inspected_segment_urls",
+    JSON.stringify(monitorMode ? [...hlsInspectedSegments] : []),
+  );
   const response = await fetch("/api/hls/validate", {
     method: "POST",
     body: formData,
@@ -362,6 +367,9 @@ async function pollHlsMonitor() {
   try {
     const result = await requestHlsValidation(hlsMonitorUrl, true);
     latestHlsResult = result;
+    (result.inspected_segment_urls || []).forEach((url) => {
+      hlsInspectedSegments.add(url);
+    });
     hlsReportButton.classList.remove("is-hidden");
     hlsPolls += 1;
     addMonitoredTriggers(result);
@@ -430,6 +438,7 @@ if (hlsMonitorButton) {
 
     stopHlsMonitoring();
     hlsSeenTriggers.clear();
+    hlsInspectedSegments.clear();
     hlsMonitorTriggers.length = 0;
     hlsMonitorIssues.clear();
     hlsBandwidthSamples.length = 0;

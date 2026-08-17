@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Body, Depends, Form, HTTPException
 from fastapi.responses import Response
 
@@ -26,13 +28,27 @@ def validate_hls_url(
     playlist_url: str = Form(...),
     inspect_segments: bool = Form(True),
     monitor_mode: bool = Form(False),
+    inspected_segment_urls: str = Form("[]"),
     _user: dict = Depends(require_module("hls_validator")),
 ):
     try:
+        try:
+            parsed_urls = json.loads(inspected_segment_urls)
+        except json.JSONDecodeError as exc:
+            raise HlsValidationError(
+                "Inspected segment history must be valid JSON."
+            ) from exc
+        if not isinstance(parsed_urls, list) or not all(
+            isinstance(item, str) for item in parsed_urls
+        ):
+            raise HlsValidationError(
+                "Inspected segment history must be a list of URLs."
+            )
         return validate_hls(
             playlist_url,
             inspect_segments=inspect_segments,
             max_variants_to_inspect=1 if monitor_mode else 10,
+            inspected_segment_urls=set(parsed_urls[-500:]),
         )
     except HlsValidationError as exc:
         raise HTTPException(

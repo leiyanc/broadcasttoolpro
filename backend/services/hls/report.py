@@ -11,7 +11,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     KeepTogether,
-    Image,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -341,27 +340,7 @@ def generate_hls_report(
         textColor=colors.white,
     )
 
-    story = []
-    brand_logo = Image(
-        str(BRAND_LOGO),
-        width=3.25 * inch,
-        height=0.71 * inch,
-    )
-    brand = Table(
-        [[brand_logo]],
-        colWidths=[6.9 * inch],
-    )
-    brand.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX", (0, 0), (-1, -1), 0.7, LINE),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-    ]))
-    story.extend([
-        brand,
-        Spacer(1, 0.25 * inch),
+    story = [
         Paragraph(
             translated(
                 "title",
@@ -378,7 +357,7 @@ def generate_hls_report(
             small,
         ),
         Spacer(1, 0.16 * inch),
-    ])
+    ]
 
     valid = bool(payload.get("valid"))
     status_color = SUCCESS if valid else DANGER
@@ -510,7 +489,10 @@ def generate_hls_report(
             colWidths=[1.725 * inch] * 4,
         )
         bandwidth_table.setStyle(_table_style())
-        story.extend([bandwidth_table, Spacer(1, 0.08 * inch)])
+        story.extend([
+            KeepTogether([bandwidth_table]),
+            Spacer(1, 0.08 * inch),
+        ])
 
     variants = list(payload.get("variants") or [])[:50]
     story.append(Paragraph(
@@ -757,10 +739,19 @@ def generate_hls_report(
                 "Broadcast Tool Pro - Confidential Validation Report",
             ),
         )
-        canvas.drawRightString(
-            letter[0] - doc.rightMargin,
+        canvas.drawCentredString(
+            letter[0] / 2,
             0.25 * inch,
             f'{translated("page", "Page")} {doc.page}',
+        )
+        canvas.drawImage(
+            str(BRAND_LOGO),
+            letter[0] - doc.rightMargin - 86,
+            7,
+            width=86,
+            height=19,
+            preserveAspectRatio=True,
+            mask="auto",
         )
         canvas.restoreState()
 
