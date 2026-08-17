@@ -2,7 +2,7 @@ from io import BytesIO
 from pathlib import Path
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
@@ -62,14 +62,6 @@ class TrialWatermarkCanvas(Canvas):
             )
             Canvas.showPage(self)
         Canvas.save(self)
-
-
-def _brand_logo() -> Image:
-    return Image(
-        str(BRAND_LOGO),
-        width=190,
-        height=42,
-    )
 
 
 def _logo(logo_content: bytes | None) -> Image | None:
@@ -181,12 +173,12 @@ def generate_report_pdf(
         ))
     logo = _logo(logo_content)
     header_table = Table(
-        [[_brand_logo(), heading, logo or ""]],
-        colWidths=[200, document.width - 330, 130],
+        [[heading, logo or ""]],
+        colWidths=[document.width - 130, 130],
     )
     header_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -251,21 +243,34 @@ def generate_report_pdf(
     footer = labels["generated"]
     if report_type == "postlog":
         footer = f"{labels['total_airings']}: {len(events)} · {footer}"
-    footer_style = ParagraphStyle(
-        "ReportFooter",
-        parent=styles["Normal"],
-        fontSize=8,
-        textColor=colors.HexColor("#829AB1"),
-        alignment=TA_CENTER,
-    )
+
+    def draw_footer(canvas: Canvas, doc: SimpleDocTemplate) -> None:
+        canvas.saveState()
+        canvas.setFillColor(colors.HexColor("#829AB1"))
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(doc.leftMargin, 12, footer)
+        canvas.drawImage(
+            str(BRAND_LOGO),
+            landscape(letter)[0] - doc.rightMargin - 86,
+            7,
+            width=86,
+            height=19,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+        canvas.restoreState()
+
     story = [
         header_table,
         Spacer(1, 14),
         report_table,
-        Spacer(1, 12),
-        Paragraph(footer, footer_style),
     ]
 
     canvasmaker = TrialWatermarkCanvas if trial_watermark else Canvas
-    document.build(story, canvasmaker=canvasmaker)
+    document.build(
+        story,
+        onFirstPage=draw_footer,
+        onLaterPages=draw_footer,
+        canvasmaker=canvasmaker,
+    )
     return output.getvalue()

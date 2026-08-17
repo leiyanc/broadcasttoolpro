@@ -88,7 +88,7 @@ def _show_color(title: str) -> colors.Color:
 def _draw_logo(
     pdf: canvas.Canvas,
     logo_content: bytes | None,
-    left: float,
+    right: float,
     page_height: float,
 ) -> None:
     if not logo_content:
@@ -108,7 +108,7 @@ def _draw_logo(
     draw_height = height * scale
     pdf.drawImage(
         image,
-        left,
+        right - draw_width,
         page_height - 38,
         width=draw_width,
         height=draw_height,
@@ -135,24 +135,24 @@ def _draw_page(
     grid_height = grid_top - grid_bottom
     half_hour_height = grid_height / 48
 
-    _draw_logo(pdf, logo_content, left, page_height)
+    _draw_logo(pdf, logo_content, page_width - right, page_height)
     pdf.setFillColor(NAVY)
     pdf.setFont("Helvetica-Bold", 9)
-    pdf.drawRightString(
-        page_width - right,
+    pdf.drawString(
+        left,
         page_height - 19,
         "PROGRAMMING GRID",
     )
     pdf.setFont("Helvetica-Bold", 7.5)
-    pdf.drawRightString(
-        page_width - right,
+    pdf.drawString(
+        left,
         page_height - 30,
         channel_name,
     )
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica", 6.5)
-    pdf.drawRightString(
-        page_width - right,
+    pdf.drawString(
+        left,
         page_height - 40,
         f"Week of {week.strftime('%B %d, %Y')}  |  {timezone_name}",
     )
@@ -239,16 +239,7 @@ def _draw_page(
                 )
                 pdf.drawString(x + 2.5, block_top - 5.5, title)
 
-    pdf.drawImage(
-        str(BRAND_LOGO),
-        left,
-        7,
-        width=105,
-        height=23,
-        preserveAspectRatio=True,
-        mask="auto",
-    )
-    legend_x = left + 126
+    legend_x = left
     legend_y = 13
     legend = ((GRID_LEGEND_LABELS[0], LIVE_BACKGROUND),)
     pdf.setFont("Helvetica-Bold", 5.2)
@@ -260,11 +251,22 @@ def _draw_page(
         legend_x += 11 + stringWidth(label, "Helvetica-Bold", 5.2) + 12
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica", 5.5)
-    pdf.drawRightString(
-        page_width - right,
+    pdf.drawCentredString(
+        page_width / 2,
         13,
         f"{week.isoformat()} - {(week + timedelta(days=6)).isoformat()}",
     )
+    pdf.saveState()
+    pdf.drawImage(
+        str(BRAND_LOGO),
+        page_width - right - 86,
+        8,
+        width=86,
+        height=19,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
+    pdf.restoreState()
 
 
 def generate_programming_grid(
