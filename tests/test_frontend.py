@@ -306,6 +306,9 @@ def test_public_landing_page_presents_the_platform():
     assert "+$59" in html
     assert "Media QC Engine" in html
     assert "COMING SOON" in html
+    assert "OUR CLIENTS" in html
+    assert "/static/assets/tarima-logo.jpg" in html
+    assert "/static/assets/comercio-logo.png" in html
     assert "/app?mode=signin" in html
     assert "/app?mode=create" in html
     assert "/app?mode=trial" in html
@@ -336,7 +339,9 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.footer.copyright": "© 2026 Broadcast Tool Pro. Todos los derechos reservados."' in translations
     assert ".landing-kicker > span:first-child" in css
     assert ".landing-kicker span {" not in css
-    assert "/static/landing.css?v=20260814-2" in html
+    assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
+    assert '"landing.clients.title": "La confianza de nuestros canales."' in translations
+    assert "/static/landing.css?v=20260817-1" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
