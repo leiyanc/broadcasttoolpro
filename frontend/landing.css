@@ -981,9 +981,9 @@ a {
 }
 
 .landing-client-logo-comercio {
-  width: 178px;
-  max-height: 48px;
-  filter: brightness(0) invert(1);
+  width: 196px;
+  max-height: 52px;
+  opacity: 1;
 }
 
 .landing-cta {
