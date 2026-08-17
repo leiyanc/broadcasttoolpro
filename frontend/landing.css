@@ -984,6 +984,7 @@ a {
   width: 196px;
   max-height: 52px;
   opacity: 1;
+  filter: brightness(0) invert(1);
 }
 
 .landing-cta {
