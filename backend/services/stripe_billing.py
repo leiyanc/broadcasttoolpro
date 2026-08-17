@@ -685,6 +685,7 @@ class StripeBillingService:
             raise ValueError(
                 "Stripe invoice could not be matched to an organization."
             )
+        is_initial_invoice = not billing_store.list_invoices(organization_id)
         transitions = _value(invoice, "status_transitions", {}) or {}
         billing_store.upsert_stripe_invoice(
             organization_id,
@@ -739,6 +740,38 @@ class StripeBillingService:
                     organization_id=organization_id,
                     recipient_email=recipient,
                 )
+            if recipient and is_initial_invoice:
+                current = billing_store.get_subscription(organization_id)
+                administrators = identity_store.superuser_notification_targets()
+                try:
+                    email_outbox_store.schedule_subscription_activation_notifications(
+                        organization_id=organization_id,
+                        recipient_email=recipient,
+                        administrator_emails=[
+                            item["email"] for item in administrators
+                        ],
+                        provider_invoice_id=_value(invoice, "id", ""),
+                        plan_code=current["plan"],
+                        include_stream_monitoring=bool(
+                            current.get("stream_monitoring")
+                        ),
+                        amount_paid_cents=int(
+                            _value(invoice, "amount_paid", 0) or 0
+                        ),
+                        recurring_monthly_cents=int(
+                            current.get("amount_cents", 0) or 0
+                        ),
+                        renews_at=current.get("current_period_end"),
+                        billing_url=os.getenv(
+                            "BTP_APPLICATION_URL",
+                            "http://127.0.0.1:8000/app",
+                        ).strip(),
+                        hosted_invoice_url=_value(
+                            invoice, "hosted_invoice_url"
+                        ),
+                    )
+                except (OSError, RuntimeError, sqlite3.Error):
+                    pass
 
 
 stripe_billing = StripeBillingService()

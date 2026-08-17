@@ -219,6 +219,62 @@ def test_subscription_change_queues_customer_and_admin_confirmations():
         assert detail["body_text"] == customer["body_text"]
 
 
+def test_initial_subscription_queues_customer_and_admin_confirmations():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "email.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="New Customer Network", slug=None, plan="starter"
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        created = outbox.schedule_subscription_activation_notifications(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["admin@example.com", "admin@example.com"],
+            provider_invoice_id="in_activation",
+            plan_code="programming_suite",
+            include_stream_monitoring=False,
+            amount_paid_cents=0,
+            recurring_monthly_cents=3900,
+            renews_at="2026-09-17T19:00:00+00:00",
+            billing_url="https://example.test/app",
+            hosted_invoice_url="https://invoice.stripe.test/activation",
+        )
+
+        assert len(created) == 2
+        customer = next(
+            message for message in created
+            if message["recipient_email"] == "owner@example.com"
+        )
+        assert customer["subject"] == (
+            "Your Broadcast Tool Pro subscription is active"
+        )
+        assert "Organization: New Customer Network" in customer["body_text"]
+        assert "Plan: Programming Suite" in customer["body_text"]
+        assert "Paid today: $0.00" in customer["body_text"]
+        assert "Standard monthly price: $39.00" in customer["body_text"]
+        assert "September 17, 2026" in customer["body_text"]
+        assert "invoice.stripe.test/activation" in customer["body_text"]
+
+        repeated = outbox.schedule_subscription_activation_notifications(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["admin@example.com"],
+            provider_invoice_id="in_activation",
+            plan_code="programming_suite",
+            include_stream_monitoring=False,
+            amount_paid_cents=0,
+            recurring_monthly_cents=3900,
+            renews_at="2026-09-17T19:00:00+00:00",
+            billing_url="https://example.test/app",
+        )
+        assert len(repeated) == 2
+        assert len(outbox.list_for_organization(organization["id"])) == 2
+
+
 def test_cancellation_and_renewal_queue_transactional_notices():
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "email.db"

@@ -429,6 +429,89 @@ def test_subscription_webhook_provisions_entitlements_once(monkeypatch):
         assert billing.provider_event_processed("evt_subscription_1") is True
 
 
+def test_first_paid_invoice_queues_activation_confirmation_once(monkeypatch):
+    _configure(monkeypatch)
+
+    class RecordingOutbox:
+        def __init__(self):
+            self.activations = []
+            self.canceled = []
+
+        def schedule_subscription_activation_notifications(self, **kwargs):
+            self.activations.append(kwargs)
+
+        def cancel_payment_failure_lifecycle(self, **kwargs):
+            self.canceled.append(kwargs)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Activation Network", slug=None, plan="starter"
+        )
+        EntitlementStore(database_path).initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        outbox = RecordingOutbox()
+        monkeypatch.setattr(stripe_module, "email_outbox_store", outbox)
+        monkeypatch.setattr(
+            stripe_module.identity_store,
+            "superuser_notification_targets",
+            lambda: [{"email": "admin@example.com"}],
+        )
+        subscription = {
+            "id": "sub_activation",
+            "customer": "cus_activation",
+            "status": "active",
+            "metadata": {"organization_id": organization["id"]},
+            "cancel_at_period_end": False,
+            "current_period_start": 1_786_000_000,
+            "current_period_end": 1_788_592_000,
+            "items": {"data": [{
+                "price": {
+                    "id": "price_programming",
+                    "unit_amount": 3900,
+                    "currency": "usd",
+                },
+                "quantity": 1,
+            }]},
+        }
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _subscription_id: subscription,
+        )
+        service = StripeBillingService()
+        first_invoice = {
+            "id": "in_activation",
+            "subscription": "sub_activation",
+            "customer_email": "owner@example.com",
+            "status": "paid",
+            "currency": "usd",
+            "amount_due": 0,
+            "amount_paid": 0,
+            "created": 1_786_000_000,
+            "hosted_invoice_url": "https://invoice.stripe.test/activation",
+        }
+
+        service._apply_invoice(first_invoice, event_type="invoice.paid")
+        service._apply_invoice(
+            {**first_invoice, "id": "in_renewal", "created": 1_788_592_000},
+            event_type="invoice.paid",
+        )
+
+        assert len(outbox.activations) == 1
+        activation = outbox.activations[0]
+        assert activation["provider_invoice_id"] == "in_activation"
+        assert activation["recipient_email"] == "owner@example.com"
+        assert activation["administrator_emails"] == ["admin@example.com"]
+        assert activation["plan_code"] == "programming_suite"
+        assert activation["amount_paid_cents"] == 0
+        assert activation["recurring_monthly_cents"] == 3900
+
+
 def test_invoice_failure_starts_grace_and_payment_restores_access(monkeypatch):
     _configure(monkeypatch)
     monkeypatch.setenv("BTP_PAYMENT_GRACE_HOURS", "72")

@@ -638,6 +638,117 @@ class EmailOutboxStore:
                 created.append(dict(row))
         return created
 
+    def schedule_subscription_activation_notifications(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        administrator_emails: list[str],
+        provider_invoice_id: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+        amount_paid_cents: int,
+        recurring_monthly_cents: int,
+        renews_at: str | None,
+        billing_url: str,
+        hosted_invoice_url: str | None = None,
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        plan_names = {
+            "programming_suite": "Programming Suite",
+            "professional": "Professional",
+            "enterprise": "Enterprise",
+        }
+        plan_name = plan_names.get(plan_code, plan_code)
+        monitoring = "Included" if (
+            plan_code == "enterprise" or include_stream_monitoring
+        ) else "Not included"
+        renewal_label = "Available in Billing"
+        if renews_at:
+            renewal_date = datetime.fromisoformat(renews_at)
+            if renewal_date.tzinfo is None:
+                renewal_date = renewal_date.replace(tzinfo=timezone.utc)
+            renewal_label = renewal_date.astimezone(timezone.utc).strftime(
+                "%B %d, %Y at %H:%M UTC"
+            ).replace(" 0", " ")
+        with self._connection() as connection:
+            organization = connection.execute(
+                "SELECT name FROM organizations WHERE id = ?",
+                (organization_id,),
+            ).fetchone()
+        organization_name = (
+            organization["name"] if organization else organization_id
+        )
+        summary = (
+            f"Organization: {organization_name}\n"
+            f"Plan: {plan_name}\n"
+            f"Stream Monitoring: {monitoring}\n"
+            f"Paid today: ${amount_paid_cents / 100:.2f}\n"
+            f"Standard monthly price: ${recurring_monthly_cents / 100:.2f}\n"
+            f"Next renewal: {renewal_label}"
+        )
+        invoice_line = (
+            f"\nInvoice: {hosted_invoice_url}" if hosted_invoice_url else ""
+        )
+        messages = [{
+            "recipient": recipient_email,
+            "code": (
+                "subscription_activation_customer_"
+                f"{provider_invoice_id}"
+            ),
+            "subject": "Your Broadcast Tool Pro subscription is active",
+            "body": (
+                "Your Broadcast Tool Pro subscription is active and product "
+                "access is available.\n\n"
+                f"{summary}{invoice_line}\n\n"
+                "Promotions and credits are reflected on Stripe invoices.\n"
+                f"Open Billing: {billing_url}"
+            ),
+        }]
+        for position, email in enumerate(dict.fromkeys(
+            address.strip().lower()
+            for address in administrator_emails
+            if address.strip()
+        )):
+            messages.append({
+                "recipient": email,
+                "code": (
+                    f"subscription_activation_admin_{provider_invoice_id}_"
+                    f"{position}"
+                ),
+                "subject": "Customer subscription activated",
+                "body": (
+                    "A customer subscription was activated.\n\n"
+                    f"{summary}{invoice_line}"
+                ),
+            })
+        created: list[dict] = []
+        with self._connection() as connection:
+            for message in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    ON CONFLICT (organization_id, template_code) DO NOTHING
+                    """,
+                    (
+                        message_id, organization_id,
+                        message["recipient"].strip().lower(), message["code"],
+                        message["subject"], message["body"], now, now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE organization_id = ? "
+                    "AND template_code = ?",
+                    (organization_id, message["code"]),
+                ).fetchone()
+                if row is not None:
+                    created.append(dict(row))
+        return created
+
     def schedule_subscription_renewal_notice(
         self,
         *,
