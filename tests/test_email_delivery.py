@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from backend.services.email_delivery import (
     AmazonSesProvider,
     EmailDeliveryService,
+    SesSettings,
 )
 from backend.services.email_outbox import EmailOutboxStore
 from backend.services.tenant_store import TenantStore
@@ -20,6 +21,15 @@ class RecordingProvider:
         if self.error:
             raise self.error
         return "ses-message-123"
+
+
+class RecordingSesClient:
+    def __init__(self):
+        self.request = None
+
+    def send_email(self, **request):
+        self.request = request
+        return {"MessageId": "ses-message-123"}
 
 
 def _outbox(directory: str) -> tuple[EmailOutboxStore, str]:
@@ -130,6 +140,26 @@ def test_email_html_renders_billing_link_as_a_button(monkeypatch):
 
     assert 'href="https://example.test/app"' in content
     assert ">Open Billing</a>" in content
+
+
+def test_ses_delivery_routes_replies_to_support():
+    provider = AmazonSesProvider.__new__(AmazonSesProvider)
+    provider.settings = SesSettings(
+        sender="notifications@broadcasttoolpro.com",
+        region="us-east-1",
+        reply_to="support@broadcasttoolpro.com",
+    )
+    provider.client = RecordingSesClient()
+
+    provider.send({
+        "recipient_email": "customer@example.com",
+        "subject": "Test",
+        "body_text": "Hello",
+    })
+
+    assert provider.client.request["ReplyToAddresses"] == [
+        "support@broadcasttoolpro.com"
+    ]
 
 
 def test_payment_failure_schedules_grace_notifications_and_recovery():

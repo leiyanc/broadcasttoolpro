@@ -419,7 +419,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260817-1' in html
-    assert '/static/i18n.js?v=20260817-1' in html
+    assert '/static/i18n.js?v=20260818-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -565,6 +565,7 @@ def test_billing_and_subscription_interface_is_present():
     assert "Request Add-on" in javascript
     assert "Active Add-on" in javascript
     assert "pricing-feature-status" in javascript
+    assert 'href = "mailto:billing@broadcasttoolpro.com"' in javascript
 
 
 def test_contextual_help_center_is_present():
@@ -594,6 +595,18 @@ def test_contextual_help_center_is_present():
     assert 'id="help-reopen-request"' in html
     assert "helpOpenRequest" in javascript
     assert "updateHelpSupportFields" in javascript
+    assert "mailto:support@broadcasttoolpro.com" in html
+
+
+def test_public_contact_addresses_are_visible():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert "mailto:hello@broadcasttoolpro.com" in html
+    assert "mailto:support@broadcasttoolpro.com" in html
+    assert "mailto:security@broadcasttoolpro.com" in html
+    assert '"landing.footer.sales": "Ventas"' in translations
+    assert '"landing.footer.support": "Soporte"' in translations
 
 
 def test_epg_preview_is_available_after_schedule_validation():

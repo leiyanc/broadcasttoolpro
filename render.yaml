@@ -46,7 +46,7 @@ services:
       - key: BTP_EMAIL_FROM
         sync: false
       - key: BTP_EMAIL_REPLY_TO
-        sync: false
+        value: support@broadcasttoolpro.com
       - key: BTP_SES_SNS_TOPIC_ARN
         sync: false
       - key: AWS_ACCESS_KEY_ID

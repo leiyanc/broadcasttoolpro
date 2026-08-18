@@ -560,6 +560,14 @@ function renderBilling(payload) {
       providerKey,
       providerFallback,
     );
+    billingProviderNote.appendChild(document.createTextNode(" "));
+    const billingContact = document.createElement("a");
+    billingContact.href = "mailto:billing@broadcasttoolpro.com";
+    billingContact.textContent = billingText(
+      "billing.contact",
+      "Contact Billing",
+    );
+    billingProviderNote.appendChild(billingContact);
   }
   const subscription = payload.subscription;
   const approvedPlan = payload.approved_checkout?.plan_code;

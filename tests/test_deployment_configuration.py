@@ -24,6 +24,8 @@ def test_render_staging_blueprint_is_isolated_and_persistent():
     assert "BTP_REQUIRE_REMOTE_BACKUP" in blueprint
     assert "BTP_SES_SNS_TOPIC_ARN" in blueprint
     assert "BTP_SES_REGION" in blueprint
+    assert "BTP_EMAIL_REPLY_TO" in blueprint
+    assert "value: support@broadcasttoolpro.com" in blueprint
 
 
 def test_deployment_documentation_lists_required_secrets():
