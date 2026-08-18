@@ -609,7 +609,9 @@ def test_public_contact_uses_an_internal_sales_form():
     assert 'name="email"' in html
     assert 'name="message"' in html
     assert "mailto:" not in html
-    assert 'fetch("/api/auth/access-requests"' in javascript
+    assert 'fetch("/api/auth/sales-inquiries"' in javascript
+    assert 'name="requested_plan"' not in html
+    assert 'name="billing_cycle"' not in html
     assert '"landing.footer.sales": "Ventas"' in translations
     assert "landing.footer.support" not in html
     assert "landing.footer.security" not in html

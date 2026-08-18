@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from uuid import uuid4
 
 from fastapi import (
     APIRouter,
@@ -19,6 +20,7 @@ from backend.models.identity import (
     MemberCreate,
     PasswordResetConfirm,
     PasswordResetRequest,
+    SalesInquiryCreate,
     TrialRegistrationRequest,
 )
 from backend.services.access_request_store import access_request_store
@@ -322,7 +324,6 @@ def create_access_request(request: AccessRequestCreate):
         )
         if notification_targets:
             try:
-                sales_email = os.getenv("BTP_SALES_EMAIL", "").strip()
                 communications = (
                     email_outbox_store.schedule_access_request_received(
                         notification_organization_id=(
@@ -340,14 +341,10 @@ def create_access_request(request: AccessRequestCreate):
                             "include_stream_monitoring"
                         ],
                         billing_cycle=access_request["billing_cycle"],
-                        administrator_emails=(
-                            [sales_email]
-                            if sales_email
-                            else [
-                                target["email"]
-                                for target in notification_targets
-                            ]
-                        ),
+                        administrator_emails=[
+                            target["email"]
+                            for target in notification_targets
+                        ],
                     )
                 )
             except sqlite3.Error:
@@ -363,6 +360,43 @@ def create_access_request(request: AccessRequestCreate):
             "Your access request was received. Broadcast Tool Pro will "
             "review the appropriate account and plan."
         ),
+    }
+
+
+@router.post("/sales-inquiries", status_code=status.HTTP_202_ACCEPTED)
+def create_sales_inquiry(request: SalesInquiryCreate):
+    notification_targets = identity_store.superuser_notification_targets()
+    if not notification_targets:
+        raise HTTPException(
+            status_code=503,
+            detail="Sales contact is temporarily unavailable.",
+        )
+    reference = f"SALES-{uuid4().hex[:10].upper()}"
+    sales_email = (
+        os.getenv("BTP_SALES_EMAIL", "").strip()
+        or notification_targets[0]["email"]
+    )
+    try:
+        messages = email_outbox_store.schedule_sales_inquiry(
+            notification_organization_id=(
+                notification_targets[0]["organization_id"]
+            ),
+            reference=reference,
+            organization_name=request.organization_name,
+            contact_name=request.contact_name,
+            requester_email=request.email,
+            request_message=request.message,
+            sales_email=sales_email,
+        )
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The sales inquiry could not be queued.",
+        ) from exc
+    return {
+        "reference": reference,
+        "communications_scheduled": len(messages),
+        "message": "Your sales inquiry was received.",
     }
 
 

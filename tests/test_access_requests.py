@@ -154,10 +154,46 @@ def test_access_request_and_activation_routes_are_registered():
     paths = set(app.openapi()["paths"])
 
     assert "/api/auth/access-requests" in paths
+    assert "/api/auth/sales-inquiries" in paths
     assert "/api/auth/activate-account" in paths
     assert "/api/admin/access-requests" in paths
     assert "/api/admin/access-requests/{request_id}/approve" in paths
     assert "/api/admin/access-requests/{request_id}/reject" in paths
+
+
+def test_sales_inquiry_contains_no_plan_or_billing_language():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "sales.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Broadcast Tool Pro",
+            slug=None,
+            plan="enterprise",
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        messages = outbox.schedule_sales_inquiry(
+            notification_organization_id=organization["id"],
+            reference="SALES-TEST123",
+            organization_name="Sample TV",
+            contact_name="Operator 2",
+            requester_email="operator@example.com",
+            request_message="Necesito un demo de la solución",
+            sales_email="hello@broadcasttoolpro.com",
+        )
+
+        assert len(messages) == 2
+        internal = next(
+            message for message in messages
+            if message["recipient_email"] == "hello@broadcasttoolpro.com"
+        )
+        assert internal["subject"] == "New sales inquiry: Sample TV"
+        assert "Necesito un demo" in internal["body_text"]
+        assert "Requested plan" not in internal["body_text"]
+        assert "Billing cycle" not in internal["body_text"]
+        assert "Stream Monitoring add-on" not in internal["body_text"]
 
 
 def test_access_approval_represents_paid_and_complimentary_decisions():

@@ -346,6 +346,75 @@ class EmailOutboxStore:
                 created.append(dict(row))
         return created
 
+    def schedule_sales_inquiry(
+        self,
+        *,
+        notification_organization_id: str,
+        reference: str,
+        organization_name: str,
+        contact_name: str,
+        requester_email: str,
+        request_message: str,
+        sales_email: str,
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        messages = (
+            (
+                requester_email,
+                f"sales_inquiry_requester_{reference}",
+                "We received your Broadcast Tool Pro inquiry",
+                (
+                    f"Hello {contact_name},\n\n"
+                    "Thank you for contacting Broadcast Tool Pro. "
+                    f"Your reference is {reference}.\n\n"
+                    "Our sales team will review your message and contact "
+                    "you at this email address."
+                ),
+            ),
+            (
+                sales_email,
+                f"sales_inquiry_internal_{reference}",
+                f"New sales inquiry: {organization_name}",
+                (
+                    "A new sales inquiry was submitted through the "
+                    "Broadcast Tool Pro website.\n\n"
+                    f"Reference: {reference}\n"
+                    f"Organization: {organization_name}\n"
+                    f"Contact: {contact_name}\n"
+                    f"Email: {requester_email}\n"
+                    f"Message: {request_message.strip()}"
+                ),
+            ),
+        )
+        created = []
+        with self._connection() as connection:
+            for recipient, code, subject, body in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        message_id,
+                        notification_organization_id,
+                        recipient.strip().lower(),
+                        code,
+                        subject,
+                        body,
+                        now,
+                        now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?",
+                    (message_id,),
+                ).fetchone()
+                created.append(dict(row))
+        return created
+
     def schedule_account_reactivated(
         self,
         *,

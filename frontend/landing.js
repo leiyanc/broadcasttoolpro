@@ -23,7 +23,6 @@ landingContactForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = landingContactForm.querySelector("button[type='submit']");
   const payload = Object.fromEntries(new FormData(landingContactForm));
-  payload.include_stream_monitoring = false;
   button.disabled = true;
   landingContactStatus.classList.remove("is-error");
   landingContactStatus.textContent = window.BTPi18n?.t(
@@ -31,7 +30,7 @@ landingContactForm?.addEventListener("submit", async (event) => {
     "Sending…",
   ) || "Sending…";
   try {
-    const response = await fetch("/api/auth/access-requests", {
+    const response = await fetch("/api/auth/sales-inquiries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

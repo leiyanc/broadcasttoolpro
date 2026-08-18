@@ -86,6 +86,18 @@ class AccessRequestCreate(BaseModel):
         return _normalized_email(value)
 
 
+class SalesInquiryCreate(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
+    contact_name: str = Field(min_length=2, max_length=120)
+    email: str
+    message: str = Field(min_length=5, max_length=2000)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return _normalized_email(value)
+
+
 class AccountActivationConfirm(BaseModel):
     token: str = Field(min_length=32, max_length=256)
     password: str = Field(min_length=10, max_length=128)
