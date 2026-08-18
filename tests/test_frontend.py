@@ -348,7 +348,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260817-6" in html
+    assert "/static/landing.css?v=20260818-1" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
@@ -598,15 +598,31 @@ def test_contextual_help_center_is_present():
     assert "mailto:support@broadcasttoolpro.com" in html
 
 
-def test_public_contact_addresses_are_visible():
+def test_public_contact_uses_an_internal_sales_form():
     html = (FRONTEND_DIR / "landing.html").read_text()
+    javascript = (FRONTEND_DIR / "landing.js").read_text()
     translations = (FRONTEND_DIR / "i18n.js").read_text()
 
-    assert "mailto:hello@broadcasttoolpro.com" in html
-    assert "mailto:support@broadcasttoolpro.com" in html
-    assert "mailto:security@broadcasttoolpro.com" in html
+    assert 'id="landing-contact-form"' in html
+    assert 'name="contact_name"' in html
+    assert 'name="organization_name"' in html
+    assert 'name="email"' in html
+    assert 'name="message"' in html
+    assert "mailto:" not in html
+    assert 'fetch("/api/auth/access-requests"' in javascript
     assert '"landing.footer.sales": "Ventas"' in translations
-    assert '"landing.footer.support": "Soporte"' in translations
+    assert "landing.footer.support" not in html
+    assert "landing.footer.security" not in html
+
+
+def test_customer_help_routes_topics_to_the_right_mailbox():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "help.js").read_text()
+
+    assert 'id="help-topic-contact"' in html
+    assert "support@broadcasttoolpro.com" in javascript
+    assert "billing@broadcasttoolpro.com" in javascript
+    assert "security@broadcasttoolpro.com" in javascript
 
 
 def test_epg_preview_is_available_after_schedule_validation():

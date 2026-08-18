@@ -322,6 +322,7 @@ def create_access_request(request: AccessRequestCreate):
         )
         if notification_targets:
             try:
+                sales_email = os.getenv("BTP_SALES_EMAIL", "").strip()
                 communications = (
                     email_outbox_store.schedule_access_request_received(
                         notification_organization_id=(
@@ -339,10 +340,14 @@ def create_access_request(request: AccessRequestCreate):
                             "include_stream_monitoring"
                         ],
                         billing_cycle=access_request["billing_cycle"],
-                        administrator_emails=[
-                            target["email"]
-                            for target in notification_targets
-                        ],
+                        administrator_emails=(
+                            [sales_email]
+                            if sales_email
+                            else [
+                                target["email"]
+                                for target in notification_targets
+                            ]
+                        ),
                     )
                 )
             except sqlite3.Error:

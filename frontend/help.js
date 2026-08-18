@@ -44,6 +44,7 @@ const helpDetailsLabel = document.querySelector("#help-details-label");
 const helpErrorLabel = document.querySelector("#help-error-label");
 const helpErrorField = document.querySelector("#help-error-field");
 const helpCategory = document.querySelector("#help-category");
+const helpTopicContact = document.querySelector("#help-topic-contact");
 const helpRequestTypeField = document.querySelector(
   "#help-request-type-field",
 );
@@ -60,6 +61,23 @@ function helpIsSpanish() {
 
 function helpUiText(english, spanish) {
   return helpIsSpanish() ? spanish : english;
+}
+
+function helpUpdateTopicContact() {
+  const contacts = {
+    billing: ["Billing", "Facturación", "billing@broadcasttoolpro.com"],
+    privacy: [
+      "Security and privacy",
+      "Seguridad y privacidad",
+      "security@broadcasttoolpro.com",
+    ],
+  };
+  const [english, spanish, email] = contacts[helpCategory.value] || [
+    "Customer support",
+    "Soporte al cliente",
+    "support@broadcasttoolpro.com",
+  ];
+  helpTopicContact.textContent = `${helpUiText(english, spanish)}: ${email}`;
 }
 
 function helpStatusLabel(status) {
@@ -449,6 +467,7 @@ function helpTranslateSupportUi(language) {
   document.querySelectorAll("#help-request-type option").forEach((option) => {
     option.textContent = requestTypeLabels[option.value];
   });
+  helpUpdateTopicContact();
 }
 
 function helpShowGuideView() {
@@ -532,6 +551,7 @@ Object.entries(helpGuides).forEach(([key, guide]) => {
 });
 
 helpLanguageSelect.value = window.BTPi18n?.getLanguage?.() || "en";
+helpCategory.addEventListener("change", helpUpdateTopicContact);
 helpLauncher.addEventListener("click", () => {
   if (helpPanel.classList.contains("is-hidden")) helpOpen();
   else helpDismiss();
