@@ -106,11 +106,18 @@ class GoogleDriveBackup:
         )
         if credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
-            self.token_path.write_text(
-                credentials.to_json(),
-                encoding="utf-8",
-            )
-            self.token_path.chmod(0o600)
+            try:
+                self.token_path.write_text(
+                    credentials.to_json(),
+                    encoding="utf-8",
+                )
+                self.token_path.chmod(0o600)
+            except OSError:
+                # Render secret files are intentionally read-only. The
+                # refreshed in-memory credentials are still valid for this
+                # request, and the protected refresh token can renew them
+                # again after the next process restart.
+                pass
         if not credentials.valid:
             raise RuntimeError("Google Drive authorization is invalid.")
         return credentials

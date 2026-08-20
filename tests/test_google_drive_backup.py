@@ -8,6 +8,7 @@ from backend.services.google_drive_backup import (
     DAILY_BACKUPS,
     GoogleDriveBackup,
 )
+from backend.services import google_drive_backup as drive_module
 
 
 def test_backup_encryption_key_round_trip():
@@ -120,3 +121,45 @@ def test_missing_credentials_are_reported_without_replacing_key():
         assert result["status"] == "failed"
         assert "authorization token" in result["error"]
         assert key.read_bytes() == original_key
+
+
+def test_expired_credentials_work_with_read_only_render_secret(monkeypatch):
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        token = root / "token.json"
+        key = root / "backup.key"
+        token.write_text("{}", encoding="utf-8")
+        key.write_bytes(Fernet.generate_key())
+        backup = GoogleDriveBackup(token_path=token, key_path=key)
+
+        class CredentialsStub:
+            expired = True
+            refresh_token = "refresh-token"
+            valid = False
+
+            def refresh(self, _request):
+                self.expired = False
+                self.valid = True
+
+            def to_json(self):
+                return '{"token":"refreshed"}'
+
+        credentials = CredentialsStub()
+        monkeypatch.setattr(
+            drive_module.Credentials,
+            "from_authorized_user_file",
+            lambda *_args, **_kwargs: credentials,
+        )
+        original_write_text = Path.write_text
+
+        def read_only_secret(path, *args, **kwargs):
+            if path == token:
+                raise PermissionError("read-only secret")
+            return original_write_text(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", read_only_secret)
+
+        result = backup._credentials()
+
+        assert result is credentials
+        assert result.valid is True
