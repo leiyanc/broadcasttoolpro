@@ -656,7 +656,14 @@ function renderBilling(payload) {
     pricing.billing_total_cents,
     pricing.currency,
   )}/${pricing.billing_period}`;
-  if (awaitingPayment) {
+  if (["canceled", "cancelled"].includes(subscription.status)) {
+    timingLabel = billingText("billing.renewal", "Renewal");
+    timingValue = billingText("billing.notScheduled", "Not scheduled");
+    timingDetail = billingText(
+      "billing.startNewSubscription",
+      "Choose a plan to start a new subscription",
+    );
+  } else if (awaitingPayment) {
     timingLabel = billingText("billing.startsAfterPayment", "Starts After Payment");
     timingValue = billingText("billing.checkoutRequired", "Stripe Checkout required");
     timingDetail = billingText("billing.recurringAfterPayment", "Renews automatically after activation");

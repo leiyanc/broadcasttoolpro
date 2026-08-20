@@ -288,6 +288,16 @@ def test_public_policy_routes_return_their_pages():
     assert Path(email_policy().path) == FRONTEND_DIR / "email-policy.html"
 
 
+def test_terms_explain_subscription_cancellation_and_refunds():
+    terms = (FRONTEND_DIR / "terms.html").read_text()
+
+    assert "cancellation takes effect at the end" in terms
+    assert "Downgrades" in terms
+    assert "prorated charge or" in terms
+    assert "subscription payments are non-refundable" in terms
+    assert "refund does not by itself" in terms
+
+
 def test_public_landing_page_presents_the_platform():
     html = (FRONTEND_DIR / "landing.html").read_text()
     css = (FRONTEND_DIR / "landing.css").read_text()
@@ -554,6 +564,9 @@ def test_billing_and_subscription_interface_is_present():
     )
     assert "Cancel Scheduled Change" in javascript
     assert "cancelScheduledSubscriptionChange" in javascript
+    assert '["canceled", "cancelled"].includes(subscription.status)' in javascript
+    assert 'billingText("billing.notScheduled", "Not scheduled")' in javascript
+    assert '"billing.notScheduled": "No programada"' in translations
     assert 'billingMonitoringChoiceInput.addEventListener("change"' in javascript
     assert "/api/billing/organizations/" in javascript
     assert '["owner", "admin"]' in javascript
