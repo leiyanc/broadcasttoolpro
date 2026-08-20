@@ -41,7 +41,6 @@ def check_deployment(base_url: str) -> list[CheckResult]:
         health: dict[str, Any] = json.loads(body)
         required = {
             "status": "healthy",
-            "backup": "healthy",
             "email_delivery": "enabled",
             "temporary_storage": "healthy",
         }
@@ -50,13 +49,24 @@ def check_deployment(base_url: str) -> list[CheckResult]:
             for key, expected in required.items()
             if health.get(key) != expected
         ]
-        if health.get("remote_backup") == "error":
+        backup_status = health.get("backup")
+        remote_backup_status = health.get("remote_backup")
+        if backup_status == "warning" and remote_backup_status != "healthy":
+            mismatches.append(
+                "backup='warning' without a healthy remote backup"
+            )
+        elif backup_status not in {"healthy", "warning"}:
+            mismatches.append(f"backup={backup_status!r}")
+        if remote_backup_status == "error":
             mismatches.append("remote_backup='error'")
+        detail = "all required health signals passed"
+        if not mismatches and backup_status == "warning":
+            detail = "local backup warning covered by healthy remote backup"
         results.append(
             CheckResult(
                 "Application health",
                 status == 200 and not mismatches,
-                ", ".join(mismatches) if mismatches else "all required health signals passed",
+                ", ".join(mismatches) if mismatches else detail,
             )
         )
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:

@@ -1,6 +1,9 @@
 name: Staging Smoke Test
 
 on:
+  push:
+    branches:
+      - staging
   workflow_dispatch:
     inputs:
       deployment_url:
