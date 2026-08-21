@@ -733,6 +733,28 @@ def test_frontend_preserves_backend_field_names():
         assert f'name="{field_name}"' in html
 
 
+def test_xmltv_generator_offers_us_latam_and_fixed_timezones():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    for timezone_name in (
+        "America/New_York",
+        "America/Phoenix",
+        "America/Puerto_Rico",
+        "America/Mexico_City",
+        "America/Guatemala",
+        "America/Santo_Domingo",
+        "America/Bogota",
+        "America/Santiago",
+        "America/Argentina/Buenos_Aires",
+        "America/Sao_Paulo",
+        "Etc/GMT+5",
+    ):
+        assert f'value="{timezone_name}"' in html
+
+    assert "UTC−05:00 — EST (fixed, no DST)" in html
+    assert "Eastern Time — New York (UTC−05/UTC−04)" in html
+
+
 def test_access_request_collects_requested_plan_and_addon():
     html = (FRONTEND_DIR / "index.html").read_text()
     auth_javascript = (FRONTEND_DIR / "auth.js").read_text()

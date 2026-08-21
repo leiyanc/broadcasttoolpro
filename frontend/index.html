@@ -1176,29 +1176,100 @@
                 name="channel_timezone"
                 required
               >
-                <option value="America/New_York">
-                  Eastern Time — New York
-                </option>
+                <optgroup label="Universal">
+                  <option value="UTC">UTC+00:00 — UTC</option>
+                  <option value="Etc/GMT+2">UTC−02:00 — Fixed offset</option>
+                  <option value="Etc/GMT+3">UTC−03:00 — Fixed offset</option>
+                  <option value="Etc/GMT+4">UTC−04:00 — Fixed offset</option>
+                  <option value="Etc/GMT+5">UTC−05:00 — EST (fixed, no DST)</option>
+                  <option value="Etc/GMT+6">UTC−06:00 — CST (fixed, no DST)</option>
+                  <option value="Etc/GMT+7">UTC−07:00 — MST (fixed, no DST)</option>
+                  <option value="Etc/GMT+8">UTC−08:00 — PST (fixed, no DST)</option>
+                  <option value="Etc/GMT+9">UTC−09:00 — Fixed offset</option>
+                  <option value="Etc/GMT+10">UTC−10:00 — HST (fixed, no DST)</option>
+                </optgroup>
 
-                <option value="America/Chicago">
-                  Central Time — Chicago
-                </option>
+                <optgroup label="United States">
+                  <option value="America/New_York" selected>
+                    Eastern Time — New York (UTC−05/UTC−04)
+                  </option>
+                  <option value="America/Chicago">
+                    Central Time — Chicago (UTC−06/UTC−05)
+                  </option>
+                  <option value="America/Denver">
+                    Mountain Time — Denver (UTC−07/UTC−06)
+                  </option>
+                  <option value="America/Phoenix">
+                    Mountain Standard Time — Phoenix (UTC−07)
+                  </option>
+                  <option value="America/Los_Angeles">
+                    Pacific Time — Los Angeles (UTC−08/UTC−07)
+                  </option>
+                  <option value="America/Anchorage">
+                    Alaska Time — Anchorage (UTC−09/UTC−08)
+                  </option>
+                  <option value="America/Adak">
+                    Hawaii-Aleutian Time — Adak (UTC−10/UTC−09)
+                  </option>
+                  <option value="Pacific/Honolulu">
+                    Hawaii Standard Time — Honolulu (UTC−10)
+                  </option>
+                  <option value="America/Puerto_Rico">
+                    Atlantic Standard Time — Puerto Rico (UTC−04)
+                  </option>
+                </optgroup>
 
-                <option value="America/Denver">
-                  Mountain Time — Denver
-                </option>
+                <optgroup label="Mexico">
+                  <option value="America/Tijuana">Tijuana (UTC−08/UTC−07)</option>
+                  <option value="America/Hermosillo">Hermosillo (UTC−07)</option>
+                  <option value="America/Chihuahua">Chihuahua (UTC−06)</option>
+                  <option value="America/Mazatlan">Mazatlán (UTC−07)</option>
+                  <option value="America/Mexico_City">Mexico City (UTC−06)</option>
+                  <option value="America/Monterrey">Monterrey (UTC−06)</option>
+                  <option value="America/Matamoros">Matamoros (UTC−06/UTC−05)</option>
+                  <option value="America/Cancun">Cancún (UTC−05)</option>
+                </optgroup>
 
-                <option value="America/Los_Angeles">
-                  Pacific Time — Los Angeles
-                </option>
+                <optgroup label="Central America">
+                  <option value="America/Belize">Belize (UTC−06)</option>
+                  <option value="America/Guatemala">Guatemala (UTC−06)</option>
+                  <option value="America/El_Salvador">El Salvador (UTC−06)</option>
+                  <option value="America/Tegucigalpa">Honduras (UTC−06)</option>
+                  <option value="America/Managua">Nicaragua (UTC−06)</option>
+                  <option value="America/Costa_Rica">Costa Rica (UTC−06)</option>
+                  <option value="America/Panama">Panama (UTC−05)</option>
+                </optgroup>
 
-                <option value="America/Santo_Domingo">
-                  Atlantic Time — Santo Domingo
-                </option>
+                <optgroup label="Caribbean">
+                  <option value="America/Havana">Cuba — Havana (UTC−05/UTC−04)</option>
+                  <option value="America/Nassau">Bahamas — Nassau (UTC−05/UTC−04)</option>
+                  <option value="America/Jamaica">Jamaica (UTC−05)</option>
+                  <option value="America/Port_au_Prince">Haiti — Port-au-Prince (UTC−05/UTC−04)</option>
+                  <option value="America/Santo_Domingo">Dominican Republic — Santo Domingo (UTC−04)</option>
+                  <option value="America/Barbados">Barbados (UTC−04)</option>
+                  <option value="America/Curacao">Curaçao (UTC−04)</option>
+                  <option value="America/Martinique">Martinique (UTC−04)</option>
+                  <option value="America/Port_of_Spain">Trinidad and Tobago (UTC−04)</option>
+                </optgroup>
 
-                <option value="UTC">
-                  UTC
-                </option>
+                <optgroup label="South America">
+                  <option value="America/Bogota">Colombia — Bogotá (UTC−05)</option>
+                  <option value="America/Guayaquil">Ecuador — Guayaquil (UTC−05)</option>
+                  <option value="America/Lima">Peru — Lima (UTC−05)</option>
+                  <option value="America/Caracas">Venezuela — Caracas (UTC−04)</option>
+                  <option value="America/Guyana">Guyana (UTC−04)</option>
+                  <option value="America/Paramaribo">Suriname (UTC−03)</option>
+                  <option value="America/La_Paz">Bolivia — La Paz (UTC−04)</option>
+                  <option value="America/Santiago">Chile — Santiago (UTC−04/UTC−03)</option>
+                  <option value="America/Asuncion">Paraguay — Asunción (UTC−03)</option>
+                  <option value="America/Argentina/Buenos_Aires">Argentina — Buenos Aires (UTC−03)</option>
+                  <option value="America/Montevideo">Uruguay — Montevideo (UTC−03)</option>
+                  <option value="America/Sao_Paulo">Brazil — São Paulo (UTC−03)</option>
+                  <option value="America/Manaus">Brazil — Manaus (UTC−04)</option>
+                  <option value="America/Cuiaba">Brazil — Cuiabá (UTC−04)</option>
+                  <option value="America/Rio_Branco">Brazil — Rio Branco (UTC−05)</option>
+                  <option value="America/Noronha">Brazil — Fernando de Noronha (UTC−02)</option>
+                </optgroup>
 
               </select>
 
