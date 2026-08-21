@@ -755,6 +755,16 @@ def test_xmltv_generator_offers_us_latam_and_fixed_timezones():
     assert "Eastern Time — New York (UTC−05/UTC−04)" in html
 
 
+def test_xmltv_authorization_is_presented_as_review_not_error():
+    javascript = (FRONTEND_DIR / "app.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'issue.rule_id === "AUTH-001"' in javascript
+    assert '"generator.readyAuthorization", "Ready for authorization"' in javascript
+    assert 'resultPanel.classList.toggle("is-error", !readyForReview)' in javascript
+    assert '"generator.readyAuthorization": "Lista para autorización"' in translations
+
+
 def test_access_request_collects_requested_plan_and_addon():
     html = (FRONTEND_DIR / "index.html").read_text()
     auth_javascript = (FRONTEND_DIR / "auth.js").read_text()

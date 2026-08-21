@@ -310,17 +310,31 @@ function showResult(result) {
     ? normalized.fix_summary
     : [];
   const success = Boolean(normalized.success);
+  const authorizationOnly = suggestedFixes > 0
+    && issues.length > 0
+    && issues.every((issue) => issue.rule_id === "AUTH-001")
+    && (validation.errors || 0) === 0
+    && (validation.warnings || 0) === 0;
+  const readyForReview = success || authorizationOnly;
 
   resultPanel.classList.remove("is-hidden");
-  xmltvTemplateGuidance?.classList.toggle("is-hidden", success);
-  resultPanel.classList.toggle("is-error", !success);
-  resultIcon.textContent = success ? "✓" : "!";
-  resultTitle.textContent = success
+  xmltvTemplateGuidance?.classList.toggle("is-hidden", readyForReview);
+  resultPanel.classList.toggle("is-error", !readyForReview);
+  resultIcon.textContent = authorizationOnly ? "i" : success ? "✓" : "!";
+  resultTitle.textContent = authorizationOnly
+    ? uiText("generator.readyAuthorization", "Ready for authorization")
+    : success
     ? suggestedFixes
       ? uiText("generator.readyReview", "Schedule ready for review")
       : uiText("generator.readyGenerate", "Schedule ready to generate")
     : uiText("generator.needsAttention", "Schedule needs attention");
-  resultMessage.textContent = success
+  resultMessage.textContent = authorizationOnly
+    ? uiText(
+        "generator.authorizationPending",
+        "The schedule is valid. Authorize {fixes} safe corrections to generate XMLTV.",
+        { fixes: suggestedFixes },
+      )
+    : success
     ? suggestedFixes
       ? (
           uiText(
