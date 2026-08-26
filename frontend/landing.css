@@ -872,6 +872,37 @@ a {
   text-transform: uppercase;
 }
 
+.landing-founder-linkedin {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 12px;
+  color: #dceaff;
+  background: rgba(10, 102, 194, 0.12);
+  border: 1px solid rgba(76, 144, 219, 0.42);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.landing-founder-linkedin svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: #5da9f6;
+}
+
+.landing-founder-linkedin:hover,
+.landing-founder-linkedin:focus-visible {
+  background: rgba(10, 102, 194, 0.24);
+  border-color: #5da9f6;
+  transform: translateY(-1px);
+}
+
 .landing-founder-bio {
   margin-top: 28px;
   padding-top: 24px;

@@ -355,11 +355,16 @@ def test_public_landing_page_has_bilingual_founder_profiles():
     assert "Freddy Arias" in html
     assert "/static/assets/leiyan-cotayo-headshot.jpg" in html
     assert "/static/assets/freddy-arias-headshot.jpg" in html
+    assert "https://www.linkedin.com/in/leiyan-cotayo-61b50820" in html
+    assert "https://www.linkedin.com/in/freddyarias/" in html
+    assert html.count('rel="noopener noreferrer"') >= 2
     assert (FRONTEND_DIR / "assets" / "leiyan-cotayo-headshot.jpg").is_file()
     assert (FRONTEND_DIR / "assets" / "freddy-arias-headshot.jpg").is_file()
     assert '"landing.about.kicker": "SOBRE NOSOTROS"' in translations
     assert '"landing.about.role": "Cofundador, Broadcast Tool Pro"' in translations
+    assert '"landing.about.linkedin": "Ver perfil en LinkedIn"' in translations
     assert ".landing-founder-grid" in css
+    assert ".landing-founder-linkedin" in css
     assert "aspect-ratio: 4 / 3" in css
     assert 'href="/privacy"' in html
     assert 'href="/terms"' in html
@@ -384,7 +389,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260826-1" in html
+    assert "/static/landing.css?v=20260826-2" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
