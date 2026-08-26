@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Broadcast Tool Pro security and data-handling practices."
+    />
+    <title>Security &amp; Data Handling — Broadcast Tool Pro</title>
+    <link rel="icon" href="/static/assets/broadcast-tool-pro-mark.png" />
+    <link rel="stylesheet" href="/static/legal.css?v=20260826-1" />
+    <script src="/static/i18n.js?v=20260826-3" defer></script>
+  </head>
+  <body>
+    <header class="legal-header">
+      <a href="/" aria-label="Broadcast Tool Pro home">
+        <img src="/static/assets/broadcast-tool-pro-logo.png" alt="Broadcast Tool Pro" />
+      </a>
+      <div class="legal-header-actions">
+        <label class="legal-language-select">
+          <span class="visually-hidden" data-i18n="language.label">Language</span>
+          <select data-language-select aria-label="Language">
+            <option value="en">EN</option>
+            <option value="es">ES</option>
+          </select>
+        </label>
+        <a href="/" data-i18n="security.back">Back to Platform</a>
+      </div>
+    </header>
+
+    <main class="legal-main">
+      <p class="legal-kicker" data-i18n="security.kicker">SECURITY &amp; DATA PROTECTION</p>
+      <h1 data-i18n="security.title">Security &amp; Data Handling</h1>
+      <p class="legal-summary" data-i18n="security.summary">
+        Broadcast Tool Pro protects operational files and account information
+        through controlled access, tenant separation, monitored workflows,
+        and verified recovery practices.
+      </p>
+      <p class="legal-date" data-i18n="security.updated">Last updated August 26, 2026</p>
+
+      <div class="security-facts" aria-label="Security highlights">
+        <article><span data-i18n="security.fact.access.label">ACCESS</span><strong data-i18n="security.fact.access.value">Role-based and organization-scoped</strong></article>
+        <article><span data-i18n="security.fact.backups.label">BACKUPS</span><strong data-i18n="security.fact.backups.value">Daily, verified, and encrypted off-site</strong></article>
+        <article><span data-i18n="security.fact.working.label">WORKING FILES</span><strong data-i18n="security.fact.working.value">24-hour temporary-file rotation</strong></article>
+      </div>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.data.title">1. Data we process</h2>
+        <p data-i18n="security.data.copy">
+          The service may process account and organization details,
+          authentication and security records, XMLTV files, schedules,
+          playlists, As-Run logs, channel logos, stream URLs, report settings,
+          and generated deliverables. Customers should upload only the data
+          required for the selected operational workflow.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.ownership.title">2. Customer ownership and use</h2>
+        <p data-i18n="security.ownership.copy">
+          Customers retain ownership of their uploaded files and generated
+          deliverables. Broadcast Tool Pro processes customer content only to
+          provide, secure, support, and maintain the requested service. We do
+          not sell customer data or use operational files for advertising.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.access.title">3. Identity and access controls</h2>
+        <ul>
+          <li data-i18n="security.access.tenant">Customer records and reports are scoped to their organization.</li>
+          <li data-i18n="security.access.roles">Owner, administrator, operator, and viewer roles control permitted actions.</li>
+          <li data-i18n="security.access.sessions">Production sessions use Secure, HttpOnly, SameSite cookies and expire automatically.</li>
+          <li data-i18n="security.access.passwords">Passwords use salted one-way hashing; raw passwords and session tokens are not stored.</li>
+          <li data-i18n="security.access.recovery">Password-reset links expire after 30 minutes, can be used once, and revoke existing sessions after a successful reset.</li>
+          <li data-i18n="security.access.protection">Repeated failed sign-ins trigger temporary account protection, and sensitive endpoints are rate limited.</li>
+        </ul>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.infrastructure.title">4. Infrastructure and transmission</h2>
+        <p data-i18n="security.infrastructure.copy">
+          Broadcast Tool Pro runs on managed cloud infrastructure. Public
+          production traffic is protected with HTTPS. Application secrets are
+          maintained outside the source code, administrative access is
+          restricted, and browser permissions not required by the service are
+          disabled.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.backups.title">5. Backups and recovery</h2>
+        <p data-i18n="security.backups.copy">
+          The application database is backed up every 24 hours. Backup
+          integrity and checksums are verified, local copies use a configured
+          14-day retention period, and encrypted off-site sets are rotated
+          across daily and weekly recovery points. Recovery procedures are
+          tested without replacing the live database.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.retention.title">6. Retention and deletion</h2>
+        <p data-i18n="security.retention.copy">
+          Application-owned temporary working files are configured for removal
+          after 24 hours. Account records, security events, subscription data,
+          and stored reports are retained while needed to operate the service,
+          preserve auditability, resolve disputes, or meet legal obligations.
+          Authorized contacts may request access, export, correction, or
+          deletion; residual backup copies expire through the normal rotation
+          cycle.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.providers.title">7. Service providers</h2>
+        <p data-i18n="security.providers.copy">
+          We use a limited set of providers to operate the platform: Render
+          for application infrastructure, Amazon Web Services for
+          transactional email, Google for authorized communications and
+          encrypted off-site backup storage, and Stripe for subscription and
+          payment processing. Broadcast Tool Pro does not store full payment
+          card numbers.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.monitoring.title">8. Monitoring and incident response</h2>
+        <p data-i18n="security.monitoring.copy">
+          Authentication outcomes, administrative activity, request failures,
+          backup health, external-backup connectivity, and email-delivery
+          events are recorded or monitored as applicable. Suspected incidents
+          are reviewed for containment, recovery, and customer notification
+          when required by law or contract.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2 data-i18n="security.privacy.title">9. Privacy and international requests</h2>
+        <p data-i18n="security.privacy.copy">
+          For customer-uploaded operational data, the customer generally
+          determines the purpose of processing and Broadcast Tool Pro performs
+          the requested workflow on its behalf. Organizations requiring a
+          Data Processing Addendum or information about international data
+          transfers should contact us before submitting regulated personal
+          data.
+        </p>
+      </section>
+
+      <section class="legal-section security-contact">
+        <p class="legal-kicker" data-i18n="security.contact.kicker">SECURITY CONTACT</p>
+        <h2 data-i18n="security.contact.title">Questions or responsible disclosure</h2>
+        <p data-i18n="security.contact.copy">
+          Contact our security mailbox with questions about data handling or
+          to report a suspected vulnerability. Please do not include passwords,
+          access tokens, or sensitive customer files in the initial message.
+        </p>
+        <a href="mailto:security@broadcasttoolpro.com">security@broadcasttoolpro.com</a>
+      </section>
+    </main>
+
+    <footer class="legal-footer">
+      <span>© 2026 Broadcast Tool Pro</span>
+      <nav>
+        <a href="/privacy" data-i18n="landing.footer.privacy">Privacy</a>
+        <a href="/terms" data-i18n="landing.footer.terms">Terms</a>
+        <a href="/email-policy" data-i18n="landing.footer.emailPolicy">Email Policy</a>
+      </nav>
+    </footer>
+  </body>
+</html>

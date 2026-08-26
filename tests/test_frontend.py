@@ -8,6 +8,7 @@ from backend.main import (
     email_policy,
     home,
     privacy_policy,
+    security_and_data_handling,
     terms_of_service,
 )
 
@@ -25,6 +26,7 @@ def test_frontend_files_exist():
     assert (FRONTEND_DIR / "privacy.html").is_file()
     assert (FRONTEND_DIR / "terms.html").is_file()
     assert (FRONTEND_DIR / "email-policy.html").is_file()
+    assert (FRONTEND_DIR / "security.html").is_file()
 
 
 def test_frontend_supports_persistent_light_and_dark_modes():
@@ -287,6 +289,27 @@ def test_public_policy_routes_return_their_pages():
     assert Path(privacy_policy().path) == FRONTEND_DIR / "privacy.html"
     assert Path(terms_of_service().path) == FRONTEND_DIR / "terms.html"
     assert Path(email_policy().path) == FRONTEND_DIR / "email-policy.html"
+    assert Path(security_and_data_handling().path) == FRONTEND_DIR / "security.html"
+
+
+def test_security_page_documents_verified_data_controls_bilingually():
+    html = (FRONTEND_DIR / "security.html").read_text()
+    css = (FRONTEND_DIR / "legal.css").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'data-language-select' in html
+    assert 'data-i18n="security.title"' in html
+    assert "security@broadcasttoolpro.com" in html
+    assert "mailto:security@broadcasttoolpro.com" in html
+    assert 'data-i18n="security.access.recovery"' in html
+    assert 'data-i18n="security.backups.copy"' in html
+    assert 'data-i18n="security.retention.copy"' in html
+    assert 'data-i18n="security.providers.copy"' in html
+    assert '"security.title": "Seguridad y gestión de datos"' in translations
+    assert '"security.contact.title": "Consultas o divulgación responsable"' in translations
+    assert ".security-facts" in css
+    assert ".security-contact" in css
+    assert "security@broadcasttoolpro.com" in (FRONTEND_DIR / "privacy.html").read_text()
 
 
 def test_terms_explain_subscription_cancellation_and_refunds():
@@ -658,7 +681,7 @@ def test_public_contact_uses_an_internal_sales_form():
     assert 'name="billing_cycle"' not in html
     assert '"landing.footer.sales": "Ventas"' in translations
     assert "landing.footer.support" not in html
-    assert "landing.footer.security" not in html
+    assert 'href="/security" data-i18n="landing.footer.security"' in html
 
 
 def test_customer_help_routes_topics_to_the_right_mailbox():

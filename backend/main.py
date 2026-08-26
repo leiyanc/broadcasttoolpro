@@ -218,6 +218,11 @@ def email_policy():
     return FileResponse(FRONTEND_DIR / "email-policy.html")
 
 
+@app.get("/security")
+def security_and_data_handling():
+    return FileResponse(FRONTEND_DIR / "security.html")
+
+
 @app.get("/health")
 def health():
     return {
