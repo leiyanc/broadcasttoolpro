@@ -342,6 +342,25 @@ def test_public_landing_page_presents_the_platform():
     assert "--landing-black: #02060c" in css
     assert "@media (max-width: 760px)" in css
     assert "landing-menu-toggle" in javascript
+
+
+def test_public_landing_page_has_bilingual_founder_profiles():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+    css = (FRONTEND_DIR / "landing.css").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'id="about"' in html
+    assert 'href="#about" data-i18n="landing.nav.about"' in html
+    assert "Leiyan Cotayo" in html
+    assert "Freddy Arias" in html
+    assert "/static/assets/leiyan-cotayo-headshot.jpg" in html
+    assert "/static/assets/freddy-arias-headshot.jpg" in html
+    assert (FRONTEND_DIR / "assets" / "leiyan-cotayo-headshot.jpg").is_file()
+    assert (FRONTEND_DIR / "assets" / "freddy-arias-headshot.jpg").is_file()
+    assert '"landing.about.kicker": "SOBRE NOSOTROS"' in translations
+    assert '"landing.about.role": "Cofundador, Broadcast Tool Pro"' in translations
+    assert ".landing-founder-grid" in css
+    assert "aspect-ratio: 4 / 3" in css
     assert 'href="/privacy"' in html
     assert 'href="/terms"' in html
     assert 'href="/email-policy"' in html
@@ -365,7 +384,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260818-1" in html
+    assert "/static/landing.css?v=20260826-1" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
