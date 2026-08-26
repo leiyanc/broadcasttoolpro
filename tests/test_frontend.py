@@ -67,7 +67,8 @@ def test_public_and_authenticated_interfaces_share_language_preference():
     assert landing_html.count("data-language-select") >= 1
     assert 'data-i18n="auth.signIn"' in app_html
     assert 'data-i18n="home.title"' in app_html
-    assert 'data-i18n="landing.hero.title"' in landing_html
+    assert 'data-i18n-aria-label="landing.hero.title"' in landing_html
+    assert 'data-i18n="landing.hero.title.line1"' in landing_html
     assert "broadcastToolPro.language" in javascript
     assert 'new Set(["en", "es"])' in javascript
     assert 'document.documentElement.lang = language' in javascript
@@ -303,7 +304,9 @@ def test_public_landing_page_presents_the_platform():
     css = (FRONTEND_DIR / "landing.css").read_text()
     javascript = (FRONTEND_DIR / "landing.js").read_text()
 
-    assert "Stop repairing XMLTV by hand." in html
+    assert "Stop repairing" in html
+    assert 'data-i18n="landing.hero.title.line2">XMLTV</span>' in html
+    assert "by hand." in html
     assert "PROGRAMMING SUITE" in html
     assert "TRAFFIC OPERATIONS" in html
     assert "STREAMING QC" in html

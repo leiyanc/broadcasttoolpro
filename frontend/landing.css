@@ -198,6 +198,10 @@ a {
   letter-spacing: -0.055em;
 }
 
+.landing-hero h1 span {
+  display: block;
+}
+
 .landing-lead {
   max-width: 640px;
   margin: 30px 0 0;
