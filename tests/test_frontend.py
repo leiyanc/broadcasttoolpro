@@ -307,6 +307,9 @@ def test_public_landing_page_presents_the_platform():
     assert "Stop repairing" in html
     assert 'data-i18n="landing.hero.title.line2">XMLTV</span>' in html
     assert "by hand." in html
+    assert html.count('data-i18n="landing.hero.title.line') == 3
+    assert ".landing-hero h1 span" in css
+    assert "white-space: nowrap;" in css
     assert "PROGRAMMING SUITE" in html
     assert "TRAFFIC OPERATIONS" in html
     assert "STREAMING QC" in html

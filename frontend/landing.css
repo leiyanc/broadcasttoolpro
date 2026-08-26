@@ -193,13 +193,14 @@ a {
 .landing-hero h1 {
   max-width: 730px;
   margin: 0;
-  font-size: clamp(56px, 6.5vw, 92px);
+  font-size: clamp(52px, 5vw, 72px);
   line-height: 0.98;
   letter-spacing: -0.055em;
 }
 
 .landing-hero h1 span {
   display: block;
+  white-space: nowrap;
 }
 
 .landing-lead {
