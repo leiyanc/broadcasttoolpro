@@ -514,7 +514,6 @@ a {
 .landing-section-heading h2,
 .workflow-intro h2,
 .landing-reliability h2,
-.landing-roadmap h2,
 .landing-cta h2 {
   margin: 0;
   font-size: clamp(40px, 5vw, 66px);
@@ -524,7 +523,6 @@ a {
 
 .landing-section-heading > p:last-child,
 .landing-reliability > div > p:last-child,
-.landing-roadmap > div > p:last-child,
 .landing-cta > p {
   max-width: 700px;
   margin: 22px 0 0;
@@ -911,39 +909,6 @@ a {
   font-size: 24px;
 }
 
-.landing-roadmap {
-  width: min(1240px, calc(100% - 48px));
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 90px;
-  align-items: center;
-  margin: 10px auto 120px;
-  padding: 60px;
-  background:
-    linear-gradient(110deg, rgba(23, 103, 255, 0.13), transparent 55%),
-    var(--landing-panel);
-  border: 1px solid #244269;
-  border-radius: 10px;
-}
-
-.roadmap-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-top: 1px solid var(--landing-line);
-  border-left: 1px solid var(--landing-line);
-}
-
-.roadmap-list span {
-  min-height: 90px;
-  display: flex;
-  align-items: center;
-  padding: 18px;
-  color: #c5d0dc;
-  border-right: 1px solid var(--landing-line);
-  border-bottom: 1px solid var(--landing-line);
-  font-size: 12px;
-}
-
 .landing-clients {
   width: min(760px, calc(100% - 48px));
   margin: 0 auto 88px;
@@ -1206,7 +1171,6 @@ a {
   .landing-section,
   .landing-workflow,
   .landing-reliability,
-  .landing-roadmap,
   .landing-clients,
   .landing-cta,
   .landing-footer {
@@ -1275,7 +1239,6 @@ a {
   .operations-grid,
   .landing-pricing-grid,
   .landing-reliability,
-  .landing-roadmap,
   .landing-clients,
   .landing-footer {
     grid-template-columns: 1fr;
@@ -1312,8 +1275,7 @@ a {
     grid-template-columns: 35px 100px 1fr;
   }
 
-  .landing-reliability,
-  .landing-roadmap {
+  .landing-reliability {
     gap: 48px;
     padding: 38px 24px;
   }
@@ -1349,10 +1311,6 @@ a {
 
   .addon-row > div {
     display: flex;
-  }
-
-  .roadmap-list {
-    grid-template-columns: 1fr;
   }
 
   .platform-map-body {

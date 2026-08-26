@@ -303,7 +303,7 @@ def test_public_landing_page_presents_the_platform():
     css = (FRONTEND_DIR / "landing.css").read_text()
     javascript = (FRONTEND_DIR / "landing.js").read_text()
 
-    assert "Stop running channel operations through spreadsheets and scripts." in html
+    assert "Stop repairing XMLTV by hand." in html
     assert "PROGRAMMING SUITE" in html
     assert "TRAFFIC OPERATIONS" in html
     assert "STREAMING QC" in html
@@ -315,8 +315,9 @@ def test_public_landing_page_presents_the_platform():
     assert ">99<" in html
     assert ">199<" in html
     assert "+$59" in html
-    assert "Media QC Engine" in html
-    assert "COMING SOON" in html
+    assert 'href="#roadmap"' not in html
+    assert "Media QC Engine" not in html
+    assert "COMING SOON" not in html
     assert "OUR CLIENTS" in html
     assert "/static/assets/tarima-logo-white-v2.png" in html
     assert "/static/assets/tarima-logo-white.png" not in html
