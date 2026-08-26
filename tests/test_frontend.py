@@ -42,7 +42,7 @@ def test_frontend_supports_persistent_light_and_dark_modes():
     assert 'class="module-launcher"' in html
     assert html.count('class="module-icon"') == 6
     assert html.count('<svg viewBox="0 0 24 24">') == 6
-    assert "Control every broadcast workflow." in html
+    assert "Manage channel operations with confidence." in html
     assert "Create XMLTV File" in html
     assert "Validate XMLTV File" in html
     assert "Repair XMLTV File" in html
