@@ -303,7 +303,7 @@ def test_public_landing_page_presents_the_platform():
     css = (FRONTEND_DIR / "landing.css").read_text()
     javascript = (FRONTEND_DIR / "landing.js").read_text()
 
-    assert "Every broadcast workflow. One operating layer." in html
+    assert "Stop running channel operations through spreadsheets and scripts." in html
     assert "PROGRAMMING SUITE" in html
     assert "TRAFFIC OPERATIONS" in html
     assert "STREAMING QC" in html
