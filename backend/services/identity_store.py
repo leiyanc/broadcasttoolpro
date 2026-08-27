@@ -356,14 +356,20 @@ class IdentityStore:
         )
         return self.get_user(row["id"]), token
 
-    def register_trial(
+    def register_customer(
         self,
         *,
         organization_name: str,
         display_name: str,
         email: str,
         password: str,
+        plan_code: str,
     ) -> tuple[dict, dict, str]:
+        internal_plan = (
+            "starter" if plan_code == "programming_suite" else plan_code
+        )
+        if internal_plan not in {"starter", "professional", "enterprise"}:
+            raise ValueError("A valid subscription plan is required.")
         timestamp = _utc_now()
         organization_id = str(uuid4())
         user_id = str(uuid4())
@@ -383,12 +389,13 @@ class IdentityStore:
                     """
                     INSERT INTO organizations (
                         id, name, slug, plan, status, created_at, updated_at
-                    ) VALUES (?, ?, ?, 'professional', 'active', ?, ?)
+                    ) VALUES (?, ?, ?, ?, 'active', ?, ?)
                     """,
                     (
                         organization_id,
                         organization_name.strip(),
                         organization_slug,
+                        internal_plan,
                         timestamp,
                         timestamp,
                     ),
@@ -424,7 +431,7 @@ class IdentityStore:
                 )
         except sqlite3.IntegrityError as exc:
             raise ValueError(
-                "The trial account could not be created."
+                "The customer account could not be created."
             ) from exc
 
         token = self.create_session(user_id)
@@ -432,6 +439,22 @@ class IdentityStore:
             self.get_user(user_id),
             self._organization_for_user(user_id, organization_id),
             token,
+        )
+
+    def register_trial(
+        self,
+        *,
+        organization_name: str,
+        display_name: str,
+        email: str,
+        password: str,
+    ) -> tuple[dict, dict, str]:
+        return self.register_customer(
+            organization_name=organization_name,
+            display_name=display_name,
+            email=email,
+            password=password,
+            plan_code="professional",
         )
 
     def create_session(

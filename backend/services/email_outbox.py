@@ -415,6 +415,87 @@ class EmailOutboxStore:
                 created.append(dict(row))
         return created
 
+    def schedule_self_service_signup(
+        self,
+        *,
+        organization_id: str,
+        recipient_email: str,
+        administrator_emails: list[str],
+        organization_name: str,
+        plan_code: str,
+        include_stream_monitoring: bool,
+    ) -> list[dict]:
+        now = datetime.now(timezone.utc).isoformat()
+        signup_id = str(uuid4())
+        plan_name = {
+            "programming_suite": "Programming Suite",
+            "professional": "Professional",
+            "enterprise": "Enterprise",
+        }.get(plan_code, plan_code)
+        monitoring = "Included" if (
+            plan_code == "enterprise" or include_stream_monitoring
+        ) else "Not included"
+        messages = [{
+            "recipient": recipient_email,
+            "code": f"self_service_signup_customer_{signup_id}",
+            "subject": "Complete your Broadcast Tool Pro subscription",
+            "body": (
+                f"Your Broadcast Tool Pro account for {organization_name} "
+                "has been created.\n\n"
+                f"Selected plan: {plan_name}\n"
+                f"Stream Monitoring: {monitoring}\n\n"
+                "Complete secure Stripe Checkout to activate product "
+                "access. If Checkout was interrupted, sign in and open "
+                "Billing to continue."
+            ),
+        }]
+        for position, email in enumerate(dict.fromkeys(
+            address.strip().lower()
+            for address in administrator_emails
+            if address.strip()
+        )):
+            messages.append({
+                "recipient": email,
+                "code": f"self_service_signup_admin_{signup_id}_{position}",
+                "subject": f"New customer signup: {organization_name}",
+                "body": (
+                    "A customer created a self-service Broadcast Tool Pro "
+                    "account and is awaiting Stripe payment.\n\n"
+                    f"Organization: {organization_name}\n"
+                    f"Email: {recipient_email}\n"
+                    f"Selected plan: {plan_name}\n"
+                    f"Stream Monitoring: {monitoring}"
+                ),
+            })
+        created = []
+        with self._connection() as connection:
+            for message in messages:
+                message_id = str(uuid4())
+                connection.execute(
+                    """
+                    INSERT INTO email_outbox (
+                        id, organization_id, recipient_email, template_code,
+                        subject, body_text, scheduled_for, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
+                    """,
+                    (
+                        message_id,
+                        organization_id,
+                        message["recipient"].strip().lower(),
+                        message["code"],
+                        message["subject"],
+                        message["body"],
+                        now,
+                        now,
+                    ),
+                )
+                row = connection.execute(
+                    "SELECT * FROM email_outbox WHERE id = ?",
+                    (message_id,),
+                ).fetchone()
+                created.append(dict(row))
+        return created
+
     def schedule_account_reactivated(
         self,
         *,

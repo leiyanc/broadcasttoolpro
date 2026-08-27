@@ -118,7 +118,8 @@ def test_authentication_routes_are_registered():
     assert "/api/auth/bootstrap" in paths
     assert "/api/auth/status" in paths
     assert "/api/auth/login" in paths
-    assert "/api/auth/trial" in paths
+    assert "/api/auth/signup" in paths
+    assert "/api/auth/trial" not in paths
     assert "/api/auth/me" in paths
     assert "/api/auth/logout" in paths
     assert "/api/auth/password-reset/request" in paths
@@ -153,6 +154,42 @@ def test_web_bootstrap_remains_available_for_local_development(monkeypatch):
     monkeypatch.delenv("BTP_ALLOW_WEB_BOOTSTRAP", raising=False)
 
     assert _web_bootstrap_allowed() is True
+
+
+def test_customer_registration_uses_selected_plan_without_trial_access():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "signup.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        identities = IdentityStore(database_path)
+        identities.initialize()
+        billing = BillingStore(database_path)
+        billing.initialize()
+        entitlements = EntitlementStore(database_path)
+        entitlements.initialize()
+
+        user, organization, token = identities.register_customer(
+            organization_name="Self Service Network",
+            display_name="Account Owner",
+            email="owner@example.com",
+            password="a-secure-password",
+            plan_code="enterprise",
+        )
+        subscription = billing.create_pending_stripe_subscription(
+            organization["id"],
+            plan_code="enterprise",
+            amount_cents=19900,
+        )
+        access = entitlements.effective_entitlements(organization["id"])
+
+        assert identities.user_from_session(token) == user
+        assert organization["plan"] == "enterprise"
+        assert subscription["provider"] == "stripe_pending"
+        assert subscription["access_state"] == "awaiting_payment"
+        assert access["access"]["active"] is False
+        assert not any(
+            module["enabled"] for module in access["modules"].values()
+        )
 
 
 def test_trial_registration_is_limited_to_three_modules():

@@ -12,7 +12,6 @@ from fastapi import (
 )
 
 from backend.models.identity import (
-    AccessRequestCreate,
     AccountActivationConfirm,
     BootstrapRequest,
     EmailPreferencesUpdate,
@@ -21,9 +20,8 @@ from backend.models.identity import (
     PasswordResetConfirm,
     PasswordResetRequest,
     SalesInquiryCreate,
-    TrialRegistrationRequest,
+    SignupRegistrationRequest,
 )
-from backend.services.access_request_store import access_request_store
 from backend.services.billing_store import billing_store
 from backend.services.identity_store import (
     AuthenticationLockedError,
@@ -280,86 +278,59 @@ def confirm_password_reset(request: PasswordResetConfirm):
     }
 
 
-@router.post("/trial", status_code=status.HTTP_201_CREATED)
-def register_trial(
-    request: TrialRegistrationRequest,
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def register_customer(
+    request: SignupRegistrationRequest,
     response: Response,
 ):
+    amount_cents = {
+        "programming_suite": 3900,
+        "professional": 9900,
+        "enterprise": 19900,
+    }[request.requested_plan]
+    if request.include_stream_monitoring:
+        amount_cents += 5900
     try:
-        user, organization, token = identity_store.register_trial(
-            **request.model_dump()
+        user, organization, token = identity_store.register_customer(
+            organization_name=request.organization_name,
+            display_name=request.display_name,
+            email=request.email,
+            password=request.password,
+            plan_code=request.requested_plan,
         )
-        subscription = billing_store.create_trial_subscription(
+        subscription = billing_store.create_pending_stripe_subscription(
             organization["id"],
-            days=7,
+            plan_code=request.requested_plan,
+            amount_cents=amount_cents,
+            billing_cycle=request.billing_cycle,
         )
-        communications = email_outbox_store.schedule_trial_lifecycle(
-            organization_id=organization["id"],
-            recipient_email=user["email"],
-            trial_ends_at=subscription["current_period_end"],
-        )
-    except ValueError as exc:
+        try:
+            email_outbox_store.schedule_self_service_signup(
+                organization_id=organization["id"],
+                recipient_email=user["email"],
+                administrator_emails=[
+                    target["email"]
+                    for target in identity_store.superuser_notification_targets()
+                ],
+                organization_name=organization["name"],
+                plan_code=request.requested_plan,
+                include_stream_monitoring=request.include_stream_monitoring,
+            )
+        except sqlite3.Error:
+            # Account creation and Checkout must not be rolled back merely
+            # because a non-critical notification could not be queued.
+            pass
+    except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     _set_session_cookie(response, token)
     return {
         "user": user,
         "organizations": [organization],
-        "trial": {
-            "status": subscription["status"],
-            "ends_at": subscription["current_period_end"],
-            "communications_scheduled": len(communications),
+        "subscription": subscription,
+        "checkout": {
+            "plan_code": request.requested_plan,
+            "include_stream_monitoring": request.include_stream_monitoring,
         },
-    }
-
-
-@router.post("/access-requests", status_code=status.HTTP_201_CREATED)
-def create_access_request(request: AccessRequestCreate):
-    communications = []
-    try:
-        access_request = access_request_store.create(
-            **request.model_dump()
-        )
-        notification_targets = (
-            identity_store.superuser_notification_targets()
-        )
-        if notification_targets:
-            try:
-                communications = (
-                    email_outbox_store.schedule_access_request_received(
-                        notification_organization_id=(
-                            notification_targets[0]["organization_id"]
-                        ),
-                        request_id=access_request["id"],
-                        organization_name=access_request[
-                            "organization_name"
-                        ],
-                        contact_name=access_request["contact_name"],
-                        requester_email=access_request["email"],
-                        request_message=access_request["message"],
-                        requested_plan=access_request["requested_plan"],
-                        include_stream_monitoring=access_request[
-                            "include_stream_monitoring"
-                        ],
-                        billing_cycle=access_request["billing_cycle"],
-                        administrator_emails=[
-                            target["email"]
-                            for target in notification_targets
-                        ],
-                    )
-                )
-            except sqlite3.Error:
-                communications = []
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {
-        "request_id": access_request["id"],
-        "status": access_request["status"],
-        "existing_account": access_request["existing_account"],
-        "communications_scheduled": len(communications),
-        "message": (
-            "Your access request was received. Broadcast Tool Pro will "
-            "review the appropriate account and plan."
-        ),
     }
 
 

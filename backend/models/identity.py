@@ -115,6 +115,33 @@ class TrialRegistrationRequest(BaseModel):
         return _normalized_email(value)
 
 
+class SignupRegistrationRequest(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
+    display_name: str = Field(min_length=2, max_length=120)
+    email: str
+    password: str = Field(min_length=10, max_length=128)
+    requested_plan: Literal[
+        "programming_suite", "professional", "enterprise"
+    ] = "professional"
+    include_stream_monitoring: bool = False
+    billing_cycle: Literal["monthly"] = "monthly"
+
+    @field_validator("include_stream_monitoring")
+    @classmethod
+    def validate_stream_monitoring(cls, value: bool, info):
+        if value and info.data.get("requested_plan") != "professional":
+            raise ValueError(
+                "Stream Monitoring can only be added to Professional; "
+                "Enterprise already includes it."
+            )
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return _normalized_email(value)
+
+
 class MemberCreate(BaseModel):
     display_name: str = Field(min_length=2, max_length=120)
     email: str

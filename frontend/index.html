@@ -22,9 +22,9 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260804-1" />
-    <script src="/static/i18n.js?v=20260818-1" defer></script>
+    <script src="/static/i18n.js?v=20260827-4" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
-    <script src="/static/auth.js?v=20260811-1" defer></script>
+    <script src="/static/auth.js?v=20260827-1" defer></script>
     <script src="/static/admin.js?v=20260811-1" defer></script>
     <script src="/static/billing.js?v=20260818-1" defer></script>
     <script src="/static/help.js?v=20260818-1" defer></script>
@@ -149,20 +149,12 @@
               <span data-i18n="auth.signIn">Sign In</span>
             </button>
             <button
-              id="show-trial-tab"
+              id="show-get-started-tab"
               type="button"
               role="tab"
               aria-selected="false"
             >
-              <span data-i18n="auth.requestAccess">Request Access</span>
-            </button>
-            <button
-              id="show-free-trial-tab"
-              type="button"
-              role="tab"
-              aria-selected="false"
-            >
-              <span data-i18n="auth.freeTrial">Free Trial</span>
+              <span data-i18n="auth.getStarted">Get Started</span>
             </button>
           </div>
 
@@ -265,11 +257,11 @@
         </form>
 
         <form class="auth-card is-hidden" id="access-request-form">
-          <p class="eyebrow" data-i18n="auth.paidAccess">PAID ACCOUNT ACCESS</p>
-          <h2 data-i18n="auth.requestAccess">Request Access</h2>
+          <p class="eyebrow" data-i18n="auth.selfService">SELF-SERVICE SIGNUP</p>
+          <h2 data-i18n="auth.getStarted">Get Started</h2>
           <p class="auth-copy" data-i18n="auth.requestCopy">
-            Tell us who you are and select the package you want. We will
-            review the request separately from the free trial.
+            Create your account, select a plan, and continue to secure Stripe
+            Checkout. Access starts as soon as payment is confirmed.
           </p>
           <label>
             <span data-i18n="auth.organization">Organization Name</span>
@@ -277,14 +269,14 @@
           </label>
           <label>
             <span data-i18n="auth.name">Your Name</span>
-            <input name="contact_name" required minlength="2" />
+            <input name="display_name" required minlength="2" />
           </label>
           <label>
             <span data-i18n="auth.email">Email Address</span>
             <input name="email" type="email" required autocomplete="email" />
           </label>
           <label>
-            <span data-i18n="auth.requestedPlan">Requested Plan</span>
+            <span data-i18n="auth.requestedPlan">Select Plan</span>
             <select name="requested_plan" id="access-request-plan" required>
               <option value="programming_suite">Programming Suite — $39/month</option>
               <option value="professional" selected>Professional — $99/month</option>
@@ -310,104 +302,17 @@
             Estimated monthly total: $99.00
           </p>
           <label>
-            <span data-i18n="auth.goal">What would you like to accomplish? (Optional)</span>
-            <textarea
-              name="message"
-              rows="4"
-              maxlength="2000"
-              placeholder="Channels, workflows, formats, or operational needs"
-              data-i18n-placeholder="auth.goalPlaceholder"
-            ></textarea>
-          </label>
-          <button class="button button-primary" type="submit">
-            <span data-i18n="auth.submitRequest">Submit Access Request</span>
-          </button>
-          <button
-            class="text-link auth-text-button"
-            id="show-free-trial-link"
-            type="button"
-          >
-            <span data-i18n="auth.tryTrial">Prefer to evaluate first? Start a 7-Day Free Trial</span>
-          </button>
-          <p class="auth-message" id="access-request-message"></p>
-        </form>
-
-        <section
-          class="auth-card access-request-success is-hidden"
-          id="access-request-success"
-          aria-live="polite"
-        >
-          <div class="success-confetti" aria-hidden="true">
-            <span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span>
-          </div>
-          <div class="success-check" aria-hidden="true">✓</div>
-          <p class="eyebrow" data-i18n="auth.requestReceived">REQUEST RECEIVED</p>
-          <h2 id="access-request-success-title" data-i18n="auth.thankYou">Thank you.</h2>
-          <p class="auth-copy" data-i18n="auth.requestReceivedCopy">
-            Your request is now awaiting review by Broadcast Tool Pro.
-            We will contact you at the email address you provided.
-          </p>
-          <div class="request-reference">
-            <span data-i18n="auth.requestReference">Request Reference</span>
-            <strong id="access-request-reference"></strong>
-          </div>
-          <p class="success-next-step" data-i18n="auth.requestNextStep">
-            No payment has been collected. If approved, you will receive
-            account activation and plan instructions separately.
-          </p>
-          <a class="button button-primary" href="/" data-i18n="auth.returnHome">Return to Home</a>
-          <button
-            class="text-link auth-text-button"
-            data-return-to-login
-            type="button"
-          >
-            <span data-i18n="auth.goSignIn">Go to Sign In</span>
-          </button>
-        </section>
-
-        <form class="auth-card is-hidden" id="trial-form">
-          <p class="eyebrow" data-i18n="auth.trialEyebrow">7-DAY FREE TRIAL</p>
-          <h2 data-i18n="auth.createAccount">Create Account</h2>
-          <p class="auth-copy" data-i18n="auth.trialCopy">
-            Includes XMLTV Validator, Pre-Logs, and HLS Validator.
-            Trial reports are branded PDF files.
-          </p>
-          <label>
-            <span data-i18n="auth.organization">Organization Name</span>
-            <input name="organization_name" required minlength="2" />
-          </label>
-          <label>
-            <span data-i18n="auth.name">Your Name</span>
-            <input name="display_name" required minlength="2" />
-          </label>
-          <label>
-            <span data-i18n="auth.email">Email Address</span>
-            <input
-              name="email"
-              type="email"
-              required
-              autocomplete="new-email"
-            />
-          </label>
-          <label>
             <span data-i18n="auth.password">Password</span>
-            <input
-              name="password"
-              type="password"
-              required
-              minlength="10"
-              autocomplete="new-password"
-            />
+            <input name="password" type="password" required minlength="10" autocomplete="new-password" />
             <small data-i18n="auth.passwordRule">Use at least 10 characters.</small>
           </label>
           <button class="button button-primary" type="submit">
-            <span data-i18n="auth.startTrial">Start 7-Day Free Trial</span>
+            <span data-i18n="auth.continueCheckout">Continue to Secure Checkout</span>
           </button>
-          <p class="trial-terms" data-i18n="auth.trialTerms">
-            No payment method required. Access ends automatically after 7 days.
+          <p class="auth-message" id="access-request-message"></p>
+          <p class="trial-terms" data-i18n="auth.checkoutTerms">
+            Monthly subscription. Cancel at any time. Product access begins after Stripe confirms payment.
           </p>
-          <p class="auth-message" id="trial-message"></p>
         </form>
 
         <form class="auth-card is-hidden" id="account-activation-form">

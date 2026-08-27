@@ -153,7 +153,8 @@ def test_access_request_schema_migrates_existing_plan_constraint():
 def test_access_request_and_activation_routes_are_registered():
     paths = set(app.openapi()["paths"])
 
-    assert "/api/auth/access-requests" in paths
+    assert "/api/auth/access-requests" not in paths
+    assert "/api/auth/signup" in paths
     assert "/api/auth/sales-inquiries" in paths
     assert "/api/auth/activate-account" in paths
     assert "/api/admin/access-requests" in paths
@@ -194,6 +195,44 @@ def test_sales_inquiry_contains_no_plan_or_billing_language():
         assert "Requested plan" not in internal["body_text"]
         assert "Billing cycle" not in internal["body_text"]
         assert "Stream Monitoring add-on" not in internal["body_text"]
+
+
+def test_self_service_signup_queues_customer_and_admin_messages():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "signup-email.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="New Customer",
+            slug=None,
+            plan="professional",
+        )
+        outbox = EmailOutboxStore(database_path)
+        outbox.initialize()
+
+        messages = outbox.schedule_self_service_signup(
+            organization_id=organization["id"],
+            recipient_email="owner@example.com",
+            administrator_emails=["hello@broadcasttoolpro.com"],
+            organization_name="New Customer",
+            plan_code="professional",
+            include_stream_monitoring=True,
+        )
+
+        assert len(messages) == 2
+        customer = next(
+            message for message in messages
+            if message["recipient_email"] == "owner@example.com"
+        )
+        administrator = next(
+            message for message in messages
+            if message["recipient_email"] == "hello@broadcasttoolpro.com"
+        )
+        assert customer["subject"] == (
+            "Complete your Broadcast Tool Pro subscription"
+        )
+        assert "Stripe Checkout" in customer["body_text"]
+        assert "awaiting Stripe payment" in administrator["body_text"]
 
 
 def test_access_approval_represents_paid_and_complimentary_decisions():

@@ -265,8 +265,8 @@ def test_account_access_workflows_localize_without_mutating_identity_data():
 
     for key in (
         "auth.recovery",
-        "auth.requestReceived",
-        "auth.trialEyebrow",
+        "auth.selfService",
+        "auth.continueCheckout",
         "auth.accountApproved",
         "account.trialReminders",
         "account.suspended",
@@ -506,7 +506,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260817-1' in html
-    assert '/static/i18n.js?v=20260818-1' in html
+    assert '/static/i18n.js?v=20260827-4' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -533,11 +533,12 @@ def test_secure_account_interface_is_present():
 
     assert 'id="bootstrap-form"' in html
     assert 'id="login-form"' in html
-    assert 'id="trial-form"' in html
+    assert 'id="trial-form"' not in html
     assert 'id="show-login-tab"' in html
-    assert 'id="show-trial-tab"' in html
+    assert 'id="show-get-started-tab"' in html
     assert 'name="remember_me"' in html
-    assert "Start 7-Day Free Trial" in html
+    assert "Start 7-Day Free Trial" not in html
+    assert "Continue to Secure Checkout" in html
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
     assert 'id="trial-reminder-preference"' in html
@@ -558,8 +559,9 @@ def test_secure_account_interface_is_present():
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
     assert "/api/auth/email-preferences" in auth_javascript
-    assert "/api/auth/trial" in auth_javascript
-    assert 'requestedMode === "trial"' in auth_javascript
+    assert "/api/auth/signup" in auth_javascript
+    assert "/api/auth/trial" not in auth_javascript
+    assert 'requestedMode === "trial"' not in auth_javascript
     assert "moduleSurfaces" in auth_javascript
     assert "Unsaved changes" in admin_javascript
     assert "Saving changes" in admin_javascript
