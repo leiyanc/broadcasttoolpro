@@ -73,7 +73,14 @@ function renderPublicXmltvResult(result) {
 publicXmltvForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const file = publicXmltvFile || publicXmltvInput.files?.[0];
-  if (!file) return;
+  if (!file) {
+    publicXmltvStatus.textContent = landingText(
+      "landing.validator.fileRequired",
+      "Choose or drop an XMLTV file first.",
+    );
+    publicXmltvStatus.classList.add("is-error");
+    return;
+  }
   const button = publicXmltvForm.querySelector("button[type='submit']");
   button.disabled = true;
   publicXmltvStatus.classList.remove("is-error");

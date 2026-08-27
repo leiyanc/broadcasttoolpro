@@ -85,10 +85,13 @@ def test_homepage_exposes_free_xmltv_validator_without_registration():
     translations = (FRONTEND_DIR / "i18n.js").read_text()
 
     assert 'id="public-xmltv-form"' in html
+    assert 'id="public-xmltv-file" type="file" name="file" accept=".xml,application/xml,text/xml" />' in html
+    assert 'accept=".xml,application/xml,text/xml" required' not in html
     assert 'id="public-validator-results"' in html
     assert "/api/public/xmltv/validate" in javascript
     assert "/api/public/xmltv/report/pdf" in javascript
     assert "btp-xmltv-validation-report.pdf" in javascript
+    assert '"landing.validator.fileRequired"' in javascript
     assert "Start Free Trial" not in html
     assert 'href="#platform" data-i18n="landing.nav.platform"' not in html
     assert "Platform Product Map" not in html
@@ -432,7 +435,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260827-2" in html
+    assert "/static/landing.css?v=20260827-3" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
