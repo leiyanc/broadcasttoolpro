@@ -25,6 +25,7 @@ from backend.api.admin import router as admin_router
 from backend.api.billing import router as billing_router
 from backend.api.support import router as support_router
 from backend.api.email_events import router as email_events_router
+from backend.api.public_xmltv import router as public_xmltv_router
 from backend.services.backup_manager import backup_manager
 from backend.services.google_drive_backup import google_drive_backup
 from backend.services.email_delivery import email_delivery_service
@@ -156,7 +157,7 @@ async def security_headers(request, call_next):
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=()"
     )
-    if request.url.path.startswith("/api/auth"):
+    if request.url.path.startswith(("/api/auth", "/api/public/xmltv")):
         response.headers["Cache-Control"] = "no-store"
     if (
         os.getenv("BTP_ENV", "").lower() != "production"
@@ -184,6 +185,7 @@ app.include_router(admin_router)
 app.include_router(billing_router)
 app.include_router(support_router)
 app.include_router(email_events_router)
+app.include_router(public_xmltv_router)
 
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 app.mount(

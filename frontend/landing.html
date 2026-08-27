@@ -12,9 +12,9 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/landing.css?v=20260826-2" />
-    <script src="/static/i18n.js?v=20260826-2" defer></script>
-    <script src="/static/landing.js?v=20260818-1" defer></script>
+    <link rel="stylesheet" href="/static/landing.css?v=20260827-1" />
+    <script src="/static/i18n.js?v=20260827-1" defer></script>
+    <script src="/static/landing.js?v=20260827-1" defer></script>
   </head>
   <body>
     <header class="landing-header" id="top">
@@ -34,7 +34,6 @@
         <span></span><span></span>
       </button>
       <nav class="landing-nav" id="landing-nav" aria-label="Main navigation">
-        <a href="#platform" data-i18n="landing.nav.platform">Platform</a>
         <a href="#products" data-i18n="landing.nav.products">Products</a>
         <a href="#operations" data-i18n="landing.nav.operations">Operations</a>
         <a href="#about" data-i18n="landing.nav.about">About Us</a>
@@ -72,13 +71,8 @@
             and As-Run data into operational proof.
           </p>
           <div class="landing-hero-actions">
-            <a class="landing-button" href="#products" data-i18n="landing.hero.explore">Explore the Platform</a>
-            <a class="landing-button landing-button-outline" href="/app?mode=trial">
-              <span data-i18n="landing.hero.trial">Start Free Trial</span>
-            </a>
-            <a class="landing-text-link" href="#workflow">
-              <span data-i18n="landing.hero.how">See how it works</span> <span>→</span>
-            </a>
+            <a class="landing-button" href="#free-validator" data-i18n="landing.validator.cta">Validate XMLTV Free</a>
+            <a class="landing-button landing-button-outline" href="#products" data-i18n="landing.hero.explore">Explore the Platform</a>
           </div>
           <div class="landing-trust">
             <span data-i18n="landing.hero.trust.fast">Built for FAST channels</span>
@@ -87,40 +81,41 @@
           </div>
         </div>
 
-        <div class="landing-console platform-map" aria-label="Platform product map">
+        <div class="landing-console free-validator-card" id="free-validator">
           <div class="console-topbar">
-            <div>
-              <span class="console-signal"></span>
-              <span data-i18n="landing.map.title">Platform Product Map</span>
-            </div>
-            <span data-i18n="landing.map.available">ACTUAL AVAILABLE MODULES</span>
+            <div><span class="console-signal"></span><span data-i18n="landing.validator.kicker">FREE XMLTV VALIDATOR</span></div>
+            <span data-i18n="landing.validator.noAccount">NO ACCOUNT REQUIRED</span>
           </div>
-          <div class="platform-map-body">
-            <article>
-              <small data-i18n="landing.map.programming">PROGRAMMING</small>
-              <strong data-i18n="landing.map.xmltv">XMLTV Operations</strong>
-              <span data-i18n="landing.map.xmltv.modules">Generator · Validator · Repair · Grid</span>
-            </article>
-            <article>
-              <small data-i18n="landing.map.traffic">TRAFFIC</small>
-              <strong data-i18n="landing.map.logs">Broadcast Logs</strong>
-              <span>Pre-Logs · Post-Logs · PDF · Excel</span>
-            </article>
-            <article>
-              <small data-i18n="landing.map.streaming">STREAMING QC</small>
-              <strong data-i18n="landing.map.hls">HLS Validation</strong>
-              <span data-i18n="landing.map.hls.modules">Structure · SCTE-35 · Bandwidth</span>
-            </article>
-            <article>
-              <small data-i18n="landing.map.inputs">INPUTS</small>
-              <strong data-i18n="landing.map.sources">Multi-format Sources</strong>
-              <span>CSV · XLSX · XML · TXT · JSON</span>
-            </article>
-          </div>
-          <p class="platform-map-note" data-i18n="landing.map.note">
-            Product map based on modules currently implemented in Broadcast
-            Tool Pro. It is not a fabricated product screenshot.
-          </p>
+          <form id="public-xmltv-form" class="free-validator-form">
+            <h2 data-i18n="landing.validator.title">Validate your XMLTV before delivery.</h2>
+            <p data-i18n="landing.validator.copy">Upload any XMLTV file—not only files created with a Broadcast Tool Pro template.</p>
+            <label class="xmltv-dropzone" id="xmltv-dropzone">
+              <input id="public-xmltv-file" type="file" name="file" accept=".xml,application/xml,text/xml" required />
+              <strong data-i18n="landing.validator.drop">Choose or drop an XMLTV file</strong>
+              <span id="public-xmltv-filename" data-i18n="landing.validator.limit">XML · Maximum 10 MB</span>
+            </label>
+            <button class="landing-button" type="submit" data-i18n="landing.validator.button">Validate XMLTV</button>
+            <p class="validator-privacy" data-i18n="landing.validator.privacy">Your file is processed in memory for this request and is not retained.</p>
+            <p class="validator-status" id="public-xmltv-status" role="status"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="public-validator-results" id="public-validator-results" hidden>
+        <div class="landing-section-heading">
+          <p class="landing-kicker"><span></span><span data-i18n="landing.validator.resultsKicker">VALIDATION RESULTS</span></p>
+          <h2 id="public-validator-result-title" data-i18n="landing.validator.resultsTitle">Your XMLTV review</h2>
+          <p id="public-validator-summary"></p>
+        </div>
+        <div class="validator-layer-grid">
+          <article><small data-i18n="landing.validator.format">XMLTV FORMAT</small><strong id="validator-format-status"></strong><span id="validator-format-counts"></span></article>
+          <article><small data-i18n="landing.validator.operations">OPERATIONAL READINESS</small><strong id="validator-operations-status"></strong><span id="validator-operations-counts"></span></article>
+          <article><small data-i18n="landing.validator.profile">BTP DELIVERY PROFILE</small><strong id="validator-profile-score"></strong><span id="validator-profile-counts"></span></article>
+        </div>
+        <div id="public-validator-issues" class="public-validator-issues"></div>
+        <div class="validator-result-actions">
+          <button class="landing-button" id="download-public-xmltv-report" type="button" data-i18n="landing.validator.report">Download BTP Basic Report</button>
+          <a class="landing-button landing-button-outline" href="/app?mode=create" data-i18n="landing.validator.repair">Need to repair it? Explore BTP</a>
         </div>
       </section>
 

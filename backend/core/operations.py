@@ -26,6 +26,8 @@ class RateLimitRule:
 
 
 SENSITIVE_RATE_LIMITS = {
+    ("POST", "/api/public/xmltv/validate"): RateLimitRule(20, 10 * 60),
+    ("POST", "/api/public/xmltv/report/pdf"): RateLimitRule(10, 10 * 60),
     ("POST", "/api/auth/bootstrap"): RateLimitRule(3, 60 * 60),
     ("POST", "/api/auth/login"): RateLimitRule(10, 5 * 60),
     (

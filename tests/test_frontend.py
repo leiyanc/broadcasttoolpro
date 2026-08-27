@@ -79,6 +79,23 @@ def test_public_and_authenticated_interfaces_share_language_preference():
     assert "navigator.language" in javascript
 
 
+def test_homepage_exposes_free_xmltv_validator_without_registration():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+    javascript = (FRONTEND_DIR / "landing.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'id="public-xmltv-form"' in html
+    assert 'id="public-validator-results"' in html
+    assert "/api/public/xmltv/validate" in javascript
+    assert "/api/public/xmltv/report/pdf" in javascript
+    assert "btp-xmltv-validation-report.pdf" in javascript
+    assert "Start Free Trial" not in html
+    assert 'href="#platform" data-i18n="landing.nav.platform"' not in html
+    assert "Platform Product Map" not in html
+    assert '"landing.validator.cta"' in translations
+
+
+
 def test_xmltv_generator_and_programming_grid_are_localized_independently():
     html = (FRONTEND_DIR / "index.html").read_text()
     application_javascript = (FRONTEND_DIR / "app.js").read_text()
@@ -357,11 +374,11 @@ def test_public_landing_page_presents_the_platform():
     )
     assert "/app?mode=signin" in html
     assert "/app?mode=create" in html
-    assert "/app?mode=trial" in html
+    assert "/app?mode=trial" not in html
     assert "broadcastcontrol.io" not in html.lower()
     assert "Broadcast Control" not in html
     assert "Orion Media" not in html
-    assert "It is not a fabricated product screenshot." in html
+    assert "It is not a fabricated product screenshot." not in html
     assert "--landing-black: #02060c" in css
     assert "@media (max-width: 760px)" in css
     assert "landing-menu-toggle" in javascript
@@ -412,7 +429,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260826-2" in html
+    assert "/static/landing.css?v=20260827-1" in html
 
 
 def test_frontend_uses_xmltv_endpoints():

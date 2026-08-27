@@ -72,3 +72,25 @@ def test_rate_limiter_keeps_bounded_client_state():
         )
 
     assert len(limiter._requests) == 2
+
+
+def test_public_xmltv_validator_is_rate_limited():
+    limiter = RequestRateLimiter()
+
+    for attempt in range(20):
+        allowed, _ = limiter.check(
+            method="POST",
+            path="/api/public/xmltv/validate",
+            client_key="198.51.100.50",
+            now=float(attempt),
+        )
+        assert allowed is True
+
+    allowed, retry_after = limiter.check(
+        method="POST",
+        path="/api/public/xmltv/validate",
+        client_key="198.51.100.50",
+        now=20.0,
+    )
+    assert allowed is False
+    assert retry_after > 0
