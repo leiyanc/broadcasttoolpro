@@ -348,6 +348,9 @@ def test_public_landing_page_presents_the_platform():
     assert 'data-i18n="landing.hero.title.line2">XMLTV</span>' in html
     assert "by hand." in html
     assert html.count('data-i18n="landing.hero.title.line') == 3
+    assert 'data-i18n="landing.hero.trust.aggregator"' in html
+    assert "Validate XMLTV Free</a>" not in html
+    assert "Explore the Platform</a>" not in html
     assert ".landing-hero h1 span" in css
     assert "white-space: nowrap;" in css
     assert "PROGRAMMING SUITE" in html
@@ -429,7 +432,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260827-1" in html
+    assert "/static/landing.css?v=20260827-2" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
