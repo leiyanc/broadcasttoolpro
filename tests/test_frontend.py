@@ -507,7 +507,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-2' in html
+    assert '/static/hls-validator.js?v=20260828-3' in html
     assert '/static/i18n.js?v=20260828-1' in html
 
     assert 'href="#hls-validator"' in html
@@ -529,6 +529,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert '"inspected_segment_urls"' in javascript
     assert "void startLoudnessAnalysis()" in javascript
     assert "updateHlsReportAvailability" in javascript
+    assert '["complete", "stopped"].includes(' in javascript
     assert 'rule_id: "LOUDNESS-INCOMPLETE"' in javascript
     assert "/api/hls/report/pdf" in javascript
     assert "summarizeScteBreaks" in javascript

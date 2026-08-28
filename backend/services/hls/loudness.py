@@ -127,15 +127,21 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
         _ffmpeg_executable(),
         "-nostdin",
         "-hide_banner",
+        "-nostats",
         "-loglevel",
         "info",
+        "-re",
+        "-threads",
+        "1",
         "-i",
         playlist_url,
         "-t",
         str(duration_minutes * 60),
         "-vn",
+        "-map",
+        "0:a:0",
         "-filter:a",
-        "ebur128=peak=true:framelog=verbose",
+        "ebur128=peak=true",
         "-f",
         "null",
         "-",
@@ -143,8 +149,10 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
     try:
         completed = subprocess.run(
             command,
-            capture_output=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             text=True,
+            errors="replace",
             timeout=(duration_minutes * 60) + 90,
             check=False,
         )
@@ -152,14 +160,26 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
         raise LoudnessAnalysisError(
             "The loudness analysis could not be completed."
         ) from exc
-    combined = f"{completed.stdout}\n{completed.stderr}"
+    analyzer_output = completed.stderr or ""
     if completed.returncode != 0:
-        detail = completed.stderr.strip().splitlines()[-1:] or ["Unknown FFmpeg error."]
+        details = analyzer_output.strip().splitlines()
+        if details:
+            detail = details[-1][:240]
+        elif completed.returncode < 0:
+            detail = (
+                "The analyzer process was interrupted by signal "
+                f"{-completed.returncode}."
+            )
+        else:
+            detail = (
+                "FFmpeg exited with code "
+                f"{completed.returncode} without diagnostic output."
+            )
         raise LoudnessAnalysisError(
             "The stream audio could not be analyzed: "
-            f"{detail[0][:240]}"
+            f"{detail}"
         )
-    return asdict(parse_ebur128_output(combined))
+    return asdict(parse_ebur128_output(analyzer_output))
 
 
 class LoudnessJobStore:

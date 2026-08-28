@@ -1,3 +1,4 @@
+import subprocess
 import time
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 from backend.services.hls.loudness import (
     LoudnessAnalysisError,
     LoudnessJobStore,
+    analyze_hls_loudness,
     evaluate_atsc_a85,
     parse_ebur128_output,
 )
@@ -54,6 +56,52 @@ def test_parser_uses_final_ebur128_summary():
 def test_parser_rejects_incomplete_analyzer_output():
     with pytest.raises(LoudnessAnalysisError):
         parse_ebur128_output("No audio summary")
+
+
+def test_analyzer_uses_resource_bounded_ffmpeg_options(monkeypatch):
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return type("Completed", (), {
+            "returncode": 0,
+            "stderr": "I: -24.0 LUFS\nPeak: -4.0 dBFS",
+        })()
+
+    monkeypatch.setattr(
+        "backend.services.hls.loudness._ffmpeg_executable",
+        lambda: "ffmpeg",
+    )
+    monkeypatch.setattr(
+        "backend.services.hls.loudness.subprocess.run",
+        fake_run,
+    )
+
+    result = analyze_hls_loudness("https://example.com/live.m3u8", 5)
+
+    assert result["integrated_lkfs"] == -24.0
+    assert "-re" in captured["command"]
+    assert captured["command"][captured["command"].index("-threads") + 1] == "1"
+    assert captured["command"][captured["command"].index("-map") + 1] == "0:a:0"
+    assert captured["kwargs"]["stdout"] is subprocess.DEVNULL
+
+
+def test_analyzer_reports_signal_when_ffmpeg_is_interrupted(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.hls.loudness._ffmpeg_executable",
+        lambda: "ffmpeg",
+    )
+    monkeypatch.setattr(
+        "backend.services.hls.loudness.subprocess.run",
+        lambda *_args, **_kwargs: type("Completed", (), {
+            "returncode": -9,
+            "stderr": "",
+        })(),
+    )
+
+    with pytest.raises(LoudnessAnalysisError, match="signal 9"):
+        analyze_hls_loudness("https://example.com/live.m3u8", 5)
 
 
 def test_job_store_scopes_results_to_organization():

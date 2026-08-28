@@ -147,7 +147,9 @@ async function waitForLoudnessJob(jobId) {
 }
 
 function updateHlsReportAvailability() {
-  const monitoringFinished = hlsMonitorState === "complete";
+  const monitoringFinished = ["complete", "stopped"].includes(
+    hlsMonitorState,
+  );
   const loudnessFinished = ["complete", "failed"].includes(
     hlsLoudnessState,
   );
