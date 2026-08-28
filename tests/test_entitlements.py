@@ -60,6 +60,30 @@ def test_enterprise_plan_enables_media_loudness_compliance():
         assert result["modules"]["media_qc"]["enabled"] is True
 
 
+def test_stream_monitoring_addon_enables_media_loudness_compliance():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "entitlements.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Professional Network",
+            slug=None,
+            plan="professional",
+        )
+        entitlements = EntitlementStore(database_path)
+        entitlements.initialize()
+        entitlements.set_addon(
+            organization["id"],
+            "stream_monitoring",
+            True,
+        )
+
+        result = entitlements.effective_entitlements(organization["id"])
+
+        assert result["modules"]["hls_monitor"]["enabled"] is True
+        assert result["modules"]["media_qc"]["enabled"] is True
+
+
 def test_entitlement_route_is_registered():
     paths = set(app.openapi()["paths"])
 

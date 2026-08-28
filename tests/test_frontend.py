@@ -201,7 +201,6 @@ def test_hls_workflows_localize_ui_without_changing_report_language():
         "hls.title",
         "hls.validate",
         "hls.monitor",
-        "hls.analyzeLoudness",
         "hls.loudnessDisclaimer",
         "hls.downloadReport",
         "hls.bandwidth",
@@ -508,12 +507,12 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-1' in html
+    assert '/static/hls-validator.js?v=20260828-2' in html
     assert '/static/i18n.js?v=20260828-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
-    assert 'id="analyze-hls-loudness-button"' in html
+    assert 'id="analyze-hls-loudness-button"' not in html
     assert 'id="hls-loudness-panel"' in html
     assert 'id="stop-hls-monitor-button"' in html
     assert 'id="hls-monitor-trigger-body"' in html
@@ -528,6 +527,9 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert "hlsSeenTriggers" in javascript
     assert "hlsInspectedSegments" in javascript
     assert '"inspected_segment_urls"' in javascript
+    assert "void startLoudnessAnalysis()" in javascript
+    assert "updateHlsReportAvailability" in javascript
+    assert 'rule_id: "LOUDNESS-INCOMPLETE"' in javascript
     assert "/api/hls/report/pdf" in javascript
     assert "summarizeScteBreaks" in javascript
     assert "continuation_count" in javascript
