@@ -153,10 +153,7 @@ function updateHlsReportAvailability() {
   const loudnessFinished = ["complete", "failed"].includes(
     hlsLoudnessState,
   );
-  hlsReportButton.classList.toggle(
-    "is-hidden",
-    !monitoringFinished || !loudnessFinished,
-  );
+  hlsReportButton.disabled = !monitoringFinished || !loudnessFinished;
 }
 
 async function startLoudnessAnalysis() {
@@ -543,7 +540,7 @@ if (hlsForm) {
     hlsLoudnessState = "idle";
     latestLoudnessResult = null;
     latestLoudnessError = null;
-    hlsReportButton.classList.add("is-hidden");
+    hlsReportButton.disabled = true;
     hlsLoudnessPanel.classList.add("is-hidden");
     hlsMonitorTriggers.length = 0;
     hlsMonitorIssues.clear();
@@ -578,7 +575,7 @@ if (hlsMonitorButton) {
     hlsLoudnessState = "running";
     latestLoudnessResult = null;
     latestLoudnessError = null;
-    hlsReportButton.classList.add("is-hidden");
+    hlsReportButton.disabled = true;
     hlsMonitorStartedAt = new Date();
     hlsMonitorStoppedAt = null;
     hlsMonitorUrl = hlsUrl.value.trim();
@@ -712,11 +709,11 @@ async function downloadHlsPdfReport() {
   } catch (error) {
     hlsMonitorStatus.textContent = error.message;
   } finally {
-    hlsReportButton.disabled = false;
     hlsReportButton.textContent = hlsText(
       "hls.downloadReport",
       "Download PDF Report",
     );
+    updateHlsReportAvailability();
   }
 }
 

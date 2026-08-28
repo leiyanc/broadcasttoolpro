@@ -507,7 +507,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-4' in html
+    assert '/static/hls-validator.js?v=20260828-5' in html
     assert '/static/i18n.js?v=20260828-1' in html
 
     assert 'href="#hls-validator"' in html
@@ -522,6 +522,13 @@ def test_hls_stream_monitor_has_bounded_periods():
     loudness_panel = html.index('id="hls-loudness-panel"')
     assert hls_form_start < hls_form_end < monitor_panel < loudness_panel
     assert 'id="download-hls-report-button"' in html
+    report_button = html.split('id="download-hls-report-button"', 1)[0].rsplit(
+        "<button", 1
+    )[1]
+    assert "is-hidden" not in report_button
+    assert "disabled" in html.split('id="download-hls-report-button"', 1)[1].split(
+        ">", 1
+    )[0]
     assert 'id="hls-report-language"' in html
     assert 'value="en" data-i18n="language.english"' in html
     assert 'value="es" data-i18n="language.spanish"' in html
@@ -534,6 +541,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert '"inspected_segment_urls"' in javascript
     assert "void startLoudnessAnalysis()" in javascript
     assert "updateHlsReportAvailability" in javascript
+    assert "hlsReportButton.disabled = !monitoringFinished || !loudnessFinished" in javascript
     assert '["complete", "stopped"].includes(' in javascript
     assert 'rule_id: "LOUDNESS-INCOMPLETE"' in javascript
     assert "/api/hls/report/pdf" in javascript
