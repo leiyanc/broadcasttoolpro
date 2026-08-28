@@ -37,7 +37,7 @@
       defer
     ></script>
     <script src="/static/report-history.js?v=20260811-1" defer></script>
-    <script src="/static/hls-validator.js?v=20260828-3" defer></script>
+    <script src="/static/hls-validator.js?v=20260828-4" defer></script>
   </head>
 
   <body>
@@ -2272,6 +2272,33 @@
         </form>
 
         <section
+          class="hls-monitor-panel is-hidden"
+          id="hls-monitor-panel"
+          aria-live="polite"
+        >
+          <div class="hls-monitor-heading">
+            <div>
+              <strong id="hls-monitor-title" data-i18n="hls.monitoring">Monitoring stream…</strong>
+              <small id="hls-monitor-status"></small>
+            </div>
+            <span id="hls-monitor-countdown">00:00</span>
+          </div>
+          <div class="table-scroll">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th data-i18n="hls.detected">Detected</th>
+                  <th data-i18n="hls.type">Type</th>
+                  <th>ID</th>
+                  <th data-i18n="traffic.duration">Duration</th>
+                </tr>
+              </thead>
+              <tbody id="hls-monitor-trigger-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section
           class="result-panel is-hidden"
           id="hls-loudness-panel"
           aria-live="polite"
@@ -2339,31 +2366,6 @@
                 <tbody id="hls-trigger-body"></tbody>
               </table>
             </div>
-            <section
-              class="hls-monitor-panel is-hidden"
-              id="hls-monitor-panel"
-            >
-              <div class="hls-monitor-heading">
-                <div>
-                  <strong id="hls-monitor-title" data-i18n="hls.monitoring">Monitoring stream…</strong>
-                  <small id="hls-monitor-status"></small>
-                </div>
-                <span id="hls-monitor-countdown">00:00</span>
-              </div>
-              <div class="table-scroll">
-                <table class="preview-table">
-                  <thead>
-                    <tr>
-                      <th data-i18n="hls.detected">Detected</th>
-                      <th data-i18n="hls.type">Type</th>
-                      <th>ID</th>
-                      <th data-i18n="traffic.duration">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody id="hls-monitor-trigger-body"></tbody>
-                </table>
-              </div>
-            </section>
           </div>
         </section>
       </section>

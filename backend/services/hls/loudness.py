@@ -1,5 +1,7 @@
+import json
 import os
 import re
+import shutil
 import subprocess
 import threading
 import uuid
@@ -107,10 +109,28 @@ def parse_ebur128_output(output: str) -> LoudnessResult:
     return evaluate_atsc_a85(float(integrated[-1]), float(peaks[-1]))
 
 
+def parse_loudnorm_output(output: str) -> LoudnessResult:
+    for candidate in reversed(re.findall(r"\{.*?\}", output, re.DOTALL)):
+        try:
+            metrics = json.loads(candidate)
+            integrated_lkfs = float(metrics["input_i"])
+            true_peak_dbtp = float(metrics["input_tp"])
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            continue
+        return evaluate_atsc_a85(integrated_lkfs, true_peak_dbtp)
+    raise LoudnessAnalysisError(
+        "The loudness analyzer did not return integrated loudness and "
+        "true peak metrics."
+    )
+
+
 def _ffmpeg_executable() -> str:
     configured = os.getenv("BTP_FFMPEG_PATH", "").strip()
     if configured:
         return configured
+    system_ffmpeg = shutil.which("ffmpeg")
+    if system_ffmpeg:
+        return system_ffmpeg
     try:
         import imageio_ffmpeg
     except ImportError as exc:
@@ -130,7 +150,6 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
         "-nostats",
         "-loglevel",
         "info",
-        "-re",
         "-threads",
         "1",
         "-i",
@@ -141,7 +160,9 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
         "-map",
         "0:a:0",
         "-filter:a",
-        "ebur128=peak=true",
+        "loudnorm=I=-24:LRA=7:TP=-2:print_format=json",
+        "-ar",
+        "48000",
         "-f",
         "null",
         "-",
@@ -179,7 +200,7 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
             "The stream audio could not be analyzed: "
             f"{detail}"
         )
-    return asdict(parse_ebur128_output(analyzer_output))
+    return asdict(parse_loudnorm_output(analyzer_output))
 
 
 class LoudnessJobStore:

@@ -37,6 +37,8 @@ services:
         value: "true"
       - key: BTP_TEMP_RETENTION_HOURS
         value: "24"
+      - key: BTP_FFMPEG_PATH
+        value: /usr/bin/ffmpeg
       - key: BTP_PAYMENT_GRACE_HOURS
         value: "72"
       - key: BTP_EMAIL_PROVIDER

@@ -6,9 +6,11 @@ import pytest
 from backend.services.hls.loudness import (
     LoudnessAnalysisError,
     LoudnessJobStore,
+    _ffmpeg_executable,
     analyze_hls_loudness,
     evaluate_atsc_a85,
     parse_ebur128_output,
+    parse_loudnorm_output,
 )
 
 
@@ -58,6 +60,43 @@ def test_parser_rejects_incomplete_analyzer_output():
         parse_ebur128_output("No audio summary")
 
 
+def test_loudnorm_parser_uses_measured_input_metrics():
+    output = '''
+    {
+        "input_i": "-24.07",
+        "input_tp": "-14.52",
+        "input_lra": "2.10"
+    }
+    '''
+
+    result = parse_loudnorm_output(output)
+
+    assert result.integrated_lkfs == -24.1
+    assert result.true_peak_dbtp == -14.5
+
+
+def test_loudnorm_parser_rejects_missing_metrics():
+    with pytest.raises(LoudnessAnalysisError):
+        parse_loudnorm_output('{"output_i": "-24.0"}')
+
+
+def test_ffmpeg_executable_prefers_configured_path(monkeypatch):
+    monkeypatch.setenv("BTP_FFMPEG_PATH", "/usr/bin/ffmpeg")
+    monkeypatch.setattr("backend.services.hls.loudness.shutil.which", lambda _: None)
+
+    assert _ffmpeg_executable() == "/usr/bin/ffmpeg"
+
+
+def test_ffmpeg_executable_uses_system_binary_before_packaged_one(monkeypatch):
+    monkeypatch.delenv("BTP_FFMPEG_PATH", raising=False)
+    monkeypatch.setattr(
+        "backend.services.hls.loudness.shutil.which",
+        lambda _: "/usr/local/bin/ffmpeg",
+    )
+
+    assert _ffmpeg_executable() == "/usr/local/bin/ffmpeg"
+
+
 def test_analyzer_uses_resource_bounded_ffmpeg_options(monkeypatch):
     captured = {}
 
@@ -66,7 +105,7 @@ def test_analyzer_uses_resource_bounded_ffmpeg_options(monkeypatch):
         captured["kwargs"] = kwargs
         return type("Completed", (), {
             "returncode": 0,
-            "stderr": "I: -24.0 LUFS\nPeak: -4.0 dBFS",
+            "stderr": '{"input_i": "-24.0", "input_tp": "-4.0"}',
         })()
 
     monkeypatch.setattr(
@@ -81,9 +120,10 @@ def test_analyzer_uses_resource_bounded_ffmpeg_options(monkeypatch):
     result = analyze_hls_loudness("https://example.com/live.m3u8", 5)
 
     assert result["integrated_lkfs"] == -24.0
-    assert "-re" in captured["command"]
+    assert "-re" not in captured["command"]
     assert captured["command"][captured["command"].index("-threads") + 1] == "1"
     assert captured["command"][captured["command"].index("-map") + 1] == "0:a:0"
+    assert "loudnorm=I=-24:LRA=7:TP=-2:print_format=json" in captured["command"]
     assert captured["kwargs"]["stdout"] is subprocess.DEVNULL
 
 

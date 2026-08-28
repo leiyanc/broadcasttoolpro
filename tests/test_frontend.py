@@ -507,7 +507,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-3' in html
+    assert '/static/hls-validator.js?v=20260828-4' in html
     assert '/static/i18n.js?v=20260828-1' in html
 
     assert 'href="#hls-validator"' in html
@@ -516,6 +516,11 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert 'id="hls-loudness-panel"' in html
     assert 'id="stop-hls-monitor-button"' in html
     assert 'id="hls-monitor-trigger-body"' in html
+    hls_form_start = html.index('id="hls-validator-form"')
+    hls_form_end = html.index("</form>", hls_form_start)
+    monitor_panel = html.index('id="hls-monitor-panel"')
+    loudness_panel = html.index('id="hls-loudness-panel"')
+    assert hls_form_start < hls_form_end < monitor_panel < loudness_panel
     assert 'id="download-hls-report-button"' in html
     assert 'id="hls-report-language"' in html
     assert 'value="en" data-i18n="language.english"' in html
