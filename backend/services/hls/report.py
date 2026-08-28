@@ -278,6 +278,18 @@ def generate_hls_report(
     def translated(key: str, english: str) -> str:
         return copy.get(key, english)
 
+    loudness = payload.get("loudness") or {}
+    english_title = (
+        "HLS Validation, SCTE-35 & Loudness Assessment Report"
+        if loudness
+        else "HLS Stream Validation & SCTE-35 Monitoring Report"
+    )
+    spanish_title = (
+        "Reporte de Validacion HLS, SCTE-35 y Evaluacion de Loudness"
+        if loudness
+        else copy.get("title")
+    )
+    report_title = spanish_title if spanish else english_title
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
@@ -286,10 +298,7 @@ def generate_hls_report(
         leftMargin=0.55 * inch,
         topMargin=0.72 * inch,
         bottomMargin=0.62 * inch,
-        title=translated(
-            "title",
-            "HLS Stream Validation & SCTE-35 Monitoring Report",
-        ),
+        title=report_title,
         author="Broadcast Tool Pro",
     )
     styles = getSampleStyleSheet()
@@ -342,13 +351,7 @@ def generate_hls_report(
     )
 
     story = [
-        Paragraph(
-            translated(
-                "title",
-                "HLS Stream Validation & SCTE-35 Monitoring Report",
-            ),
-            title,
-        ),
+        Paragraph(report_title, title),
         Paragraph(
             translated(
                 "disclaimer",
@@ -483,6 +486,76 @@ def generate_hls_report(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
     story.extend([summary_table, Spacer(1, 0.12 * inch)])
+
+    if loudness:
+        status_label = {
+            "pass": "Aprobado" if spanish else "Pass",
+            "warning": "Revisar" if spanish else "Warning",
+            "fail": "Fallido" if spanish else "Fail",
+        }.get(str(loudness.get("status") or "").lower(), "-")
+        loudness_rows = [
+            ["Perfil" if spanish else "Profile", loudness.get("profile")],
+            ["Estado" if spanish else "Status", status_label],
+            [
+                "Loudness integrado" if spanish else "Integrated Loudness",
+                f'{loudness.get("integrated_lkfs")} LKFS',
+            ],
+            [
+                "True Peak",
+                f'{loudness.get("true_peak_dbtp")} dBTP',
+            ],
+            [
+                "Objetivo" if spanish else "Target",
+                (
+                    f'{loudness.get("target_lkfs")} LKFS '
+                    f'±{loudness.get("tolerance_lu")} LU'
+                ),
+            ],
+        ]
+        loudness_table = Table(
+            [
+                [_paragraph(key, label), _paragraph(value, body)]
+                for key, value in loudness_rows
+            ],
+            colWidths=[1.45 * inch, 5.45 * inch],
+        )
+        loudness_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), PALE_BLUE),
+            ("GRID", (0, 0), (-1, -1), 0.5, LINE),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        loudness_story = [
+            Paragraph(
+                "Evaluacion Tecnica de Loudness"
+                if spanish else "Media Loudness Technical Assessment",
+                heading,
+            ),
+            loudness_table,
+        ]
+        for finding in list(loudness.get("findings") or [])[:20]:
+            loudness_story.append(Paragraph(
+                f'<b>{_text(finding.get("rule_id"))}</b>: '
+                f'{_text(finding.get("message"), 800)}',
+                small,
+            ))
+        loudness_story.extend([
+            Spacer(1, 0.05 * inch),
+            Paragraph(
+                (
+                    "Esta evaluacion tecnica no constituye una certificacion "
+                    "legal ni una determinacion de cumplimiento con SB 576 u "
+                    "otra ley."
+                    if spanish else
+                    "This technical assessment is not a legal certification "
+                    "or a determination of compliance with SB 576 or any "
+                    "other law."
+                ),
+                small,
+            ),
+        ])
+        story.append(KeepTogether(loudness_story))
 
     bandwidth_samples = list(payload.get("bandwidth_samples") or [])[:1000]
     if bandwidth_samples:

@@ -201,6 +201,8 @@ def test_hls_workflows_localize_ui_without_changing_report_language():
         "hls.title",
         "hls.validate",
         "hls.monitor",
+        "hls.analyzeLoudness",
+        "hls.loudnessDisclaimer",
         "hls.downloadReport",
         "hls.bandwidth",
         "hls.scteTrack",
@@ -470,6 +472,7 @@ def test_frontend_uses_xmltv_endpoints():
     assert "/api/postlogs/filter" in postlog_javascript
     assert "/api/postlogs/export" in postlog_javascript
     assert "/api/hls/validate" in hls_javascript
+    assert "/api/hls/loudness/jobs" in hls_javascript
 
 
 def test_validator_frontend_is_available():
@@ -505,11 +508,13 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260817-1' in html
-    assert '/static/i18n.js?v=20260827-5' in html
+    assert '/static/hls-validator.js?v=20260828-1' in html
+    assert '/static/i18n.js?v=20260828-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
+    assert 'id="analyze-hls-loudness-button"' in html
+    assert 'id="hls-loudness-panel"' in html
     assert 'id="stop-hls-monitor-button"' in html
     assert 'id="hls-monitor-trigger-body"' in html
     assert 'id="download-hls-report-button"' in html

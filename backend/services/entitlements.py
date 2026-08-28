@@ -47,10 +47,10 @@ MODULE_CATALOG = {
         "source": "stream_monitoring",
     },
     "media_qc": {
-        "name": "Media QC Engine",
+        "name": "Media Loudness Compliance",
         "suite": "Streaming QC",
         "source": "enterprise",
-        "available": False,
+        "available": True,
     },
 }
 

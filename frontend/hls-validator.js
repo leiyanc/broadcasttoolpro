@@ -35,6 +35,17 @@ const hlsMonitorTriggerBody = document.querySelector(
 const hlsReportButton = document.querySelector(
   "#download-hls-report-button",
 );
+const hlsLoudnessButton = document.querySelector(
+  "#analyze-hls-loudness-button",
+);
+const hlsLoudnessPanel = document.querySelector("#hls-loudness-panel");
+const hlsLoudnessIcon = document.querySelector("#hls-loudness-icon");
+const hlsLoudnessTitle = document.querySelector("#hls-loudness-title");
+const hlsLoudnessMessage = document.querySelector("#hls-loudness-message");
+const hlsLoudnessMetrics = document.querySelector("#hls-loudness-metrics");
+const hlsLoudnessFindings = document.querySelector(
+  "#hls-loudness-findings",
+);
 
 let hlsMonitorTimer = null;
 let hlsCountdownTimer = null;
@@ -46,6 +57,7 @@ let hlsMonitorStartedAt = null;
 let hlsMonitorStoppedAt = null;
 let hlsMonitorFailed = false;
 let hlsMonitorState = "idle";
+let latestLoudnessResult = null;
 const hlsSeenTriggers = new Set();
 const hlsMonitorTriggers = [];
 const hlsMonitorIssues = new Map();
@@ -85,6 +97,92 @@ function hlsMetric(label) {
   const metric = document.createElement("span");
   metric.textContent = label;
   hlsMetrics.appendChild(metric);
+}
+
+function renderLoudnessResult(result) {
+  latestLoudnessResult = result;
+  hlsLoudnessPanel.classList.remove("is-hidden", "is-error");
+  hlsLoudnessPanel.classList.toggle("is-error", result.status === "fail");
+  hlsLoudnessIcon.textContent = result.status === "pass" ? "✓" : "!";
+  hlsLoudnessTitle.textContent = result.status === "pass"
+    ? hlsText("hls.loudnessPass", "Loudness assessment passed")
+    : result.status === "warning"
+      ? hlsText("hls.loudnessWarning", "Loudness assessment needs review")
+      : hlsText("hls.loudnessFail", "Loudness assessment failed");
+  hlsLoudnessMessage.textContent = `${result.profile} · ${hlsText(
+    "hls.measuredPeriod",
+    "Measured over the requested monitoring period",
+  )}`;
+  hlsLoudnessMetrics.replaceChildren();
+  hlsLoudnessFindings.replaceChildren();
+  [
+    `${result.integrated_lkfs.toFixed(1)} LKFS`,
+    `${result.true_peak_dbtp.toFixed(1)} dBTP`,
+    `${result.target_lkfs.toFixed(1)} LKFS ±${result.tolerance_lu.toFixed(1)}`,
+  ].forEach((value) => {
+    const metric = document.createElement("span");
+    metric.textContent = value;
+    hlsLoudnessMetrics.appendChild(metric);
+  });
+  (result.findings || []).forEach((finding) => {
+    const item = document.createElement("li");
+    item.textContent = `${finding.rule_id}: ${finding.message}`;
+    hlsLoudnessFindings.appendChild(item);
+  });
+}
+
+async function waitForLoudnessJob(jobId) {
+  while (true) {
+    const response = await fetch(`/api/hls/loudness/jobs/${jobId}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Loudness check failed.");
+    if (payload.status === "completed") return payload.result;
+    if (payload.status === "failed") {
+      throw new Error(payload.error || "Loudness check failed.");
+    }
+    hlsLoudnessMessage.textContent = payload.status === "queued"
+      ? hlsText("hls.loudnessQueued", "Waiting for the analyzer…")
+      : hlsText("hls.loudnessRunning", "Analyzing stream audio…");
+    await new Promise((resolve) => window.setTimeout(resolve, 3000));
+  }
+}
+
+async function startLoudnessAnalysis() {
+  if (!hlsForm.reportValidity()) return;
+  hlsLoudnessButton.disabled = true;
+  hlsLoudnessPanel.classList.remove("is-hidden", "is-error");
+  hlsLoudnessTitle.textContent = hlsText(
+    "hls.loudnessRunningTitle",
+    "Loudness assessment in progress",
+  );
+  hlsLoudnessMessage.textContent = hlsText(
+    "hls.loudnessStarting",
+    "Starting the audio analyzer…",
+  );
+  hlsLoudnessMetrics.replaceChildren();
+  hlsLoudnessFindings.replaceChildren();
+  try {
+    const formData = new FormData();
+    formData.append("playlist_url", hlsUrl.value.trim());
+    formData.append("duration_minutes", hlsMonitorDuration.value);
+    const response = await fetch("/api/hls/loudness/jobs", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Loudness check failed.");
+    renderLoudnessResult(await waitForLoudnessJob(payload.id));
+  } catch (error) {
+    hlsLoudnessPanel.classList.add("is-error");
+    hlsLoudnessIcon.textContent = "!";
+    hlsLoudnessTitle.textContent = hlsText(
+      "hls.loudnessUnavailable",
+      "Loudness assessment could not be completed",
+    );
+    hlsLoudnessMessage.textContent = error.message;
+  } finally {
+    hlsLoudnessButton.disabled = false;
+  }
 }
 
 function hlsCell(row, value) {
@@ -544,6 +642,7 @@ function hlsReportPayload() {
     expected_cue_at: hlsExpectedCueAt.value,
     expected_break_duration: hlsExpectedBreakDuration.value,
     report_timezone: hlsReportTimezone.value,
+    loudness: latestLoudnessResult,
   };
 }
 
@@ -594,6 +693,15 @@ if (hlsStopButton) {
     stopHlsMonitoring();
   });
 }
+
+if (hlsLoudnessButton) {
+  hlsLoudnessButton.addEventListener("click", startLoudnessAnalysis);
+}
+
+window.addEventListener("btp:entitlements", (event) => {
+  const enabled = Boolean(event.detail?.modules?.media_qc?.enabled);
+  hlsLoudnessButton?.classList.toggle("is-hidden", !enabled);
+});
 
 window.addEventListener("btp:languagechange", () => {
   if (!hlsButton.disabled) {

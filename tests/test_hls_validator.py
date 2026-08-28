@@ -251,6 +251,8 @@ def test_hls_router_is_registered():
     paths = set(app.openapi()["paths"])
 
     assert "/api/hls/validate" in paths
+    assert "/api/hls/loudness/jobs" in paths
+    assert "/api/hls/loudness/jobs/{job_id}" in paths
     assert "/api/hls/report/pdf" in paths
 
 
@@ -345,6 +347,24 @@ def test_hls_pdf_report_accepts_optional_operational_context():
         "monitoring_started_at": "2026-07-27T15:55:00Z",
         "monitoring_ended_at": "2026-07-27T16:00:05Z",
     })
+
+    content = generate_hls_report(report)
+
+    assert content.startswith(b"%PDF")
+    assert len(content) > 3_000
+
+
+def test_hls_pdf_report_accepts_loudness_assessment():
+    report = sample_report()
+    report["loudness"] = {
+        "profile": "ATSC A/85",
+        "integrated_lkfs": -23.8,
+        "true_peak_dbtp": -4.1,
+        "target_lkfs": -24.0,
+        "tolerance_lu": 2.0,
+        "status": "pass",
+        "findings": [],
+    }
 
     content = generate_hls_report(report)
 
