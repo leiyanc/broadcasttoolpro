@@ -56,16 +56,10 @@ COMMERCIAL_PLANS = [
         "features": [
             "Everything in Professional",
             "Stream Monitoring included",
+            "Media Loudness Compliance included",
             "Higher channel and user limits",
             "Advanced auditability",
             "Priority onboarding and support",
-            {
-                "label": (
-                    "Media QC: loudness, captions, black frames, "
-                    "and freeze frames"
-                ),
-                "status": "Coming Soon",
-            },
         ],
     },
 ]

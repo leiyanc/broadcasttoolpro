@@ -55,12 +55,10 @@ const billingFeatureKeys = {
   "Branded Excel and PDF reports": "billing.feature.brandedReports",
   "Multi-format playlist and As-Run imports": "billing.feature.multiFormat",
   "Stream Monitoring included": "billing.feature.monitoringIncluded",
+  "Media Loudness Compliance included": "billing.feature.mediaQc",
   "Higher channel and user limits": "billing.feature.higherLimits",
   "Advanced auditability": "billing.feature.auditability",
   "Priority onboarding and support": "billing.feature.prioritySupport",
-  "Media QC: loudness, captions, black frames, and freeze frames": (
-    "billing.feature.mediaQc"
-  ),
 };
 
 function billingFeature(label) {
