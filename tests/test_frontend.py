@@ -506,7 +506,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260817-1' in html
-    assert '/static/i18n.js?v=20260827-4' in html
+    assert '/static/i18n.js?v=20260827-5' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -536,6 +536,9 @@ def test_secure_account_interface_is_present():
     assert 'id="trial-form"' not in html
     assert 'id="show-login-tab"' in html
     assert 'id="show-get-started-tab"' in html
+    assert 'class="auth-tabs"' not in html
+    assert 'data-i18n="auth.newToBtp"' in html
+    assert 'data-i18n="auth.alreadyAccount"' in html
     assert 'name="remember_me"' in html
     assert "Start 7-Day Free Trial" not in html
     assert "Continue to Secure Checkout" in html

@@ -296,27 +296,6 @@ function selectAuthenticationMode(mode) {
   accountActivationForm.classList.toggle("is-hidden", !activation);
   passwordResetRequestForm.classList.toggle("is-hidden", !resetRequest);
   passwordResetConfirmForm.classList.toggle("is-hidden", !resetConfirm);
-  showLoginTab.classList.toggle(
-    "is-active",
-    !accessRequest
-      && !activation
-      && !resetRequest
-      && !resetConfirm,
-  );
-  showGetStartedTab.classList.toggle("is-active", accessRequest);
-  showLoginTab.setAttribute(
-    "aria-selected",
-    String(
-      !accessRequest
-        && !activation
-        && !resetRequest
-        && !resetConfirm,
-    ),
-  );
-  showGetStartedTab.setAttribute(
-    "aria-selected",
-    String(accessRequest),
-  );
 }
 
 function requestedAuthenticationMode() {
