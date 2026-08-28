@@ -102,5 +102,9 @@ def test_spanish_booleans_and_minute_durations_are_normalized():
     assert result["success"] is True
     assert result["validation"]["auto_fixed"] == 0
     assert result["suggested_fixes"] == 4
+    assert {fix["code"] for fix in result["fix_summary"]} == {
+        "boolean",
+        "duration",
+    }
     assert result["programmes"][0]["duration"] == "01:00:00"
     assert result["programmes"][0]["premiere"] is True

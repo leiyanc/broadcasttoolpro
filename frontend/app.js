@@ -44,6 +44,26 @@ function uiText(key, fallback, values = {}) {
   );
 }
 
+const FIX_MESSAGE_KEYS = {
+  duration: "generator.fix.duration",
+  boolean: "generator.fix.boolean",
+  continuation: "generator.fix.continuation",
+  duplicate: "generator.fix.duplicate",
+  "Convert numeric durations to HH:MM:SS.": "generator.fix.duration",
+  "Normalize localized Yes/No values.": "generator.fix.boolean",
+  "Merge continuation rows into one programme.": "generator.fix.continuation",
+  "Remove exact duplicate rows.": "generator.fix.duplicate",
+};
+
+function localizedFixMessage(fix) {
+  const fallback = fix.message || uiText(
+    "generator.correction",
+    "Correction",
+  );
+  const key = FIX_MESSAGE_KEYS[fix.code] || FIX_MESSAGE_KEYS[fix.message];
+  return key ? uiText(key, fallback) : fallback;
+}
+
 const fallbackValidation = (message, ruleId = "REQUEST") => ({
   score: 0,
   critical: 1,
@@ -395,7 +415,7 @@ function showResult(result) {
       "Suggested: {count} × {message}",
       {
         count: fix.count || 0,
-        message: fix.message || uiText("generator.correction", "Correction"),
+        message: localizedFixMessage(fix),
       },
     ));
   }

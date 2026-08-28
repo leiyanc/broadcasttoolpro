@@ -67,22 +67,22 @@ def xmltv_output_filename(
     return f"{channel}_{period}.xml"
 
 
-def fix_category(fix: dict) -> str:
+def fix_category(fix: dict) -> tuple[str, str]:
     message = fix["message"]
 
     if fix["field"] in {"Duration (Optional)", "Duration (Conditional)"}:
-        return "Convert numeric durations to HH:MM:SS."
+        return "duration", "Convert numeric durations to HH:MM:SS."
 
     if fix["field"] in {"Premiere", "Live", "New"}:
-        return "Normalize localized Yes/No values."
+        return "boolean", "Normalize localized Yes/No values."
 
     if message.startswith("Continuation row"):
-        return "Merge continuation rows into one programme."
+        return "continuation", "Merge continuation rows into one programme."
 
     if message.startswith("Exact duplicate"):
-        return "Remove exact duplicate rows."
+        return "duplicate", "Remove exact duplicate rows."
 
-    return message
+    return "other", message
 
 
 @router.get("/template/excel", response_class=FileResponse)
@@ -251,8 +251,8 @@ async def process_schedule(
 
     fix_counts = Counter(fix_category(fix) for fix in auto_fixes)
     fix_summary = [
-        {"message": message, "count": count}
-        for message, count in fix_counts.items()
+        {"code": code, "message": message, "count": count}
+        for (code, message), count in fix_counts.items()
     ]
 
     return {

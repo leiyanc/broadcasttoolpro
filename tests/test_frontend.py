@@ -120,6 +120,11 @@ def test_xmltv_generator_and_programming_grid_are_localized_independently():
     assert 'data-i18n-placeholder="preview.searchPlaceholder"' in html
     assert 'window.addEventListener("btp:languagechange"' in application_javascript
     assert 'uiText("generator.validating"' in application_javascript
+    assert "localizedFixMessage(fix)" in application_javascript
+    assert '"generator.fix.duration"' in translations
+    assert "Convertir las duraciones numéricas al formato HH:MM:SS." in translations
+    assert "Normalizar los valores localizados de Sí/No." in translations
+    assert "Combinar las filas de continuación en un solo programa." in translations
     assert '"preview.summary"' in application_javascript
     assert '"grid.download"' in application_javascript
 
@@ -508,7 +513,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260828-5' in html
-    assert '/static/i18n.js?v=20260828-1' in html
+    assert '/static/i18n.js?v=20260828-2' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
