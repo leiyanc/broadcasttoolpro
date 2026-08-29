@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
@@ -27,6 +28,10 @@ _PEAK_PATTERN = re.compile(
 
 
 class LoudnessAnalysisError(RuntimeError):
+    pass
+
+
+class LoudnessAnalysisCancelled(LoudnessAnalysisError):
     pass
 
 
@@ -138,7 +143,11 @@ def _ffmpeg_executable() -> str:
     return imageio_ffmpeg.get_ffmpeg_exe()
 
 
-def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
+def analyze_hls_loudness(
+    playlist_url: str,
+    duration_minutes: int,
+    cancel_event: threading.Event | None = None,
+) -> dict:
     if duration_minutes not in ALLOWED_DURATIONS:
         raise LoudnessAnalysisError(
             "Monitoring period must be 5, 10, or 15 minutes."
@@ -167,34 +176,69 @@ def analyze_hls_loudness(playlist_url: str, duration_minutes: int) -> dict:
         "null",
         "-",
     ]
+    timeout_seconds = (duration_minutes * 60) + 90
     try:
-        completed = subprocess.run(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-            errors="replace",
-            timeout=(duration_minutes * 60) + 90,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+        if cancel_event is None:
+            completed = subprocess.run(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                errors="replace",
+                timeout=timeout_seconds,
+                check=False,
+            )
+            returncode = completed.returncode
+            analyzer_output = completed.stderr or ""
+        else:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                errors="replace",
+            )
+            deadline = time.monotonic() + timeout_seconds
+            while True:
+                if cancel_event.is_set():
+                    process.terminate()
+                    try:
+                        process.communicate(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.communicate()
+                    raise LoudnessAnalysisCancelled(
+                        "The loudness analysis was stopped before completion."
+                    )
+                try:
+                    _, analyzer_output = process.communicate(timeout=0.25)
+                    returncode = process.returncode
+                    break
+                except subprocess.TimeoutExpired:
+                    if time.monotonic() >= deadline:
+                        process.kill()
+                        process.communicate()
+                        raise LoudnessAnalysisError(
+                            "The loudness analysis timed out."
+                        )
+    except OSError as exc:
         raise LoudnessAnalysisError(
             "The loudness analysis could not be completed."
         ) from exc
-    analyzer_output = completed.stderr or ""
-    if completed.returncode != 0:
+    analyzer_output = analyzer_output or ""
+    if returncode != 0:
         details = analyzer_output.strip().splitlines()
         if details:
             detail = details[-1][:240]
-        elif completed.returncode < 0:
+        elif returncode < 0:
             detail = (
                 "The analyzer process was interrupted by signal "
-                f"{-completed.returncode}."
+                f"{-returncode}."
             )
         else:
             detail = (
                 "FFmpeg exited with code "
-                f"{completed.returncode} without diagnostic output."
+                f"{returncode} without diagnostic output."
             )
         raise LoudnessAnalysisError(
             "The stream audio could not be analyzed: "
@@ -239,6 +283,7 @@ class LoudnessJobStore:
             "completed_at": None,
             "result": None,
             "error": None,
+            "cancel_event": threading.Event(),
         }
         with self._lock:
             if any(
@@ -263,10 +308,28 @@ class LoudnessJobStore:
 
     def _run(self, job_id: str, playlist_url: str, duration_minutes: int) -> None:
         with self._lock:
-            self._jobs[job_id]["status"] = "running"
-            self._jobs[job_id]["started_at"] = datetime.now(timezone.utc).isoformat()
+            job = self._jobs[job_id]
+            if job["cancel_event"].is_set():
+                job["status"] = "cancelled"
+                job["completed_at"] = datetime.now(timezone.utc).isoformat()
+                return
+            job["status"] = "running"
+            job["started_at"] = datetime.now(timezone.utc).isoformat()
         try:
-            result = self.analyzer(playlist_url, duration_minutes)
+            if self.analyzer is analyze_hls_loudness:
+                result = self.analyzer(
+                    playlist_url,
+                    duration_minutes,
+                    cancel_event=job["cancel_event"],
+                )
+            else:
+                result = self.analyzer(playlist_url, duration_minutes)
+        except LoudnessAnalysisCancelled:
+            with self._lock:
+                job = self._jobs[job_id]
+                job["status"] = "cancelled"
+                job["completed_at"] = datetime.now(timezone.utc).isoformat()
+            return
         except Exception as exc:
             with self._lock:
                 job = self._jobs[job_id]
@@ -276,9 +339,24 @@ class LoudnessJobStore:
             return
         with self._lock:
             job = self._jobs[job_id]
+            if job["cancel_event"].is_set():
+                job["status"] = "cancelled"
+                job["completed_at"] = datetime.now(timezone.utc).isoformat()
+                return
             job["status"] = "completed"
             job["result"] = result
             job["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+    def cancel(self, job_id: str, organization_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job["organization_id"] != organization_id:
+                raise KeyError("Loudness analysis not found.")
+            if job["status"] in {"queued", "running"}:
+                job["cancel_event"].set()
+                job["status"] = "cancelled"
+                job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        return self.public(job_id, organization_id)
 
     def public(self, job_id: str, organization_id: str) -> dict:
         with self._lock:
@@ -288,7 +366,7 @@ class LoudnessJobStore:
             return {
                 key: value
                 for key, value in job.items()
-                if key not in {"organization_id", "user_id"}
+                if key not in {"organization_id", "user_id", "cancel_event"}
             }
 
     def _cleanup(self) -> None:

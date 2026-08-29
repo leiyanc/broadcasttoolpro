@@ -97,6 +97,18 @@ def loudness_analysis_status(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.delete("/loudness/jobs/{job_id}")
+def cancel_loudness_analysis(
+    job_id: str,
+    user: dict = Depends(require_module("media_qc")),
+):
+    try:
+        access = access_for_user(user)
+        return loudness_jobs.cancel(job_id, access["organization"]["id"])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.post("/report/pdf", response_class=Response)
 def download_hls_report(
     report: dict = Body(...),

@@ -1,10 +1,12 @@
 import subprocess
+import threading
 import time
 
 import pytest
 
 from backend.services.hls.loudness import (
     LoudnessAnalysisError,
+    LoudnessAnalysisCancelled,
     LoudnessJobStore,
     _ffmpeg_executable,
     analyze_hls_loudness,
@@ -144,6 +146,43 @@ def test_analyzer_reports_signal_when_ffmpeg_is_interrupted(monkeypatch):
         analyze_hls_loudness("https://example.com/live.m3u8", 5)
 
 
+def test_analyzer_terminates_ffmpeg_when_cancelled(monkeypatch):
+    cancel_event = threading.Event()
+    cancel_event.set()
+
+    class FakeProcess:
+        returncode = -15
+        terminated = False
+
+        def terminate(self):
+            self.terminated = True
+
+        def kill(self):
+            raise AssertionError("Terminate should stop the fake process.")
+
+        def communicate(self, timeout=None):
+            return "", ""
+
+    process = FakeProcess()
+    monkeypatch.setattr(
+        "backend.services.hls.loudness._ffmpeg_executable",
+        lambda: "ffmpeg",
+    )
+    monkeypatch.setattr(
+        "backend.services.hls.loudness.subprocess.Popen",
+        lambda *_args, **_kwargs: process,
+    )
+
+    with pytest.raises(LoudnessAnalysisCancelled):
+        analyze_hls_loudness(
+            "https://example.com/live.m3u8",
+            5,
+            cancel_event=cancel_event,
+        )
+
+    assert process.terminated is True
+
+
 def test_job_store_scopes_results_to_organization():
     store = LoudnessJobStore(
         analyzer=lambda _url, _duration: {
@@ -201,3 +240,25 @@ def test_job_store_allows_only_one_active_job_per_organization():
             playlist_url="https://example.com/other.m3u8",
             duration_minutes=5,
         )
+
+
+def test_job_store_cancellation_remains_terminal():
+    release = threading.Event()
+
+    def delayed_analyzer(_url, _duration):
+        release.wait(0.5)
+        return {"status": "pass"}
+
+    store = LoudnessJobStore(analyzer=delayed_analyzer)
+    created = store.start(
+        organization_id="org-a",
+        user_id="user-a",
+        playlist_url="https://example.com/live.m3u8",
+        duration_minutes=5,
+    )
+
+    cancelled = store.cancel(created["id"], "org-a")
+    assert cancelled["status"] == "cancelled"
+    release.set()
+    time.sleep(0.05)
+    assert store.public(created["id"], "org-a")["status"] == "cancelled"

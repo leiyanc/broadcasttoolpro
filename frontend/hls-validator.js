@@ -57,6 +57,7 @@ let hlsMonitorState = "idle";
 let latestLoudnessResult = null;
 let latestLoudnessError = null;
 let hlsLoudnessState = "idle";
+let hlsLoudnessJobId = null;
 const hlsSeenTriggers = new Set();
 const hlsMonitorTriggers = [];
 const hlsMonitorIssues = new Map();
@@ -132,10 +133,13 @@ function renderLoudnessResult(result) {
 
 async function waitForLoudnessJob(jobId) {
   while (true) {
+    if (hlsLoudnessState === "stopped") return null;
     const response = await fetch(`/api/hls/loudness/jobs/${jobId}`);
     const payload = await response.json();
+    if (hlsLoudnessState === "stopped") return null;
     if (!response.ok) throw new Error(payload.detail || "Loudness check failed.");
     if (payload.status === "completed") return payload.result;
+    if (payload.status === "cancelled") return null;
     if (payload.status === "failed") {
       throw new Error(payload.error || "Loudness check failed.");
     }
@@ -147,17 +151,47 @@ async function waitForLoudnessJob(jobId) {
 }
 
 function updateHlsReportAvailability() {
-  const monitoringFinished = ["complete", "stopped"].includes(
-    hlsMonitorState,
-  );
   const loudnessFinished = ["complete", "failed"].includes(
     hlsLoudnessState,
   );
-  hlsReportButton.disabled = !monitoringFinished || !loudnessFinished;
+  const reportReady = hlsMonitorState === "stopped"
+    || (hlsMonitorState === "complete" && loudnessFinished);
+  hlsReportButton.disabled = !reportReady;
+}
+
+async function stopLoudnessAnalysis() {
+  if (hlsLoudnessState !== "running") return;
+  const jobId = hlsLoudnessJobId;
+  hlsLoudnessState = "stopped";
+  latestLoudnessResult = null;
+  latestLoudnessError = hlsText(
+    "hls.loudnessStoppedReport",
+    "The loudness analysis was stopped before completion.",
+  );
+  hlsLoudnessPanel.classList.remove("is-error");
+  hlsLoudnessIcon.textContent = "■";
+  hlsLoudnessTitle.textContent = hlsText(
+    "hls.loudnessStoppedTitle",
+    "Loudness assessment stopped",
+  );
+  hlsLoudnessMessage.textContent = hlsText(
+    "hls.loudnessStoppedMessage",
+    "Analysis stopped with stream monitoring. A partial report is available.",
+  );
+  hlsLoudnessMetrics.replaceChildren();
+  hlsLoudnessFindings.replaceChildren();
+  updateHlsReportAvailability();
+  if (!jobId) return;
+  try {
+    await fetch(`/api/hls/loudness/jobs/${jobId}`, { method: "DELETE" });
+  } finally {
+    if (hlsLoudnessJobId === jobId) hlsLoudnessJobId = null;
+  }
 }
 
 async function startLoudnessAnalysis() {
   hlsLoudnessState = "running";
+  hlsLoudnessJobId = null;
   latestLoudnessResult = null;
   latestLoudnessError = null;
   hlsLoudnessPanel.classList.remove("is-hidden", "is-error");
@@ -181,9 +215,20 @@ async function startLoudnessAnalysis() {
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Loudness check failed.");
-    renderLoudnessResult(await waitForLoudnessJob(payload.id));
+    hlsLoudnessJobId = payload.id;
+    if (hlsLoudnessState === "stopped") {
+      await fetch(`/api/hls/loudness/jobs/${payload.id}`, {
+        method: "DELETE",
+      });
+      hlsLoudnessJobId = null;
+      return;
+    }
+    const result = await waitForLoudnessJob(payload.id);
+    if (!result || hlsLoudnessState === "stopped") return;
+    renderLoudnessResult(result);
     hlsLoudnessState = "complete";
   } catch (error) {
+    if (hlsLoudnessState === "stopped") return;
     hlsLoudnessState = "failed";
     latestLoudnessError = error.message;
     hlsLoudnessPanel.classList.add("is-error");
@@ -194,6 +239,7 @@ async function startLoudnessAnalysis() {
     );
     hlsLoudnessMessage.textContent = error.message;
   } finally {
+    if (hlsLoudnessState !== "running") hlsLoudnessJobId = null;
     updateHlsReportAvailability();
   }
 }
@@ -529,6 +575,7 @@ if (hlsForm) {
     if (!hlsForm.reportValidity()) return;
 
     stopHlsMonitoring();
+    void stopLoudnessAnalysis();
     hlsMonitorPanel.classList.add("is-hidden");
     hlsStopButton.classList.add("is-hidden");
     hlsButton.disabled = true;
@@ -724,6 +771,7 @@ if (hlsReportButton) {
 if (hlsStopButton) {
   hlsStopButton.addEventListener("click", () => {
     stopHlsMonitoring();
+    void stopLoudnessAnalysis();
   });
 }
 

@@ -253,6 +253,7 @@ def test_hls_router_is_registered():
     assert "/api/hls/validate" in paths
     assert "/api/hls/loudness/jobs" in paths
     assert "/api/hls/loudness/jobs/{job_id}" in paths
+    assert "delete" in app.openapi()["paths"]["/api/hls/loudness/jobs/{job_id}"]
     assert "/api/hls/report/pdf" in paths
 
 
