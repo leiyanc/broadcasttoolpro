@@ -7,7 +7,10 @@ from backend.services.hls.validator import (
     validate_hls,
 )
 from backend.api.hls import download_hls_report
-from backend.services.hls.report import generate_hls_report
+from backend.services.hls.report import (
+    _loudness_interpretation,
+    generate_hls_report,
+)
 from backend.services.hls.report import _scte_summary, _timestamp_label
 
 
@@ -374,6 +377,27 @@ def test_hls_pdf_report_accepts_loudness_assessment():
 
     assert content.startswith(b"%PDF")
     assert len(content) > 3_000
+
+
+def test_loudness_interpretation_explains_result_for_nontechnical_reader():
+    interpretation = _loudness_interpretation({
+        "integrated_lkfs": -24.1,
+        "true_peak_dbtp": -14.0,
+        "target_lkfs": -24.0,
+        "tolerance_lu": 2.0,
+        "true_peak_limit_dbtp": -2.0,
+        "loudness_range_lu": 2.8,
+        "measured_seconds": 84.0,
+        "partial": True,
+        "status": "pass",
+    }, False)
+
+    assert interpretation["status_label"] == "PASS"
+    assert interpretation["integrated"] == "Within target (0.1 LU difference)"
+    assert interpretation["true_peak"] == "Safe (12.0 dB below limit)"
+    assert interpretation["loudness_range"].startswith("Controlled variation")
+    assert "Partial coverage" in interpretation["coverage"]
+    assert "84.0 seconds" in interpretation["executive"]
 
 
 def test_hls_pdf_report_supports_spanish():

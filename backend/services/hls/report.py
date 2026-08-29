@@ -28,6 +28,10 @@ MUTED = colors.HexColor("#64748B")
 LINE = colors.HexColor("#D7E1EC")
 SUCCESS = colors.HexColor("#087F5B")
 DANGER = colors.HexColor("#B42318")
+WARNING = colors.HexColor("#B45309")
+PALE_SUCCESS = colors.HexColor("#ECFDF3")
+PALE_WARNING = colors.HexColor("#FFF7ED")
+PALE_DANGER = colors.HexColor("#FEF3F2")
 BRAND_LOGO = (
     Path(__file__).resolve().parents[2]
     / "assets"
@@ -146,6 +150,99 @@ FINDINGS_ES = {
 
 def _text(value, limit: int = 500) -> str:
     return escape(str(value or "")[:limit])
+
+
+def _number(value, fallback: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _loudness_interpretation(loudness: dict, spanish: bool) -> dict:
+    integrated = _number(loudness.get("integrated_lkfs"))
+    true_peak = _number(loudness.get("true_peak_dbtp"))
+    target = _number(loudness.get("target_lkfs"), -24.0)
+    tolerance = _number(loudness.get("tolerance_lu"), 2.0)
+    peak_limit = _number(loudness.get("true_peak_limit_dbtp"), -2.0)
+    loudness_range = loudness.get("loudness_range_lu")
+    measured_seconds = _number(loudness.get("measured_seconds"))
+    delta = integrated - target
+    headroom = peak_limit - true_peak
+    within_target = abs(delta) <= tolerance
+    peak_safe = true_peak <= peak_limit
+    partial = bool(loudness.get("partial"))
+    status = str(loudness.get("status") or "warning").lower()
+
+    if loudness_range is None:
+        range_label = "No disponible" if spanish else "Not available"
+    else:
+        range_value = _number(loudness_range)
+        if range_value <= 7:
+            range_label = (
+                "Variacion controlada (informativo)"
+                if spanish else "Controlled variation (informational)"
+            )
+        elif range_value <= 15:
+            range_label = (
+                "Variacion moderada (informativo)"
+                if spanish else "Moderate variation (informational)"
+            )
+        else:
+            range_label = (
+                "Variacion amplia; revisar (informativo)"
+                if spanish else "Wide variation; review (informational)"
+            )
+
+    status_label = {
+        "pass": "APROBADO" if spanish else "PASS",
+        "warning": "REVISAR" if spanish else "REVIEW",
+        "fail": "FALLIDO" if spanish else "FAIL",
+    }.get(status, "REVISAR" if spanish else "REVIEW")
+    coverage = (
+        "Cobertura parcial - resultado preliminar"
+        if spanish else "Partial coverage - preliminary result"
+    ) if partial else (
+        "Sesion solicitada completada"
+        if spanish else "Requested session completed"
+    )
+    integrated_label = (
+        f"Dentro del objetivo ({abs(delta):.1f} LU de diferencia)"
+        if spanish else f"Within target ({abs(delta):.1f} LU difference)"
+    ) if within_target else (
+        f"Fuera del objetivo ({abs(delta):.1f} LU de diferencia)"
+        if spanish else f"Outside target ({abs(delta):.1f} LU difference)"
+    )
+    peak_label = (
+        f"Seguro ({headroom:.1f} dB por debajo del limite)"
+        if spanish else f"Safe ({headroom:.1f} dB below limit)"
+    ) if peak_safe else (
+        f"Supera el limite por {abs(headroom):.1f} dB"
+        if spanish else f"Exceeds limit by {abs(headroom):.1f} dB"
+    )
+    if spanish:
+        executive = (
+            f"El loudness integrado esta a {abs(delta):.1f} LU "
+            f"del objetivo y el true peak conserva {max(headroom, 0):.1f} dB "
+            f"de margen frente al limite configurado. {coverage}. La medicion "
+            f"cubre {measured_seconds:.1f} segundos de audio."
+        )
+    else:
+        executive = (
+            f"Integrated loudness is {abs(delta):.1f} LU from "
+            f"target and true peak retains {max(headroom, 0):.1f} dB of "
+            f"headroom below the configured limit. {coverage}. The measurement "
+            f"covers {measured_seconds:.1f} seconds of audio."
+        )
+    return {
+        "status": status,
+        "status_label": status_label,
+        "executive": executive,
+        "coverage": coverage,
+        "integrated": integrated_label,
+        "true_peak": peak_label,
+        "loudness_range": range_label,
+    }
 
 
 def _paragraph(value, style):
@@ -488,14 +585,23 @@ def generate_hls_report(
     story.extend([summary_table, Spacer(1, 0.12 * inch)])
 
     if loudness:
+        interpretation = _loudness_interpretation(loudness, spanish)
         status_label = {
             "pass": "Aprobado" if spanish else "Pass",
             "warning": "Revisar" if spanish else "Warning",
             "fail": "Fallido" if spanish else "Fail",
         }.get(str(loudness.get("status") or "").lower(), "-")
         loudness_rows = [
-            ["Perfil" if spanish else "Profile", loudness.get("profile")],
-            ["Estado" if spanish else "Status", status_label],
+            [
+                "Perfil" if spanish else "Profile",
+                loudness.get("profile"),
+                "Perfil tecnico de referencia" if spanish else "Technical reference profile",
+            ],
+            [
+                "Estado" if spanish else "Status",
+                status_label,
+                "Evaluacion general" if spanish else "Overall assessment",
+            ],
             [
                 "Tipo de medicion" if spanish else "Measurement Type",
                 (
@@ -503,14 +609,17 @@ def generate_hls_report(
                 ) if loudness.get("partial") else (
                     "Completa" if spanish else "Complete"
                 ),
+                interpretation["coverage"],
             ],
             [
                 "Loudness integrado" if spanish else "Integrated Loudness",
                 f'{loudness.get("integrated_lkfs")} LKFS',
+                interpretation["integrated"],
             ],
             [
                 "True Peak",
                 f'{loudness.get("true_peak_dbtp")} dBTP',
+                interpretation["true_peak"],
             ],
             [
                 "Rango de loudness" if spanish else "Loudness Range",
@@ -519,6 +628,7 @@ def generate_hls_report(
                     if loudness.get("loudness_range_lu") is not None
                     else "-"
                 ),
+                interpretation["loudness_range"],
             ],
             [
                 "Duracion analizada" if spanish else "Analyzed Duration",
@@ -527,6 +637,7 @@ def generate_hls_report(
                     if loudness.get("measured_seconds") is not None
                     else "-"
                 ),
+                interpretation["coverage"],
             ],
             [
                 "Objetivo" if spanish else "Target",
@@ -534,21 +645,62 @@ def generate_hls_report(
                     f'{loudness.get("target_lkfs")} LKFS '
                     f'±{loudness.get("tolerance_lu")} LU'
                 ),
+                "Rango de referencia" if spanish else "Reference range",
             ],
         ]
         loudness_table = Table(
             [
-                [_paragraph(key, label), _paragraph(value, body)]
-                for key, value in loudness_rows
+                [
+                    _paragraph("Metrica" if spanish else "Metric", table_header),
+                    _paragraph("Resultado" if spanish else "Result", table_header),
+                    _paragraph("Interpretacion" if spanish else "Interpretation", table_header),
+                ],
+                *[
+                    [
+                        _paragraph(key, label),
+                        _paragraph(value, body),
+                        _paragraph(assessment, small),
+                    ]
+                    for key, value, assessment in loudness_rows
+                ],
             ],
-            colWidths=[1.45 * inch, 5.45 * inch],
+            colWidths=[1.35 * inch, 1.45 * inch, 4.1 * inch],
         )
         loudness_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (0, -1), PALE_BLUE),
+            ("BACKGROUND", (0, 0), (-1, 0), NAVY),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (0, -1), PALE_BLUE),
             ("GRID", (0, 0), (-1, -1), 0.5, LINE),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        assessment_background = {
+            "pass": PALE_SUCCESS,
+            "warning": PALE_WARNING,
+            "fail": PALE_DANGER,
+        }.get(interpretation["status"], PALE_WARNING)
+        assessment_color = {
+            "pass": SUCCESS,
+            "warning": WARNING,
+            "fail": DANGER,
+        }.get(interpretation["status"], WARNING)
+        executive_box = Table(
+            [[Paragraph(
+                f'<b>{_text(interpretation["status_label"])}</b><br/>'
+                f'{_text(interpretation["executive"], 1200)}',
+                body,
+            )]],
+            colWidths=[6.9 * inch],
+        )
+        executive_box.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), assessment_background),
+            ("BOX", (0, 0), (-1, -1), 1, assessment_color),
+            ("TEXTCOLOR", (0, 0), (-1, -1), NAVY),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ]))
         loudness_story = [
             Paragraph(
@@ -556,6 +708,8 @@ def generate_hls_report(
                 if spanish else "Media Loudness Compliance",
                 heading,
             ),
+            executive_box,
+            Spacer(1, 0.1 * inch),
             loudness_table,
         ]
         for finding in list(loudness.get("findings") or [])[:20]:
