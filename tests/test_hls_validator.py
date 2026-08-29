@@ -363,6 +363,9 @@ def test_hls_pdf_report_accepts_loudness_assessment():
         "true_peak_dbtp": -4.1,
         "target_lkfs": -24.0,
         "tolerance_lu": 2.0,
+        "loudness_range_lu": 2.3,
+        "measured_seconds": 147.5,
+        "partial": True,
         "status": "pass",
         "findings": [],
     }

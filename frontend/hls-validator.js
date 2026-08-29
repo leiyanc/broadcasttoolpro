@@ -109,15 +109,21 @@ function renderLoudnessResult(result) {
     : result.status === "warning"
       ? hlsText("hls.loudnessWarning", "Loudness assessment needs review")
       : hlsText("hls.loudnessFail", "Loudness assessment failed");
-  hlsLoudnessMessage.textContent = `${result.profile} · ${hlsText(
-    "hls.measuredPeriod",
-    "Measured over the requested monitoring period",
-  )}`;
+  const measuredPeriod = result.partial
+    ? hlsText("hls.measuredPartialPeriod", "Partial measurement")
+    : hlsText("hls.measuredPeriod", "Measured over the requested monitoring period");
+  const measuredSeconds = Number(result.measured_seconds);
+  hlsLoudnessMessage.textContent = `${result.profile} · ${measuredPeriod}${
+    Number.isFinite(measuredSeconds) ? ` · ${measuredSeconds.toFixed(1)} s` : ""
+  }`;
   hlsLoudnessMetrics.replaceChildren();
   hlsLoudnessFindings.replaceChildren();
   [
     `${result.integrated_lkfs.toFixed(1)} LKFS`,
     `${result.true_peak_dbtp.toFixed(1)} dBTP`,
+    ...(Number.isFinite(Number(result.loudness_range_lu))
+      ? [`${Number(result.loudness_range_lu).toFixed(1)} LU LRA`]
+      : []),
     `${result.target_lkfs.toFixed(1)} LKFS ±${result.tolerance_lu.toFixed(1)}`,
   ].forEach((value) => {
     const metric = document.createElement("span");
@@ -154,7 +160,9 @@ function updateHlsReportAvailability() {
   const loudnessFinished = ["complete", "failed"].includes(
     hlsLoudnessState,
   );
-  const reportReady = hlsMonitorState === "stopped"
+  const stoppedReady = hlsMonitorState === "stopped"
+    && ["complete", "failed", "stopped"].includes(hlsLoudnessState);
+  const reportReady = stoppedReady
     || (hlsMonitorState === "complete" && loudnessFinished);
   hlsReportButton.disabled = !reportReady;
 }
@@ -162,30 +170,59 @@ function updateHlsReportAvailability() {
 async function stopLoudnessAnalysis() {
   if (hlsLoudnessState !== "running") return;
   const jobId = hlsLoudnessJobId;
-  hlsLoudnessState = "stopped";
+  hlsLoudnessState = "stopping";
   latestLoudnessResult = null;
-  latestLoudnessError = hlsText(
-    "hls.loudnessStoppedReport",
-    "The loudness analysis was stopped before completion.",
-  );
+  latestLoudnessError = null;
   hlsLoudnessPanel.classList.remove("is-error");
   hlsLoudnessIcon.textContent = "■";
   hlsLoudnessTitle.textContent = hlsText(
-    "hls.loudnessStoppedTitle",
-    "Loudness assessment stopped",
+    "hls.loudnessFinalizingTitle",
+    "Finalizing loudness measurement",
   );
   hlsLoudnessMessage.textContent = hlsText(
-    "hls.loudnessStoppedMessage",
-    "Analysis stopped with stream monitoring. A partial report is available.",
+    "hls.loudnessFinalizingMessage",
+    "Preserving the measurements collected before monitoring stopped…",
   );
   hlsLoudnessMetrics.replaceChildren();
   hlsLoudnessFindings.replaceChildren();
   updateHlsReportAvailability();
-  if (!jobId) return;
+  if (!jobId) {
+    hlsLoudnessState = "stopped";
+    latestLoudnessError = hlsText(
+      "hls.loudnessStoppedReport",
+      "The loudness analysis stopped before enough audio was measured.",
+    );
+    updateHlsReportAvailability();
+    return;
+  }
   try {
-    await fetch(`/api/hls/loudness/jobs/${jobId}`, { method: "DELETE" });
+    const response = await fetch(`/api/hls/loudness/jobs/${jobId}`, {
+      method: "DELETE",
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Loudness stop failed.");
+    if (payload.status === "completed" && payload.result) {
+      renderLoudnessResult(payload.result);
+      hlsLoudnessState = "complete";
+    } else {
+      hlsLoudnessState = "stopped";
+      latestLoudnessError = payload.error || hlsText(
+        "hls.loudnessStoppedReport",
+        "The loudness analysis stopped before enough audio was measured.",
+      );
+      hlsLoudnessTitle.textContent = hlsText(
+        "hls.loudnessStoppedTitle",
+        "Loudness assessment stopped",
+      );
+      hlsLoudnessMessage.textContent = latestLoudnessError;
+    }
+  } catch (error) {
+    hlsLoudnessState = "failed";
+    latestLoudnessError = error.message;
+    hlsLoudnessMessage.textContent = error.message;
   } finally {
     if (hlsLoudnessJobId === jobId) hlsLoudnessJobId = null;
+    updateHlsReportAvailability();
   }
 }
 
@@ -814,5 +851,40 @@ window.addEventListener("btp:languagechange", () => {
       "Monitoring stopped",
     );
     renderHlsMonitorSummary();
+  }
+  if (latestLoudnessResult) {
+    renderLoudnessResult(latestLoudnessResult);
+  } else if (hlsLoudnessState === "stopping") {
+    hlsLoudnessTitle.textContent = hlsText(
+      "hls.loudnessFinalizingTitle",
+      "Finalizing loudness measurement",
+    );
+    hlsLoudnessMessage.textContent = hlsText(
+      "hls.loudnessFinalizingMessage",
+      "Preserving the measurements collected before monitoring stopped…",
+    );
+  } else if (hlsLoudnessState === "stopped") {
+    hlsLoudnessTitle.textContent = hlsText(
+      "hls.loudnessStoppedTitle",
+      "Loudness assessment stopped",
+    );
+    hlsLoudnessMessage.textContent = hlsText(
+      "hls.loudnessStoppedMessage",
+      "Analysis stopped with stream monitoring. A partial report is available.",
+    );
+  } else if (hlsLoudnessState === "running") {
+    hlsLoudnessTitle.textContent = hlsText(
+      "hls.loudnessRunningTitle",
+      "Loudness assessment in progress",
+    );
+    hlsLoudnessMessage.textContent = hlsText(
+      "hls.loudnessRunning",
+      "Analyzing stream audio…",
+    );
+  } else if (hlsLoudnessState === "failed") {
+    hlsLoudnessTitle.textContent = hlsText(
+      "hls.loudnessUnavailable",
+      "Loudness assessment could not be completed",
+    );
   }
 });

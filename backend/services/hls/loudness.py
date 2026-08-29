@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import threading
@@ -25,6 +26,17 @@ _PEAK_PATTERN = re.compile(
     r"^\s*Peak:\s*(-?\d+(?:\.\d+)?)\s+dBFS",
     re.MULTILINE,
 )
+_LRA_PATTERN = re.compile(
+    r"^\s*LRA:\s*(-?\d+(?:\.\d+)?)\s+LU",
+    re.MULTILINE,
+)
+_FRAME_PATTERN = re.compile(
+    r"t:\s*(\d+(?:\.\d+)?)"
+    r"[^\n]*?\bI:\s*(-?\d+(?:\.\d+)?)\s+LUFS"
+    r"[^\n]*?\bLRA:\s*(-?\d+(?:\.\d+)?)\s+LU"
+    r"[^\n]*?\bTPK:\s*((?:(?:-?inf|-?\d+(?:\.\d+)?)\s*)+)dBFS",
+    re.IGNORECASE,
+)
 
 
 class LoudnessAnalysisError(RuntimeError):
@@ -46,11 +58,15 @@ class LoudnessResult:
     status: str
     findings: list[dict]
     legal_disclaimer: str
+    loudness_range_lu: float | None = None
+    measured_seconds: float | None = None
+    partial: bool = False
 
 
 def evaluate_atsc_a85(
     integrated_lkfs: float,
     true_peak_dbtp: float,
+    loudness_range_lu: float | None = None,
 ) -> LoudnessResult:
     findings = []
     loudness_delta = integrated_lkfs - TARGET_LKFS
@@ -100,10 +116,31 @@ def evaluate_atsc_a85(
             "This is a technical loudness assessment, not a legal certification "
             "or a determination of compliance with SB 576 or any other law."
         ),
+        loudness_range_lu=(
+            round(loudness_range_lu, 1)
+            if loudness_range_lu is not None
+            else None
+        ),
     )
 
 
 def parse_ebur128_output(output: str) -> LoudnessResult:
+    frames = _FRAME_PATTERN.findall(output)
+    if frames:
+        measured_seconds, integrated, loudness_range, peak_values = frames[-1]
+        finite_peaks = [
+            float(value)
+            for value in peak_values.split()
+            if value.lower() not in {"inf", "-inf"}
+        ]
+        if finite_peaks:
+            result = evaluate_atsc_a85(
+                float(integrated),
+                max(finite_peaks),
+                float(loudness_range),
+            )
+            result.measured_seconds = round(float(measured_seconds), 1)
+            return result
     integrated = _INTEGRATED_PATTERN.findall(output)
     peaks = _PEAK_PATTERN.findall(output)
     if not integrated or not peaks:
@@ -111,7 +148,12 @@ def parse_ebur128_output(output: str) -> LoudnessResult:
             "The loudness analyzer did not return integrated loudness and "
             "true peak metrics."
         )
-    return evaluate_atsc_a85(float(integrated[-1]), float(peaks[-1]))
+    loudness_ranges = _LRA_PATTERN.findall(output)
+    return evaluate_atsc_a85(
+        float(integrated[-1]),
+        float(peaks[-1]),
+        float(loudness_ranges[-1]) if loudness_ranges else None,
+    )
 
 
 def parse_loudnorm_output(output: str) -> LoudnessResult:
@@ -120,9 +162,18 @@ def parse_loudnorm_output(output: str) -> LoudnessResult:
             metrics = json.loads(candidate)
             integrated_lkfs = float(metrics["input_i"])
             true_peak_dbtp = float(metrics["input_tp"])
+            loudness_range_lu = (
+                float(metrics["input_lra"])
+                if metrics.get("input_lra") is not None
+                else None
+            )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):
             continue
-        return evaluate_atsc_a85(integrated_lkfs, true_peak_dbtp)
+        return evaluate_atsc_a85(
+            integrated_lkfs,
+            true_peak_dbtp,
+            loudness_range_lu,
+        )
     raise LoudnessAnalysisError(
         "The loudness analyzer did not return integrated loudness and "
         "true peak metrics."
@@ -169,7 +220,7 @@ def analyze_hls_loudness(
         "-map",
         "0:a:0",
         "-filter:a",
-        "loudnorm=I=-24:LRA=7:TP=-2:print_format=json",
+        "ebur128=peak=true",
         "-ar",
         "48000",
         "-f",
@@ -177,6 +228,7 @@ def analyze_hls_loudness(
         "-",
     ]
     timeout_seconds = (duration_minutes * 60) + 90
+    analysis_started = time.monotonic()
     try:
         if cancel_event is None:
             completed = subprocess.run(
@@ -201,15 +253,26 @@ def analyze_hls_loudness(
             deadline = time.monotonic() + timeout_seconds
             while True:
                 if cancel_event.is_set():
-                    process.terminate()
+                    process.send_signal(signal.SIGINT)
                     try:
-                        process.communicate(timeout=3)
+                        _, analyzer_output = process.communicate(timeout=5)
                     except subprocess.TimeoutExpired:
                         process.kill()
-                        process.communicate()
-                    raise LoudnessAnalysisCancelled(
-                        "The loudness analysis was stopped before completion."
-                    )
+                        _, analyzer_output = process.communicate()
+                    try:
+                        partial = asdict(parse_ebur128_output(analyzer_output or ""))
+                    except LoudnessAnalysisError as exc:
+                        raise LoudnessAnalysisCancelled(
+                            "The loudness analysis stopped before enough audio "
+                            "was measured."
+                        ) from exc
+                    partial["partial"] = True
+                    if partial.get("measured_seconds") is None:
+                        partial["measured_seconds"] = round(
+                            max(0.0, time.monotonic() - analysis_started),
+                            1,
+                        )
+                    return partial
                 try:
                     _, analyzer_output = process.communicate(timeout=0.25)
                     returncode = process.returncode
@@ -244,7 +307,13 @@ def analyze_hls_loudness(
             "The stream audio could not be analyzed: "
             f"{detail}"
         )
-    return asdict(parse_loudnorm_output(analyzer_output))
+    result = asdict(parse_ebur128_output(analyzer_output))
+    if result.get("measured_seconds") is None:
+        result["measured_seconds"] = round(
+            max(0.0, time.monotonic() - analysis_started),
+            1,
+        )
+    return result
 
 
 class LoudnessJobStore:
@@ -288,14 +357,14 @@ class LoudnessJobStore:
         with self._lock:
             if any(
                 existing["organization_id"] == organization_id
-                and existing["status"] in {"queued", "running"}
+                and existing["status"] in {"queued", "running", "stopping"}
                 for existing in self._jobs.values()
             ):
                 raise LoudnessAnalysisError(
                     "This organization already has a loudness analysis in progress."
                 )
             queued_count = sum(
-                existing["status"] in {"queued", "running"}
+                existing["status"] in {"queued", "running", "stopping"}
                 for existing in self._jobs.values()
             )
             if queued_count >= 10:
@@ -339,7 +408,7 @@ class LoudnessJobStore:
             return
         with self._lock:
             job = self._jobs[job_id]
-            if job["cancel_event"].is_set():
+            if job["cancel_event"].is_set() and not result.get("partial"):
                 job["status"] = "cancelled"
                 job["completed_at"] = datetime.now(timezone.utc).isoformat()
                 return
@@ -354,8 +423,18 @@ class LoudnessJobStore:
                 raise KeyError("Loudness analysis not found.")
             if job["status"] in {"queued", "running"}:
                 job["cancel_event"].set()
-                job["status"] = "cancelled"
-                job["completed_at"] = datetime.now(timezone.utc).isoformat()
+                if self.analyzer is analyze_hls_loudness:
+                    job["status"] = "stopping"
+                else:
+                    job["status"] = "cancelled"
+                    job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        if self.analyzer is analyze_hls_loudness:
+            deadline = time.monotonic() + 6
+            while time.monotonic() < deadline:
+                public_job = self.public(job_id, organization_id)
+                if public_job["status"] in {"completed", "cancelled", "failed"}:
+                    return public_job
+                time.sleep(0.05)
         return self.public(job_id, organization_id)
 
     def public(self, job_id: str, organization_id: str) -> dict:

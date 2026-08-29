@@ -512,8 +512,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-6' in html
-    assert '/static/i18n.js?v=20260828-3' in html
+    assert '/static/hls-validator.js?v=20260828-8' in html
+    assert '/static/i18n.js?v=20260828-4' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -547,6 +547,12 @@ def test_hls_stream_monitor_has_bounded_periods():
     assert "void startLoudnessAnalysis()" in javascript
     assert "void stopLoudnessAnalysis()" in javascript
     assert 'method: "DELETE"' in javascript
+    assert 'hlsLoudnessState = "stopping"' in javascript
+    assert 'payload.status === "completed" && payload.result' in javascript
+    assert 'result.loudness_range_lu' in javascript
+    assert 'if (latestLoudnessResult)' in javascript
+    assert 'hlsLoudnessState === "stopping"' in javascript
+    assert 'hlsLoudnessState === "stopped"' in javascript
     assert 'if (hlsLoudnessState === "stopped") return null;' in javascript
     assert "updateHlsReportAvailability" in javascript
     assert 'hlsMonitorState === "stopped"' in javascript

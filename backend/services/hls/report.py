@@ -497,12 +497,36 @@ def generate_hls_report(
             ["Perfil" if spanish else "Profile", loudness.get("profile")],
             ["Estado" if spanish else "Status", status_label],
             [
+                "Tipo de medicion" if spanish else "Measurement Type",
+                (
+                    "Parcial" if spanish else "Partial"
+                ) if loudness.get("partial") else (
+                    "Completa" if spanish else "Complete"
+                ),
+            ],
+            [
                 "Loudness integrado" if spanish else "Integrated Loudness",
                 f'{loudness.get("integrated_lkfs")} LKFS',
             ],
             [
                 "True Peak",
                 f'{loudness.get("true_peak_dbtp")} dBTP',
+            ],
+            [
+                "Rango de loudness" if spanish else "Loudness Range",
+                (
+                    f'{loudness.get("loudness_range_lu")} LU'
+                    if loudness.get("loudness_range_lu") is not None
+                    else "-"
+                ),
+            ],
+            [
+                "Duracion analizada" if spanish else "Analyzed Duration",
+                (
+                    f'{float(loudness.get("measured_seconds")):.1f} s'
+                    if loudness.get("measured_seconds") is not None
+                    else "-"
+                ),
             ],
             [
                 "Objetivo" if spanish else "Target",
@@ -528,16 +552,32 @@ def generate_hls_report(
         ]))
         loudness_story = [
             Paragraph(
-                "Evaluacion Tecnica de Loudness"
-                if spanish else "Media Loudness Technical Assessment",
+                "Cumplimiento Tecnico de Loudness"
+                if spanish else "Media Loudness Compliance",
                 heading,
             ),
             loudness_table,
         ]
         for finding in list(loudness.get("findings") or [])[:20]:
+            finding_message = _text(finding.get("message"), 800)
+            if spanish:
+                finding_message = {
+                    "LOUD-001": (
+                        "El loudness integrado esta fuera del rango tecnico "
+                        "configurado para ATSC A/85."
+                    ),
+                    "LOUD-002": (
+                        "El true peak supera el limite tecnico configurado."
+                    ),
+                    "LOUD-003": (
+                        "El audio medido esta dentro de los limites configurados, "
+                        "pero suficientemente cerca de un limite para requerir "
+                        "revision."
+                    ),
+                }.get(_text(finding.get("rule_id")), finding_message)
             loudness_story.append(Paragraph(
                 f'<b>{_text(finding.get("rule_id"))}</b>: '
-                f'{_text(finding.get("message"), 800)}',
+                f'{finding_message}',
                 small,
             ))
         loudness_story.extend([
