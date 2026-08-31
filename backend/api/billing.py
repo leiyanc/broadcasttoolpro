@@ -39,9 +39,10 @@ def organization_billing(
         entitlements = entitlement_store.effective_entitlements(
             organization_id
         )
-        channel_count = len(
-            tenant_store.list_organization_channels(organization_id)
-        )
+        channels = tenant_store.list_organization_channels(organization_id)
+        channel_count = len([
+            channel for channel in channels if channel["active"]
+        ])
         return {
             "subscription": subscription,
             "entitlements": entitlements,
@@ -52,6 +53,7 @@ def organization_billing(
                 channel_count,
             ),
             "invoices": billing_store.list_invoices(organization_id),
+            "channels": channels,
             "payments_available": bool(
                 stripe_billing.is_configured()
                 and stripe_billing.webhook_secret()
@@ -172,6 +174,75 @@ def purchase_channel(
         raise HTTPException(
             status_code=503,
             detail="Stripe could not add the channel to the subscription.",
+        ) from exc
+
+
+@router.post(
+    "/organizations/{organization_id}/channels/{channel_id}/removal/preview"
+)
+def preview_channel_removal(
+    organization_id: str,
+    channel_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.preview_channel_removal(
+            organization_id=organization_id,
+            channel_id=channel_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not calculate the channel removal.",
+        ) from exc
+
+
+@router.post(
+    "/organizations/{organization_id}/channels/{channel_id}/removal"
+)
+def schedule_channel_removal(
+    organization_id: str,
+    channel_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.schedule_channel_removal(
+            organization_id=organization_id,
+            channel_id=channel_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not schedule the channel removal.",
+        ) from exc
+
+
+@router.post(
+    "/organizations/{organization_id}/channels/{channel_id}/removal/cancel"
+)
+def cancel_channel_removal(
+    organization_id: str,
+    channel_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.cancel_channel_removal(
+            organization_id=organization_id,
+            channel_id=channel_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not cancel the channel removal.",
         ) from exc
 
 

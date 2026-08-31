@@ -395,6 +395,184 @@ def test_legacy_organization_receives_first_channel_without_stripe_charge(
     assert channel["name"] == "Legacy Primary"
 
 
+def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
+    monkeypatch,
+):
+    _configure(monkeypatch)
+    captured = {}
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "channel-removal.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Removal Network", slug=None, plan="professional"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Primary Channel",
+            slug=None,
+            channel_code="primary-channel",
+            timezone="UTC",
+            primary_language="en",
+        )
+        removable = tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Second Channel",
+            slug=None,
+            channel_code="second-channel",
+            timezone="UTC",
+            primary_language="en",
+            stream_monitoring=True,
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        EntitlementStore(database_path).initialize()
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=True,
+            status="active",
+            amount_cents=20700,
+            currency="usd",
+            customer_id="cus_removal",
+            subscription_id="sub_removal",
+            period_start="2026-08-01T00:00:00+00:00",
+            period_end="2026-09-01T00:00:00+00:00",
+            cancel_at_period_end=False,
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        subscription = {
+            "id": "sub_removal",
+            "schedule": None,
+            "current_period_start": 1_785_542_400,
+            "current_period_end": 1_788_220_800,
+            "items": {"data": [
+                {
+                    "id": "si_plan",
+                    "price": {"id": "price_professional"},
+                    "quantity": 1,
+                },
+                {
+                    "id": "si_channel",
+                    "price": {"id": "price_channel_professional"},
+                    "quantity": 1,
+                },
+                {
+                    "id": "si_monitoring",
+                    "price": {"id": "price_monitoring"},
+                    "quantity": 1,
+                },
+            ]},
+        }
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _subscription_id: subscription,
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.SubscriptionSchedule,
+            "create",
+            lambda **kwargs: captured.update(create=kwargs)
+            or {"id": "sub_sched_removal"},
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.SubscriptionSchedule,
+            "modify",
+            lambda schedule_id, **kwargs: captured.update(
+                schedule_id=schedule_id, modify=kwargs
+            ) or {"id": schedule_id},
+        )
+        released = []
+        monkeypatch.setattr(
+            stripe_module.stripe.SubscriptionSchedule,
+            "release",
+            lambda schedule_id: released.append(schedule_id),
+        )
+        service = StripeBillingService()
+
+        preview = service.preview_channel_removal(
+            organization_id=organization["id"],
+            channel_id=removable["id"],
+        )
+        result = service.schedule_channel_removal(
+            organization_id=organization["id"],
+            channel_id=removable["id"],
+        )
+
+        assert preview["amount_due_now_cents"] == 0
+        assert preview["monthly_decrease_cents"] == 10800
+        assert preview["new_channel_count"] == 1
+        assert captured["create"] == {"from_subscription": "sub_removal"}
+        target_items = captured["modify"]["phases"][1]["items"]
+        assert target_items == [
+            {"price": "price_professional", "quantity": 1}
+        ]
+        assert captured["modify"]["phases"][1]["proration_behavior"] == "none"
+        scheduled = tenants.get_channel(removable["id"])
+        assert scheduled["active"] is True
+        assert scheduled["deactivation_scheduled_at"] == result["effective_at"]
+
+        subscription["schedule"] = {"id": "sub_sched_removal"}
+        kept = service.cancel_channel_removal(
+            organization_id=organization["id"],
+            channel_id=removable["id"],
+        )
+        assert released == ["sub_sched_removal"]
+        assert kept["active"] is True
+        assert kept["deactivation_scheduled_at"] is None
+
+
+def test_only_active_channel_cannot_be_removed(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "last-channel.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Single Channel Network", slug=None, plan="professional"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        channel = tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Only Channel",
+            slug=None,
+            channel_code="only-channel",
+            timezone="UTC",
+            primary_language="en",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("The last-channel guard must run before Stripe")
+            ),
+        )
+
+        try:
+            StripeBillingService().preview_channel_removal(
+                organization_id=organization["id"],
+                channel_id=channel["id"],
+            )
+        except ValueError as exc:
+            assert "only active channel" in str(exc)
+        else:
+            raise AssertionError("Expected removal of the last channel to fail.")
+
+
 def test_upgrade_preview_uses_stripe_proration_and_enterprise_includes_monitoring(
     monkeypatch,
 ):

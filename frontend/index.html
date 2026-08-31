@@ -449,6 +449,18 @@
           <p class="section-copy" data-i18n="billing.addChannelCopy">
             The first channel is included. Review Stripe's prorated cost before activating each additional channel.
           </p>
+          <div class="billing-channel-list" id="billing-channel-list"></div>
+          <div class="billing-channel-removal is-hidden" id="billing-channel-removal">
+            <h4 data-i18n="billing.removeChannelTitle">Remove channel at period end?</h4>
+            <div id="billing-channel-removal-summary"></div>
+            <p class="section-copy" data-i18n="billing.removeChannelNotice">
+              The channel remains active through the current billing period. No credit is issued for the current period, and its history and reports are retained.
+            </p>
+            <div class="form-actions">
+              <button class="button button-secondary" id="billing-channel-removal-back" type="button" data-i18n="billing.keepChannel">Keep Channel</button>
+              <button class="button button-primary" id="billing-channel-removal-confirm" type="button" data-i18n="billing.confirmChannelRemoval">Confirm Removal</button>
+            </div>
+          </div>
           <form class="billing-channel-form" id="billing-channel-form">
             <label>
               <span data-i18n="auth.channelName">Channel Name</span>

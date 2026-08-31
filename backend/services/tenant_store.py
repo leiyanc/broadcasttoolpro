@@ -83,6 +83,7 @@ class TenantStore:
                     timezone TEXT NOT NULL,
                     primary_language TEXT NOT NULL,
                     stream_monitoring INTEGER NOT NULL DEFAULT 0,
+                    deactivation_scheduled_at TEXT,
                     active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -110,6 +111,11 @@ class TenantStore:
                 connection.execute(
                     "ALTER TABLE channels ADD COLUMN "
                     "stream_monitoring INTEGER NOT NULL DEFAULT 0"
+                )
+            if "deactivation_scheduled_at" not in channel_columns:
+                connection.execute(
+                    "ALTER TABLE channels ADD COLUMN "
+                    "deactivation_scheduled_at TEXT"
                 )
 
     def create_organization(
@@ -283,6 +289,7 @@ class TenantStore:
 
     def list_organization_channels(self, organization_id: str) -> list[dict]:
         self.get_organization(organization_id)
+        self.deactivate_due_channels(organization_id)
         with self._connection() as connection:
             rows = connection.execute(
                 """
@@ -295,6 +302,56 @@ class TenantStore:
                 (organization_id,),
             ).fetchall()
         return [self._channel(row) for row in rows]
+
+    def schedule_channel_deactivation(
+        self,
+        channel_id: str,
+        *,
+        effective_at: str,
+    ) -> dict:
+        self.get_channel(channel_id)
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE channels
+                SET deactivation_scheduled_at = ?, updated_at = ?
+                WHERE id = ? AND active = 1
+                """,
+                (effective_at, _utc_now(), channel_id),
+            )
+        return self.get_channel(channel_id)
+
+    def cancel_channel_deactivation(self, channel_id: str) -> dict:
+        self.get_channel(channel_id)
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE channels
+                SET deactivation_scheduled_at = NULL, updated_at = ?
+                WHERE id = ? AND active = 1
+                """,
+                (_utc_now(), channel_id),
+            )
+        return self.get_channel(channel_id)
+
+    def deactivate_due_channels(self, organization_id: str) -> int:
+        now = _utc_now()
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE channels
+                SET active = 0, deactivation_scheduled_at = NULL,
+                    updated_at = ?
+                WHERE active = 1
+                  AND deactivation_scheduled_at IS NOT NULL
+                  AND deactivation_scheduled_at <= ?
+                  AND workspace_id IN (
+                      SELECT id FROM workspaces WHERE organization_id = ?
+                  )
+                """,
+                (now, now, organization_id),
+            )
+        return cursor.rowcount
 
     def get_channel(self, channel_id: str) -> dict:
         with self._connection() as connection:

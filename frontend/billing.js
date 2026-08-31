@@ -43,11 +43,23 @@ const billingChannelMonitoringField = document.querySelector(
 const billingChannelMonitoringNote = document.querySelector(
   "#billing-channel-monitoring-note",
 );
+const billingChannelList = document.querySelector("#billing-channel-list");
+const billingChannelRemoval = document.querySelector("#billing-channel-removal");
+const billingChannelRemovalSummary = document.querySelector(
+  "#billing-channel-removal-summary",
+);
+const billingChannelRemovalBack = document.querySelector(
+  "#billing-channel-removal-back",
+);
+const billingChannelRemovalConfirm = document.querySelector(
+  "#billing-channel-removal-confirm",
+);
 let billingOrganization = null;
 let latestBillingPayload = null;
 let billingPaymentsAvailable = false;
 let pendingBillingChange = null;
 let pendingChannelPurchase = null;
+let pendingChannelRemoval = null;
 
 function billingText(key, fallback, values = {}) {
   let text = window.BTPi18n?.t(key, fallback) ?? fallback;
@@ -175,6 +187,152 @@ function configureChannelPurchase(pricing) {
   billingChannelMonitoringNote.textContent = enterprise
     ? billingText("billing.monitoringIncludedChannel", "Included with Enterprise")
     : billingText("billing.monitoringPerChannel", "+$59/month for this monitored channel");
+}
+
+function closeChannelRemovalPreview() {
+  pendingChannelRemoval = null;
+  billingChannelRemoval.classList.add("is-hidden");
+  billingChannelForm.classList.remove("is-hidden");
+}
+
+async function previewChannelRemoval(channel) {
+  billingMessage.textContent = billingText(
+    "billing.calculatingRemoval",
+    "Calculating the renewal adjustment…",
+  );
+  billingMessage.classList.remove("is-error");
+  try {
+    const preview = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/channels/${channel.id}/removal/preview`,
+      {method: "POST"},
+    );
+    pendingChannelRemoval = {channel, preview};
+    billingChannelRemovalSummary.replaceChildren(
+      changeSummaryRow(
+        billingText("billing.channel", "Channel"),
+        preview.channel_name,
+      ),
+      changeSummaryRow(
+        billingText("billing.activeUntil", "Active until"),
+        billingDate(preview.effective_at),
+      ),
+      changeSummaryRow(
+        billingText("billing.dueNow", "Due now"),
+        billingMoney(preview.amount_due_now_cents, preview.currency),
+      ),
+      changeSummaryRow(
+        billingText("billing.monthlyDecrease", "Monthly decrease at renewal"),
+        `−${billingMoney(preview.monthly_decrease_cents, preview.currency)}`,
+      ),
+    );
+    billingChannelForm.classList.add("is-hidden");
+    billingChannelRemoval.classList.remove("is-hidden");
+    billingMessage.textContent = "";
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
+async function confirmChannelRemoval() {
+  if (!pendingChannelRemoval || !billingOrganization) return;
+  billingChannelRemovalConfirm.disabled = true;
+  billingMessage.textContent = billingText(
+    "billing.schedulingRemoval",
+    "Scheduling the channel removal…",
+  );
+  billingMessage.classList.remove("is-error");
+  try {
+    const result = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/channels/${pendingChannelRemoval.channel.id}/removal`,
+      {method: "POST"},
+    );
+    closeChannelRemovalPreview();
+    await loadOrganizationChannels(billingOrganization);
+    await loadBilling();
+    billingMessage.textContent = billingText(
+      "billing.removalScheduled",
+      "Channel removal scheduled for {date}. Access remains active until then.",
+      {date: billingDate(result.effective_at)},
+    );
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  } finally {
+    billingChannelRemovalConfirm.disabled = false;
+  }
+}
+
+async function cancelChannelRemoval(channel) {
+  billingMessage.textContent = billingText(
+    "billing.cancelingRemoval",
+    "Keeping the channel and restoring its renewal…",
+  );
+  billingMessage.classList.remove("is-error");
+  try {
+    await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/channels/${channel.id}/removal/cancel`,
+      {method: "POST"},
+    );
+    await loadOrganizationChannels(billingOrganization);
+    await loadBilling();
+    billingMessage.textContent = billingText(
+      "billing.removalCanceled",
+      "Scheduled removal canceled. The channel will renew normally.",
+    );
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
+function renderBillingChannels(channels = []) {
+  billingChannelList.replaceChildren();
+  const activeChannels = channels.filter((channel) => channel.active);
+  activeChannels.forEach((channel) => {
+    const row = document.createElement("article");
+    row.className = "billing-channel-row";
+    const identity = document.createElement("div");
+    const name = document.createElement("strong");
+    const detail = document.createElement("small");
+    name.textContent = channel.name;
+    detail.textContent = `${channel.channel_code || "—"} · ${channel.timezone}`;
+    identity.append(name, detail);
+    const status = document.createElement("div");
+    status.className = "billing-channel-status";
+    const statusText = document.createElement("small");
+    const button = document.createElement("button");
+    button.className = "button button-secondary";
+    button.type = "button";
+    if (channel.deactivation_scheduled_at) {
+      statusText.textContent = billingText(
+        "billing.removalDate",
+        "Removal scheduled for {date}",
+        {date: billingDate(channel.deactivation_scheduled_at)},
+      );
+      button.textContent = billingText("billing.keepChannel", "Keep Channel");
+      button.addEventListener("click", () => cancelChannelRemoval(channel));
+    } else if (activeChannels.length === 1) {
+      statusText.textContent = billingText(
+        "billing.includedChannelProtected",
+        "Included channel · required for this organization",
+      );
+      button.textContent = billingText("billing.included", "Included");
+      button.disabled = true;
+    } else {
+      statusText.textContent = channel.stream_monitoring
+        ? billingText("billing.monitoringEnabled", "Stream Monitoring enabled")
+        : billingText("billing.activeChannel", "Active channel");
+      button.textContent = billingText(
+        "billing.removeAtPeriodEnd",
+        "Remove at Period End",
+      );
+      button.addEventListener("click", () => previewChannelRemoval(channel));
+    }
+    status.append(statusText, button);
+    row.append(identity, status);
+    billingChannelList.appendChild(row);
+  });
 }
 
 async function previewChannelPurchase(event) {
@@ -721,6 +879,7 @@ function renderBilling(payload) {
   );
   latestBillingPayload = {...payload, pricing};
   configureChannelPurchase(pricing);
+  renderBillingChannels(payload.channels || []);
   const complimentary = subscription.payment_waived;
   const awaitingPayment = (
     subscription.provider === "stripe_pending"
@@ -978,6 +1137,15 @@ billingOpenButton.addEventListener("click", () => {
   platformContent.classList.add("is-hidden");
   loadBilling();
 });
+
+billingChannelRemovalBack?.addEventListener(
+  "click",
+  closeChannelRemovalPreview,
+);
+billingChannelRemovalConfirm?.addEventListener(
+  "click",
+  confirmChannelRemoval,
+);
 
 billingCloseButton.addEventListener("click", () => {
   billingPanel.classList.add("is-hidden");

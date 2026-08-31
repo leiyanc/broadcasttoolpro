@@ -519,6 +519,235 @@ class StripeBillingService:
         self._apply_subscription(updated)
         return channel
 
+    def _channel_removal_context(
+        self,
+        organization_id: str,
+        channel_id: str,
+    ) -> tuple[dict, dict, Any, str, list[dict], int, int, int]:
+        store = self._channel_store()
+        channels = [
+            channel for channel in store.list_organization_channels(
+                organization_id
+            )
+            if channel["active"]
+        ]
+        channel = next(
+            (item for item in channels if item["id"] == channel_id),
+            None,
+        )
+        if channel is None:
+            raise ValueError("The selected active channel was not found.")
+        if channel.get("deactivation_scheduled_at"):
+            raise ValueError("This channel is already scheduled for removal.")
+        if len(channels) <= 1:
+            raise ValueError(
+                "The organization's only active channel cannot be removed."
+            )
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe" or local["status"] not in {
+            "active", "trialing"
+        }:
+            raise ValueError(
+                "An active Stripe subscription is required to remove a channel."
+            )
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        if _value(subscription, "schedule"):
+            raise ValueError(
+                "Complete or cancel the existing scheduled subscription "
+                "change before removing a channel."
+            )
+        plan_code, _monitoring = self._price_codes(subscription)
+        new_channel_count = len(channels) - 1
+        additional_quantity = max(0, new_channel_count - 1)
+        monitoring_quantity = sum(
+            1 for item in channels
+            if item.get("stream_monitoring") and item["id"] != channel_id
+        )
+        items = _value(_value(subscription, "items", {}), "data", []) or []
+        return (
+            local, channel, subscription, plan_code, items,
+            new_channel_count, additional_quantity, monitoring_quantity,
+        )
+
+    def _channel_removal_target_items(
+        self,
+        *,
+        items: list[Any],
+        plan_code: str,
+        additional_quantity: int,
+        monitoring_quantity: int,
+    ) -> list[dict]:
+        plan_prices = {self.price_id(code) for code in PLAN_RANK}
+        additional_prices = {
+            os.getenv(variable, "").strip()
+            for variable in ADDITIONAL_CHANNEL_PRICE_ENV.values()
+            if os.getenv(variable, "").strip()
+        }
+        stream_price = self.stream_price_id()
+        target: list[dict] = []
+        for item in items:
+            price_id = _value(_value(item, "price", {}), "id")
+            quantity = int(_value(item, "quantity", 1) or 1)
+            if price_id in plan_prices:
+                target.append({"price": price_id, "quantity": 1})
+            elif price_id in additional_prices:
+                if additional_quantity:
+                    target.append({
+                        "price": self.additional_channel_price_id(plan_code),
+                        "quantity": additional_quantity,
+                    })
+            elif price_id == stream_price:
+                if plan_code == "professional" and monitoring_quantity:
+                    target.append({
+                        "price": price_id,
+                        "quantity": monitoring_quantity,
+                    })
+            else:
+                target.append({"price": price_id, "quantity": quantity})
+        return target
+
+    def preview_channel_removal(
+        self,
+        *,
+        organization_id: str,
+        channel_id: str,
+    ) -> dict:
+        (
+            _local, channel, subscription, plan_code, _items,
+            new_channel_count, _additional_quantity, _monitoring_quantity,
+        ) = self._channel_removal_context(organization_id, channel_id)
+        period_end = _value(subscription, "current_period_end")
+        if not period_end:
+            items = _value(_value(subscription, "items", {}), "data", []) or []
+            period_end = _value(items[0] if items else {}, "current_period_end")
+        if not period_end:
+            raise ValueError("Stripe did not return the current renewal date.")
+        monthly_decrease = ADDITIONAL_CHANNEL_MONTHLY_CENTS[plan_code]
+        if channel.get("stream_monitoring") and plan_code == "professional":
+            monthly_decrease += STREAM_MONTHLY_CENTS
+        return {
+            "channel_id": channel_id,
+            "channel_name": channel["name"],
+            "effective": "period_end",
+            "effective_at": _iso_timestamp(period_end),
+            "new_channel_count": new_channel_count,
+            "monthly_decrease_cents": monthly_decrease,
+            "amount_due_now_cents": 0,
+            "currency": "usd",
+        }
+
+    def schedule_channel_removal(
+        self,
+        *,
+        organization_id: str,
+        channel_id: str,
+    ) -> dict:
+        (
+            _local, channel, subscription, plan_code, items,
+            new_channel_count, additional_quantity, monitoring_quantity,
+        ) = self._channel_removal_context(organization_id, channel_id)
+        period_start = _value(subscription, "current_period_start") or _value(
+            items[0] if items else {}, "current_period_start"
+        )
+        period_end = _value(subscription, "current_period_end") or _value(
+            items[0] if items else {}, "current_period_end"
+        )
+        if not period_start or not period_end:
+            raise ValueError("Stripe did not return the current billing period.")
+        current_items = [
+            {
+                "price": _value(_value(item, "price", {}), "id"),
+                "quantity": int(_value(item, "quantity", 1) or 1),
+            }
+            for item in items
+        ]
+        target_items = self._channel_removal_target_items(
+            items=items,
+            plan_code=plan_code,
+            additional_quantity=additional_quantity,
+            monitoring_quantity=monitoring_quantity,
+        )
+        schedule = stripe.SubscriptionSchedule.create(
+            from_subscription=_value(subscription, "id")
+        )
+        schedule_id = _value(schedule, "id")
+        try:
+            stripe.SubscriptionSchedule.modify(
+                schedule_id,
+                end_behavior="release",
+                phases=[
+                    {
+                        "start_date": period_start,
+                        "end_date": period_end,
+                        "items": current_items,
+                        "proration_behavior": "none",
+                    },
+                    {
+                        "start_date": period_end,
+                        "items": target_items,
+                        "proration_behavior": "none",
+                        "metadata": {
+                            "organization_id": organization_id,
+                            "plan_code": plan_code,
+                            "channel_quantity": str(new_channel_count),
+                            "additional_channel_quantity": str(
+                                additional_quantity
+                            ),
+                            "monitoring_channel_quantity": str(
+                                monitoring_quantity
+                            ),
+                        },
+                    },
+                ],
+            )
+        except Exception:
+            try:
+                stripe.SubscriptionSchedule.release(schedule_id)
+            except Exception:
+                pass
+            raise
+        effective_at = _iso_timestamp(period_end)
+        scheduled = self._channel_store().schedule_channel_deactivation(
+            channel_id,
+            effective_at=effective_at,
+        )
+        return {
+            "channel": scheduled,
+            "effective": "period_end",
+            "effective_at": effective_at,
+        }
+
+    def cancel_channel_removal(
+        self,
+        *,
+        organization_id: str,
+        channel_id: str,
+    ) -> dict:
+        store = self._channel_store()
+        channels = store.list_organization_channels(organization_id)
+        channel = next(
+            (item for item in channels if item["id"] == channel_id),
+            None,
+        )
+        if channel is None or not channel.get("deactivation_scheduled_at"):
+            raise ValueError("This channel has no scheduled removal.")
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe":
+            raise ValueError("An active Stripe subscription is required.")
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        schedule = _value(subscription, "schedule")
+        schedule_id = _value(schedule, "id") or schedule
+        if not schedule_id:
+            raise ValueError("Stripe has no scheduled channel change.")
+        stripe.SubscriptionSchedule.release(schedule_id)
+        return store.cancel_channel_deactivation(channel_id)
+
     def _target_prices(
         self,
         plan_code: str,

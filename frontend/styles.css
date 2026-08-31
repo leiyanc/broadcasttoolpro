@@ -1476,6 +1476,63 @@ main {
   margin-top: 24px;
 }
 
+.billing-channel-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.billing-channel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+.billing-channel-row strong,
+.billing-channel-row small {
+  display: block;
+}
+
+.billing-channel-row small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.billing-channel-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  text-align: right;
+}
+
+.billing-channel-removal {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+#billing-channel-removal-summary {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+#billing-channel-removal-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
 .billing-channel-form > button,
 .billing-channel-form .remember-session {
   align-self: end;
@@ -2806,6 +2863,17 @@ footer {
   .pricing-addon-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .billing-channel-row,
+  .billing-channel-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .billing-channel-status {
+    width: 100%;
+    text-align: left;
   }
 
   .admin-ticket-columns,

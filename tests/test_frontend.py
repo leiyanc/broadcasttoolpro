@@ -780,6 +780,19 @@ def test_billing_supports_reviewed_additional_channel_purchase():
     assert "Stripe prorated amount" in javascript
 
 
+def test_billing_supports_channel_removal_at_period_end():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "billing.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'id="billing-channel-list"' in html
+    assert 'id="billing-channel-removal"' in html
+    assert "/removal/preview`" in javascript
+    assert "/removal/cancel`" in javascript
+    assert "renderBillingChannels(payload.channels || [])" in javascript
+    assert '"billing.removeAtPeriodEnd"' in translations
+
+
 def test_customer_help_routes_topics_to_the_right_mailbox():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "help.js").read_text()
