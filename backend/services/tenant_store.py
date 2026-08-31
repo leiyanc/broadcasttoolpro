@@ -82,6 +82,7 @@ class TenantStore:
                     channel_code TEXT,
                     timezone TEXT NOT NULL,
                     primary_language TEXT NOT NULL,
+                    stream_monitoring INTEGER NOT NULL DEFAULT 0,
                     active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -99,6 +100,17 @@ class TenantStore:
                 SET plan = 'professional'
                 WHERE plan = 'starter';
             """)
+            channel_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(channels)"
+                ).fetchall()
+            }
+            if "stream_monitoring" not in channel_columns:
+                connection.execute(
+                    "ALTER TABLE channels ADD COLUMN "
+                    "stream_monitoring INTEGER NOT NULL DEFAULT 0"
+                )
 
     def create_organization(
         self,
@@ -220,6 +232,7 @@ class TenantStore:
         channel_code: str | None,
         timezone: str,
         primary_language: str,
+        stream_monitoring: bool = False,
     ) -> dict:
         self.get_workspace(workspace_id)
         channel_id = str(uuid4())
@@ -232,8 +245,9 @@ class TenantStore:
                     """
                     INSERT INTO channels (
                         id, workspace_id, name, slug, channel_code, timezone,
-                        primary_language, active, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        primary_language, stream_monitoring, active,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         channel_id,
@@ -243,6 +257,7 @@ class TenantStore:
                         channel_code.strip() if channel_code else None,
                         timezone_name,
                         primary_language,
+                        int(stream_monitoring),
                         timestamp,
                         timestamp,
                     ),
@@ -295,6 +310,7 @@ class TenantStore:
     def _channel(row: sqlite3.Row) -> dict:
         result = dict(row)
         result["active"] = bool(result["active"])
+        result["stream_monitoring"] = bool(result["stream_monitoring"])
         return result
 
 

@@ -1469,6 +1469,32 @@ main {
 .channel-context label { width: min(100%, 320px); }
 .channel-context select { width: 100%; }
 
+.billing-channel-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.billing-channel-form > button,
+.billing-channel-form .remember-session {
+  align-self: end;
+}
+
+.billing-channel-preview {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+#billing-channel-costs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .module-launcher {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2861,6 +2887,11 @@ footer {
   .channel-context {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .billing-channel-form,
+  #billing-channel-costs {
+    grid-template-columns: 1fr;
   }
 
   .module-launcher a {

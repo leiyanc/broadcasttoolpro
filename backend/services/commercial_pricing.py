@@ -20,6 +20,12 @@ PRICING_CATALOG = {
     },
 }
 
+ADDITIONAL_CHANNEL_CENTS = {
+    "programming_suite": 2500,
+    "professional": 4900,
+    "enterprise": 7900,
+}
+
 COMMERCIAL_PLANS = [
     {
         "code": "programming_suite",
@@ -81,6 +87,7 @@ def commercial_pricing(
     plan: str,
     entitlements: dict[str, Any],
     billing_cycle: str = "monthly",
+    channel_count: int = 1,
 ) -> dict[str, Any]:
     enabled_addons = {
         addon["code"]
@@ -108,19 +115,34 @@ def commercial_pricing(
             else "Programming Suite"
         )
 
+    plan_code = (
+        "enterprise"
+        if plan == "enterprise"
+        else "professional"
+        if "traffic_operations" in enabled_addons
+        else "programming_suite"
+    )
+    channel_count = max(1, int(channel_count))
+    additional_channel_count = max(0, channel_count - 1)
+    additional_channel_cents = ADDITIONAL_CHANNEL_CENTS[plan_code]
     monthly_total = base["monthly_cents"] + sum(
         addon["monthly_cents"]
         for addon in addons
-    )
+    ) + additional_channel_count * additional_channel_cents
     cycle_multiplier = 12 if billing_cycle == "annual" else 1
 
     return {
         "currency": "USD",
         "display_name": display_name,
+        "plan_code": plan_code,
         "billing_cycle": billing_cycle,
         "base": base,
         "addons": addons,
         "monthly_total_cents": monthly_total,
+        "channel_count": channel_count,
+        "included_channel_count": 1,
+        "additional_channel_count": additional_channel_count,
+        "additional_channel_monthly_cents": additional_channel_cents,
         "billing_total_cents": monthly_total * cycle_multiplier,
         "billing_period": "year" if billing_cycle == "annual" else "month",
         "available_plans": COMMERCIAL_PLANS,

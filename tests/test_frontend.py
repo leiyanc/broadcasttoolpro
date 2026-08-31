@@ -769,6 +769,17 @@ def test_missing_template_channel_warning_is_localized():
     assert "El canal es obligatorio." in translations
 
 
+def test_billing_supports_reviewed_additional_channel_purchase():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "billing.js").read_text()
+
+    assert 'id="billing-channel-form"' in html
+    assert 'id="billing-channel-preview"' in html
+    assert "/channels/preview`" in javascript
+    assert "confirmChannelPurchase" in javascript
+    assert "Stripe prorated amount" in javascript
+
+
 def test_customer_help_routes_topics_to_the_right_mailbox():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "help.js").read_text()

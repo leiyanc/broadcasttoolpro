@@ -17,6 +17,9 @@ def _configure(monkeypatch):
         "BTP_STRIPE_PRICE_PROFESSIONAL": "price_professional",
         "BTP_STRIPE_PRICE_ENTERPRISE": "price_enterprise",
         "BTP_STRIPE_PRICE_STREAM_MONITORING": "price_monitoring",
+        "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROGRAMMING": "price_channel_programming",
+        "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROFESSIONAL": "price_channel_professional",
+        "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_ENTERPRISE": "price_channel_enterprise",
         "BTP_APPLICATION_URL": "https://example.test/app",
     }
     for name, value in values.items():
@@ -59,6 +62,283 @@ def test_checkout_uses_server_side_prices_and_metadata(monkeypatch):
     assert captured["subscription_data"]["metadata"]["organization_id"]
     assert captured["metadata"]["channel_quantity"] == "1"
     assert "price" not in captured["metadata"]
+
+
+def test_checkout_separates_base_plan_from_additional_channels(monkeypatch):
+    _configure(monkeypatch)
+    captured = {}
+    monkeypatch.setattr(
+        stripe_module.stripe.checkout.Session,
+        "create",
+        lambda **kwargs: captured.update(kwargs)
+        or SimpleNamespace(url="https://checkout.stripe.test/channels"),
+    )
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "stripe-channels.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Multi Channel Network", slug=None, plan="professional"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        for name in ("Channel One", "Channel Two", "Channel Three"):
+            tenants.create_channel(
+                workspace_id=workspace["id"],
+                name=name,
+                slug=None,
+                channel_code=None,
+                timezone="UTC",
+                primary_language="en",
+            )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+
+        StripeBillingService().create_checkout_session(
+            organization_id=organization["id"],
+            email="owner@example.com",
+            plan_code="professional",
+            include_stream_monitoring=True,
+        )
+
+    assert captured["line_items"] == [
+        {"price": "price_professional", "quantity": 1},
+        {"price": "price_channel_professional", "quantity": 2},
+        {"price": "price_monitoring", "quantity": 3},
+    ]
+    assert captured["metadata"]["channel_quantity"] == "3"
+    assert captured["metadata"]["additional_channel_quantity"] == "2"
+
+
+def test_additional_channel_preview_uses_discounted_plan_price(monkeypatch):
+    _configure(monkeypatch)
+    captured = {}
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "channel-preview.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Channel Preview Network", slug=None, plan="professional"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Primary Channel",
+            slug=None,
+            channel_code="primary-channel",
+            timezone="UTC",
+            primary_language="en",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        EntitlementStore(database_path).initialize()
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=False,
+            status="active",
+            amount_cents=9900,
+            currency="usd",
+            customer_id="cus_channels",
+            subscription_id="sub_channels",
+            period_start="2026-08-01T00:00:00+00:00",
+            period_end="2026-09-01T00:00:00+00:00",
+            cancel_at_period_end=False,
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        subscription = {
+            "id": "sub_channels",
+            "items": {"data": [{
+                "id": "si_plan",
+                "price": {"id": "price_professional"},
+                "quantity": 1,
+            }]},
+        }
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _subscription_id: subscription,
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.Invoice,
+            "create_preview",
+            lambda **kwargs: captured.update(kwargs)
+            or {"amount_due": 2100, "currency": "usd"},
+        )
+
+        preview = StripeBillingService().preview_channel_purchase(
+            organization_id=organization["id"],
+            name="Second Channel",
+            channel_code="second-channel",
+            timezone="UTC",
+            primary_language="en",
+            stream_monitoring=True,
+        )
+
+    changes = captured["subscription_details"]["items"]
+    assert {"price": "price_channel_professional", "quantity": 1} in changes
+    assert {"price": "price_monitoring", "quantity": 1} in changes
+    assert preview["additional_channel_monthly_cents"] == 4900
+    assert preview["stream_monitoring_monthly_cents"] == 5900
+    assert preview["monthly_increase_cents"] == 10800
+    assert preview["amount_due_now_cents"] == 2100
+
+
+def test_channel_activates_only_after_stripe_accepts_update(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "channel-purchase.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Purchased Channel Network", slug=None, plan="professional"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Primary Channel",
+            slug=None,
+            channel_code="primary-channel",
+            timezone="UTC",
+            primary_language="en",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        EntitlementStore(database_path).initialize()
+        billing.apply_stripe_subscription(
+            organization["id"],
+            plan_code="professional",
+            stream_monitoring=False,
+            status="active",
+            amount_cents=9900,
+            currency="usd",
+            customer_id="cus_purchase",
+            subscription_id="sub_purchase",
+            period_start="2026-08-01T00:00:00+00:00",
+            period_end="2026-09-01T00:00:00+00:00",
+            cancel_at_period_end=False,
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        current = {
+            "id": "sub_purchase",
+            "items": {"data": [{
+                "id": "si_plan",
+                "price": {"id": "price_professional"},
+                "quantity": 1,
+            }]},
+        }
+        updated = {
+            "id": "sub_purchase",
+            "customer": "cus_purchase",
+            "status": "active",
+            "metadata": {"organization_id": organization["id"]},
+            "current_period_start": 1_785_542_400,
+            "current_period_end": 1_788_220_800,
+            "cancel_at_period_end": False,
+            "items": {"data": [
+                {
+                    "id": "si_plan",
+                    "price": {
+                        "id": "price_professional",
+                        "unit_amount": 9900,
+                        "currency": "usd",
+                    },
+                    "quantity": 1,
+                },
+                {
+                    "id": "si_channel",
+                    "price": {
+                        "id": "price_channel_professional",
+                        "unit_amount": 4900,
+                        "currency": "usd",
+                    },
+                    "quantity": 1,
+                },
+            ]},
+        }
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda _subscription_id: current,
+        )
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "modify",
+            lambda _subscription_id, **_kwargs: updated,
+        )
+
+        channel = StripeBillingService().purchase_channel(
+            organization_id=organization["id"],
+            name="Second Channel",
+            channel_code="second-channel",
+            timezone="America/New_York",
+            primary_language="es",
+            stream_monitoring=False,
+        )
+
+        channels = tenants.list_organization_channels(organization["id"])
+    assert channel["name"] == "Second Channel"
+    assert channel["channel_code"] == "second-channel"
+    assert channel["stream_monitoring"] is False
+    assert len(channels) == 2
+
+
+def test_failed_stripe_channel_update_does_not_create_channel(monkeypatch):
+    _configure(monkeypatch)
+    service = StripeBillingService()
+    monkeypatch.setattr(
+        service,
+        "_channel_purchase_context",
+        lambda *_args, **_kwargs: (
+            {}, {"id": "sub_failed_channel"}, "professional",
+            [{"price": "price_channel_professional", "quantity": 1}],
+            1, 0,
+        ),
+    )
+    monkeypatch.setattr(
+        stripe_module.stripe.Subscription,
+        "modify",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("payment rejected")
+        ),
+    )
+    store_requested = {"value": False}
+    monkeypatch.setattr(
+        service,
+        "_channel_store",
+        lambda: store_requested.update(value=True),
+    )
+
+    try:
+        service.purchase_channel(
+            organization_id="org_failed",
+            name="Unpaid Channel",
+            channel_code="unpaid-channel",
+            timezone="UTC",
+            primary_language="en",
+            stream_monitoring=False,
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "payment rejected"
+    else:
+        raise AssertionError("Expected the Stripe update to fail.")
+
+    assert store_requested["value"] is False
 
 
 def test_upgrade_preview_uses_stripe_proration_and_enterprise_includes_monitoring(

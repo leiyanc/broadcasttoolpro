@@ -8,13 +8,22 @@ import stripe
 from backend.services.billing_store import billing_store
 from backend.services.email_outbox import email_outbox_store
 from backend.services.identity_store import identity_store
-from backend.services.tenant_store import TenantStore
+from backend.services.tenant_store import (
+    TenantStore,
+    _slugify,
+    _validate_timezone,
+)
 
 
 PLAN_PRICE_ENV = {
     "programming_suite": "BTP_STRIPE_PRICE_PROGRAMMING",
     "professional": "BTP_STRIPE_PRICE_PROFESSIONAL",
     "enterprise": "BTP_STRIPE_PRICE_ENTERPRISE",
+}
+ADDITIONAL_CHANNEL_PRICE_ENV = {
+    "programming_suite": "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROGRAMMING",
+    "professional": "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROFESSIONAL",
+    "enterprise": "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_ENTERPRISE",
 }
 STREAM_PRICE_ENV = "BTP_STRIPE_PRICE_STREAM_MONITORING"
 STRIPE_ACTIVE_STATUSES = {"active", "trialing"}
@@ -27,6 +36,11 @@ PLAN_MONTHLY_CENTS = {
     "programming_suite": 3900,
     "professional": 9900,
     "enterprise": 19900,
+}
+ADDITIONAL_CHANNEL_MONTHLY_CENTS = {
+    "programming_suite": 2500,
+    "professional": 4900,
+    "enterprise": 7900,
 }
 STREAM_MONTHLY_CENTS = 5900
 
@@ -46,6 +60,32 @@ def _iso_timestamp(value: Any, fallback: datetime | None = None) -> str:
 
 
 class StripeBillingService:
+    def _channel_store(self) -> TenantStore:
+        return TenantStore(billing_store.database_path)
+
+    def _validate_new_channel(
+        self,
+        organization_id: str,
+        *,
+        name: str,
+        channel_code: str,
+    ) -> list[dict]:
+        channels = self._channel_store().list_organization_channels(
+            organization_id
+        )
+        normalized_name = name.strip().casefold()
+        normalized_code = channel_code.strip().casefold()
+        normalized_slug = _slugify(name)
+        if any(channel["name"].strip().casefold() == normalized_name
+               for channel in channels):
+            raise ValueError("A channel with this name already exists.")
+        if any((channel.get("channel_code") or "").strip().casefold()
+               == normalized_code for channel in channels):
+            raise ValueError("This Channel ID is already registered.")
+        if any(channel["slug"] == normalized_slug for channel in channels):
+            raise ValueError("A channel with this name already exists.")
+        return channels
+
     def _subscription_recipient(self, organization_id: str) -> str:
         members = identity_store.list_members(organization_id)
         preferred = next((
@@ -120,6 +160,17 @@ class StripeBillingService:
             raise RuntimeError("Stripe add-on pricing is not configured.")
         return price_id
 
+    def additional_channel_price_id(self, plan_code: str) -> str:
+        variable = ADDITIONAL_CHANNEL_PRICE_ENV.get(plan_code)
+        if variable is None:
+            raise ValueError("Unknown subscription plan.")
+        price_id = os.getenv(variable, "").strip()
+        if not price_id:
+            raise RuntimeError(
+                "Stripe additional-channel pricing is not configured."
+            )
+        return price_id
+
     def is_configured(self) -> bool:
         return bool(
             self._secret_key()
@@ -162,12 +213,13 @@ class StripeBillingService:
                 ).list_organization_channels(organization_id)
             ),
         )
-        line_items = [
-            {
-                "price": self.price_id(plan_code),
-                "quantity": channel_quantity,
-            }
-        ]
+        additional_channel_quantity = max(0, channel_quantity - 1)
+        line_items = [{"price": self.price_id(plan_code), "quantity": 1}]
+        if additional_channel_quantity:
+            line_items.append({
+                "price": self.additional_channel_price_id(plan_code),
+                "quantity": additional_channel_quantity,
+            })
         if include_stream_monitoring:
             line_items.append({
                 "price": self.stream_price_id(),
@@ -182,6 +234,9 @@ class StripeBillingService:
             "plan_code": plan_code,
             "stream_monitoring": str(include_stream_monitoring).lower(),
             "channel_quantity": str(channel_quantity),
+            "additional_channel_quantity": str(
+                additional_channel_quantity
+            ),
         }
         stripe.api_key = secret_key
         session = stripe.checkout.Session.create(
@@ -195,6 +250,207 @@ class StripeBillingService:
             subscription_data={"metadata": metadata},
         )
         return session.url
+
+    def _channel_purchase_changes(
+        self,
+        *,
+        subscription: Any,
+        plan_code: str,
+        additional_quantity: int,
+        monitoring_quantity: int,
+    ) -> list[dict]:
+        items = _value(_value(subscription, "items", {}), "data", []) or []
+        additional_price_ids = {
+            os.getenv(variable, "").strip()
+            for variable in ADDITIONAL_CHANNEL_PRICE_ENV.values()
+            if os.getenv(variable, "").strip()
+        }
+        additional_item = next((
+            item for item in items
+            if _value(_value(item, "price", {}), "id")
+            in additional_price_ids
+        ), None)
+        changes: list[dict] = []
+        additional_price = self.additional_channel_price_id(plan_code)
+        if additional_item:
+            changes.append({
+                "id": _value(additional_item, "id"),
+                "price": additional_price,
+                "quantity": additional_quantity,
+            })
+        else:
+            changes.append({
+                "price": additional_price,
+                "quantity": additional_quantity,
+            })
+
+        monitoring_item = next((
+            item for item in items
+            if _value(_value(item, "price", {}), "id")
+            == self.stream_price_id()
+        ), None)
+        if plan_code == "professional" and monitoring_quantity > 0:
+            if monitoring_item:
+                changes.append({
+                    "id": _value(monitoring_item, "id"),
+                    "quantity": monitoring_quantity,
+                })
+            else:
+                changes.append({
+                    "price": self.stream_price_id(),
+                    "quantity": monitoring_quantity,
+                })
+        return changes
+
+    def _channel_purchase_context(
+        self,
+        organization_id: str,
+        *,
+        name: str,
+        channel_code: str,
+        stream_monitoring: bool,
+    ) -> tuple[dict, Any, str, list[dict], int, int]:
+        channels = self._validate_new_channel(
+            organization_id,
+            name=name,
+            channel_code=channel_code,
+        )
+        local = billing_store.get_subscription(organization_id)
+        if local["provider"] != "stripe" or local["status"] not in {
+            "active", "trialing"
+        }:
+            raise ValueError(
+                "An active Stripe subscription is required to add a channel."
+            )
+        stripe.api_key = self._secret_key()
+        subscription = stripe.Subscription.retrieve(
+            local["provider_subscription_id"]
+        )
+        plan_code, _monitoring = self._price_codes(subscription)
+        if stream_monitoring and plan_code == "programming_suite":
+            raise ValueError(
+                "Stream Monitoring for an added channel requires Professional "
+                "or Enterprise."
+            )
+        additional_quantity = len(channels)
+        monitoring_quantity = sum(
+            1 for channel in channels
+            if channel.get("active") and channel.get("stream_monitoring")
+        ) + int(stream_monitoring or plan_code == "enterprise")
+        changes = self._channel_purchase_changes(
+            subscription=subscription,
+            plan_code=plan_code,
+            additional_quantity=additional_quantity,
+            monitoring_quantity=monitoring_quantity,
+        )
+        return (
+            local, subscription, plan_code, changes,
+            additional_quantity, monitoring_quantity,
+        )
+
+    def preview_channel_purchase(
+        self,
+        *,
+        organization_id: str,
+        name: str,
+        channel_code: str,
+        timezone: str,
+        primary_language: str,
+        stream_monitoring: bool,
+    ) -> dict:
+        _validate_timezone(timezone)
+        (
+            _local, subscription, plan_code, changes,
+            additional_quantity, monitoring_quantity,
+        ) = self._channel_purchase_context(
+            organization_id,
+            name=name,
+            channel_code=channel_code,
+            stream_monitoring=stream_monitoring,
+        )
+        invoice = stripe.Invoice.create_preview(
+            subscription=_value(subscription, "id"),
+            subscription_details={
+                "items": changes,
+                "proration_behavior": "always_invoice",
+            },
+        )
+        additional_cents = ADDITIONAL_CHANNEL_MONTHLY_CENTS[plan_code]
+        monitoring_cents = (
+            STREAM_MONTHLY_CENTS
+            if stream_monitoring and plan_code == "professional"
+            else 0
+        )
+        return {
+            "plan_code": plan_code,
+            "new_channel_count": additional_quantity + 1,
+            "additional_channel_monthly_cents": additional_cents,
+            "stream_monitoring_monthly_cents": monitoring_cents,
+            "monthly_increase_cents": additional_cents + monitoring_cents,
+            "amount_due_now_cents": int(
+                _value(invoice, "amount_due", _value(invoice, "total", 0)) or 0
+            ),
+            "currency": _value(invoice, "currency", "usd") or "usd",
+            "monitoring_channel_count": monitoring_quantity,
+        }
+
+    def purchase_channel(
+        self,
+        *,
+        organization_id: str,
+        name: str,
+        channel_code: str,
+        timezone: str,
+        primary_language: str,
+        stream_monitoring: bool,
+    ) -> dict:
+        _validate_timezone(timezone)
+        (
+            _local, subscription, plan_code, changes,
+            additional_quantity, monitoring_quantity,
+        ) = self._channel_purchase_context(
+            organization_id,
+            name=name,
+            channel_code=channel_code,
+            stream_monitoring=stream_monitoring,
+        )
+        updated = stripe.Subscription.modify(
+            _value(subscription, "id"),
+            items=changes,
+            proration_behavior="always_invoice",
+            payment_behavior="error_if_incomplete",
+            metadata={
+                "organization_id": organization_id,
+                "plan_code": plan_code,
+                "channel_quantity": str(additional_quantity + 1),
+                "additional_channel_quantity": str(additional_quantity),
+                "monitoring_channel_quantity": str(monitoring_quantity),
+            },
+        )
+        store = self._channel_store()
+        workspaces = store.list_workspaces(organization_id)
+        if not workspaces:
+            workspace = store.create_workspace(
+                organization_id=organization_id,
+                name="Channel Operations",
+                slug=None,
+                default_timezone=timezone,
+            )
+        else:
+            workspace = workspaces[0]
+        channel = store.create_channel(
+            workspace_id=workspace["id"],
+            name=name,
+            slug=None,
+            channel_code=channel_code,
+            timezone=timezone,
+            primary_language=primary_language,
+            stream_monitoring=(
+                stream_monitoring or plan_code == "enterprise"
+            ),
+        )
+        self._apply_subscription(updated)
+        return channel
 
     def _target_prices(
         self,
@@ -246,7 +502,12 @@ class StripeBillingService:
             is_upgrade, items, target_prices,
         )
 
-    def _change_items(self, items: list[Any], target_prices: list[str]) -> list[dict]:
+    def _change_items(
+        self,
+        items: list[Any],
+        target_prices: list[str],
+        plan_code: str,
+    ) -> list[dict]:
         plan_prices = {self.price_id(code) for code in PLAN_RANK}
         plan_item = next(
             item for item in items
@@ -257,6 +518,22 @@ class StripeBillingService:
             "price": target_prices[0],
             "quantity": 1,
         }]
+        additional_price_ids = {
+            os.getenv(variable, "").strip()
+            for variable in ADDITIONAL_CHANNEL_PRICE_ENV.values()
+            if os.getenv(variable, "").strip()
+        }
+        additional_item = next((
+            item for item in items
+            if _value(_value(item, "price", {}), "id")
+            in additional_price_ids
+        ), None)
+        if additional_item:
+            changes.append({
+                "id": _value(additional_item, "id"),
+                "price": self.additional_channel_price_id(plan_code),
+                "quantity": int(_value(additional_item, "quantity", 1) or 1),
+            })
         addon_item = next(
             (
                 item for item in items
@@ -309,7 +586,7 @@ class StripeBillingService:
         invoice = stripe.Invoice.create_preview(
             subscription=_value(subscription, "id"),
             subscription_details={
-                "items": self._change_items(items, target_prices),
+                "items": self._change_items(items, target_prices, plan_code),
                 "proration_behavior": "always_invoice",
             },
         )
@@ -342,7 +619,7 @@ class StripeBillingService:
             for item in items
         ]
         if is_upgrade:
-            changes = self._change_items(items, target_prices)
+            changes = self._change_items(items, target_prices, plan_code)
             schedule_id = _value(subscription, "schedule")
             if schedule_id:
                 stripe.SubscriptionSchedule.release(schedule_id)
@@ -401,10 +678,32 @@ class StripeBillingService:
         period_end = _value(subscription, "current_period_end") or _value(
             items[0] if items else {}, "current_period_end"
         )
-        target_items = [
-            {"price": price_id, "quantity": 1}
-            for price_id in target_prices
-        ]
+        additional_price_ids = {
+            os.getenv(variable, "").strip()
+            for variable in ADDITIONAL_CHANNEL_PRICE_ENV.values()
+            if os.getenv(variable, "").strip()
+        }
+        additional_item = next((
+            item for item in items
+            if _value(_value(item, "price", {}), "id")
+            in additional_price_ids
+        ), None)
+        monitoring_item = next((
+            item for item in items
+            if _value(_value(item, "price", {}), "id")
+            == self.stream_price_id()
+        ), None)
+        target_items = [{"price": target_prices[0], "quantity": 1}]
+        if additional_item:
+            target_items.append({
+                "price": self.additional_channel_price_id(plan_code),
+                "quantity": int(_value(additional_item, "quantity", 1) or 1),
+            })
+        if len(target_prices) == 2:
+            target_items.append({
+                "price": target_prices[1],
+                "quantity": int(_value(monitoring_item, "quantity", 1) or 1),
+            })
         stripe.SubscriptionSchedule.modify(
             _value(schedule, "id"),
             end_behavior="release",

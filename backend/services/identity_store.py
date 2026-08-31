@@ -369,6 +369,7 @@ class IdentityStore:
         channel_code: str | None = None,
         channel_timezone: str = "America/New_York",
         channel_language: str = "en",
+        channel_stream_monitoring: bool = False,
         display_name: str,
         email: str,
         password: str,
@@ -436,8 +437,9 @@ class IdentityStore:
                     """
                     INSERT INTO channels (
                         id, workspace_id, name, slug, channel_code, timezone,
-                        primary_language, active, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        primary_language, stream_monitoring, active,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         channel_id,
@@ -447,6 +449,7 @@ class IdentityStore:
                         initial_channel_code,
                         channel_timezone,
                         channel_language,
+                        int(channel_stream_monitoring),
                         timestamp,
                         timestamp,
                     ),

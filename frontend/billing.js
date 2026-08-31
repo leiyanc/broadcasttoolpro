@@ -32,10 +32,22 @@ const billingMonitoringChoice = document.querySelector(
 const billingMonitoringChoiceInput = document.querySelector(
   "#billing-monitoring-choice-input",
 );
+const billingChannelForm = document.querySelector("#billing-channel-form");
+const billingChannelPreview = document.querySelector("#billing-channel-preview");
+const billingChannelCosts = document.querySelector("#billing-channel-costs");
+const billingChannelEdit = document.querySelector("#billing-channel-edit");
+const billingChannelConfirm = document.querySelector("#billing-channel-confirm");
+const billingChannelMonitoringField = document.querySelector(
+  "#billing-channel-monitoring-field",
+);
+const billingChannelMonitoringNote = document.querySelector(
+  "#billing-channel-monitoring-note",
+);
 let billingOrganization = null;
 let latestBillingPayload = null;
 let billingPaymentsAvailable = false;
 let pendingBillingChange = null;
+let pendingChannelPurchase = null;
 
 function billingText(key, fallback, values = {}) {
   let text = window.BTPi18n?.t(key, fallback) ?? fallback;
@@ -135,6 +147,115 @@ function billingCard(label, value, detail = "") {
     card.appendChild(paragraph);
   }
   return card;
+}
+
+function channelPurchasePayload() {
+  const data = new FormData(billingChannelForm);
+  return {
+    name: String(data.get("name") || "").trim(),
+    channel_code: String(data.get("channel_code") || "").trim(),
+    timezone: String(data.get("timezone") || "UTC"),
+    primary_language: String(data.get("primary_language") || "en"),
+    stream_monitoring: data.get("stream_monitoring") === "on",
+  };
+}
+
+function configureChannelPurchase(pricing) {
+  if (!billingChannelForm) return;
+  const planCode = pricing.plan_code;
+  const checkbox = billingChannelForm.elements.stream_monitoring;
+  const enterprise = planCode === "enterprise";
+  const professional = planCode === "professional";
+  checkbox.disabled = !professional;
+  checkbox.checked = enterprise;
+  billingChannelMonitoringField.classList.toggle(
+    "is-hidden",
+    planCode === "programming_suite",
+  );
+  billingChannelMonitoringNote.textContent = enterprise
+    ? billingText("billing.monitoringIncludedChannel", "Included with Enterprise")
+    : billingText("billing.monitoringPerChannel", "+$59/month for this monitored channel");
+}
+
+async function previewChannelPurchase(event) {
+  event.preventDefault();
+  if (!billingOrganization || !billingChannelForm.reportValidity()) return;
+  const payload = channelPurchasePayload();
+  billingMessage.textContent = billingText(
+    "billing.calculatingChannel",
+    "Calculating the prorated channel cost…",
+  );
+  billingMessage.classList.remove("is-error");
+  try {
+    const preview = await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/channels/preview`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      },
+    );
+    pendingChannelPurchase = {payload, preview};
+    billingChannelCosts.replaceChildren(
+      billingCard(
+        billingText("billing.additionalChannel", "Additional channel"),
+        billingMoney(preview.additional_channel_monthly_cents, preview.currency),
+        billingText("billing.perMonth", "per month"),
+      ),
+      billingCard(
+        billingText("billing.streamMonitoring", "Stream Monitoring"),
+        preview.stream_monitoring_monthly_cents
+          ? billingMoney(preview.stream_monitoring_monthly_cents, preview.currency)
+          : billingText("billing.includedOrNotSelected", "Included or not selected"),
+        billingText("billing.perMonth", "per month"),
+      ),
+      billingCard(
+        billingText("billing.dueNow", "Due now"),
+        billingMoney(preview.amount_due_now_cents, preview.currency),
+        billingText("billing.stripeProration", "Stripe prorated amount"),
+      ),
+    );
+    billingChannelForm.classList.add("is-hidden");
+    billingChannelPreview.classList.remove("is-hidden");
+    billingMessage.textContent = "";
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  }
+}
+
+async function confirmChannelPurchase() {
+  if (!pendingChannelPurchase || !billingOrganization) return;
+  billingChannelConfirm.disabled = true;
+  billingMessage.textContent = billingText(
+    "billing.addingChannel",
+    "Confirming payment and activating the channel…",
+  );
+  try {
+    await authRequest(
+      `/api/billing/organizations/${billingOrganization.id}/channels`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(pendingChannelPurchase.payload),
+      },
+    );
+    pendingChannelPurchase = null;
+    billingChannelForm.reset();
+    billingChannelForm.classList.remove("is-hidden");
+    billingChannelPreview.classList.add("is-hidden");
+    billingMessage.textContent = billingText(
+      "billing.channelAdded",
+      "Channel added and activated.",
+    );
+    await loadOrganizationChannels(billingOrganization);
+    await loadBilling();
+  } catch (error) {
+    billingMessage.textContent = error.message;
+    billingMessage.classList.add("is-error");
+  } finally {
+    billingChannelConfirm.disabled = false;
+  }
 }
 
 async function startCheckout(planCode, includeStreamMonitoring = false) {
@@ -595,6 +716,7 @@ function renderBilling(payload) {
       : payload.pricing
   );
   latestBillingPayload = {...payload, pricing};
+  configureChannelPurchase(pricing);
   const complimentary = subscription.payment_waived;
   const awaitingPayment = (
     subscription.provider === "stripe_pending"
@@ -698,6 +820,26 @@ function renderBilling(payload) {
       timingLabel,
       timingValue,
       timingDetail,
+    ),
+    billingCard(
+      billingText("billing.channels", "Channels"),
+      String(pricing.channel_count || 1),
+      (pricing.additional_channel_count || 0) > 0
+        ? billingText(
+            "billing.additionalChannelsDetail",
+            "{count} additional at {price}/month each",
+            {
+              count: pricing.additional_channel_count,
+              price: billingMoney(
+                pricing.additional_channel_monthly_cents,
+                pricing.currency,
+              ),
+            },
+          )
+        : billingText(
+            "billing.firstChannelIncluded",
+            "First channel included with the plan",
+          ),
     ),
   );
   billingSubscriptionActions.replaceChildren();
@@ -840,6 +982,13 @@ billingCloseButton.addEventListener("click", () => {
 
 billingChangeBack.addEventListener("click", closeBillingConfirmation);
 billingChangeConfirm.addEventListener("click", confirmSubscriptionChange);
+billingChannelForm?.addEventListener("submit", previewChannelPurchase);
+billingChannelEdit?.addEventListener("click", () => {
+  pendingChannelPurchase = null;
+  billingChannelPreview.classList.add("is-hidden");
+  billingChannelForm.classList.remove("is-hidden");
+});
+billingChannelConfirm?.addEventListener("click", confirmChannelPurchase);
 billingMonitoringChoiceInput.addEventListener("change", async () => {
   if (!pendingBillingChange) return;
   const planCode = pendingBillingChange.planCode;

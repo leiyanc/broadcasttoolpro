@@ -2,11 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from stripe import SignatureVerificationError, StripeError
 
 from backend.api.auth import current_user, require_organization_role
-from backend.models.billing import CheckoutSessionCreate, SubscriptionChangeCreate
+from backend.models.billing import (
+    ChannelPurchaseCreate,
+    CheckoutSessionCreate,
+    SubscriptionChangeCreate,
+)
 from backend.services.billing_store import billing_store
 from backend.services.commercial_pricing import commercial_pricing
 from backend.services.entitlements import entitlement_store
 from backend.services.stripe_billing import stripe_billing
+from backend.services.tenant_store import tenant_store
 
 
 router = APIRouter(
@@ -34,6 +39,9 @@ def organization_billing(
         entitlements = entitlement_store.effective_entitlements(
             organization_id
         )
+        channel_count = len(
+            tenant_store.list_organization_channels(organization_id)
+        )
         return {
             "subscription": subscription,
             "entitlements": entitlements,
@@ -41,6 +49,7 @@ def organization_billing(
                 subscription["plan"],
                 entitlements,
                 subscription["billing_cycle"],
+                channel_count,
             ),
             "invoices": billing_store.list_invoices(organization_id),
             "payments_available": bool(
@@ -117,6 +126,52 @@ def change_subscription(
         raise HTTPException(
             status_code=503,
             detail="Stripe could not update the subscription.",
+        ) from exc
+
+
+@router.post("/organizations/{organization_id}/channels/preview")
+def preview_channel_purchase(
+    organization_id: str,
+    request: ChannelPurchaseCreate,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.preview_channel_purchase(
+            organization_id=organization_id,
+            name=request.name,
+            channel_code=request.channel_code,
+            timezone=request.timezone,
+            primary_language=request.primary_language,
+            stream_monitoring=request.stream_monitoring,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not calculate the channel cost.",
+        ) from exc
+
+
+@router.post("/organizations/{organization_id}/channels")
+def purchase_channel(
+    organization_id: str,
+    request: ChannelPurchaseCreate,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id, "admin")
+    try:
+        return stripe_billing.purchase_channel(
+            organization_id=organization_id,
+            **request.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (RuntimeError, StripeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe could not add the channel to the subscription.",
         ) from exc
 
 

@@ -79,5 +79,11 @@ services:
         sync: false
       - key: BTP_STRIPE_PRICE_ENTERPRISE
         sync: false
+      - key: BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROGRAMMING
+        sync: false
+      - key: BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_PROFESSIONAL
+        sync: false
+      - key: BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_ENTERPRISE
+        sync: false
       - key: BTP_STRIPE_PRICE_STREAM_MONITORING
         sync: false

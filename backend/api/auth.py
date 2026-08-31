@@ -297,6 +297,10 @@ def register_customer(
             channel_code=request.channel_code,
             channel_timezone=request.channel_timezone,
             channel_language=request.channel_language,
+            channel_stream_monitoring=(
+                request.include_stream_monitoring
+                or request.requested_plan == "enterprise"
+            ),
             display_name=request.display_name,
             email=request.email,
             password=request.password,

@@ -261,6 +261,11 @@ def test_billing_routes_are_registered():
         in paths
     )
     assert "/api/billing/stripe/webhook" in paths
+    assert (
+        "/api/billing/organizations/{organization_id}/channels/preview"
+        in paths
+    )
+    assert "/api/billing/organizations/{organization_id}/channels" in paths
 
 
 def test_commercial_pricing_uses_plan_and_addons():
@@ -278,6 +283,16 @@ def test_commercial_pricing_uses_plan_and_addons():
     assert programming["monthly_total_cents"] == 3900
     assert len(programming["available_plans"]) == 3
     assert programming["available_addons"][0]["monthly_cents"] == 5900
+
+    multi_channel = commercial_pricing(
+        "professional",
+        base_entitlements,
+        channel_count=3,
+    )
+    assert multi_channel["channel_count"] == 3
+    assert multi_channel["additional_channel_count"] == 2
+    assert multi_channel["additional_channel_monthly_cents"] == 2500
+    assert multi_channel["monthly_total_cents"] == 8900
 
     professional = commercial_pricing(
         "professional",
