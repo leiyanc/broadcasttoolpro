@@ -6,7 +6,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from backend.services.tenant_store import DATABASE_PATH, _slugify, _utc_now
+from backend.services.tenant_store import (
+    DATABASE_PATH,
+    _slugify,
+    _utc_now,
+    _validate_timezone,
+)
 
 
 SESSION_HOURS = 12
@@ -360,6 +365,10 @@ class IdentityStore:
         self,
         *,
         organization_name: str,
+        channel_name: str | None = None,
+        channel_code: str | None = None,
+        channel_timezone: str = "America/New_York",
+        channel_language: str = "en",
         display_name: str,
         email: str,
         password: str,
@@ -376,6 +385,13 @@ class IdentityStore:
         organization_slug = (
             f"{_slugify(organization_name)}-{secrets.token_hex(3)}"
         )
+        initial_channel_name = (channel_name or organization_name).strip()
+        initial_channel_code = (
+            channel_code or _slugify(initial_channel_name)
+        ).strip()
+        channel_timezone = _validate_timezone(channel_timezone)
+        workspace_id = str(uuid4())
+        channel_id = str(uuid4())
         try:
             with self._connection() as connection:
                 if connection.execute(
@@ -396,6 +412,41 @@ class IdentityStore:
                         organization_name.strip(),
                         organization_slug,
                         internal_plan,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO workspaces (
+                        id, organization_id, name, slug, default_timezone,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, 'channel-operations', ?, ?, ?)
+                    """,
+                    (
+                        workspace_id,
+                        organization_id,
+                        "Channel Operations",
+                        channel_timezone,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO channels (
+                        id, workspace_id, name, slug, channel_code, timezone,
+                        primary_language, active, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        channel_id,
+                        workspace_id,
+                        initial_channel_name,
+                        _slugify(initial_channel_name),
+                        initial_channel_code,
+                        channel_timezone,
+                        channel_language,
                         timestamp,
                         timestamp,
                     ),

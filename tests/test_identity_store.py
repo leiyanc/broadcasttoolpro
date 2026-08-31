@@ -170,6 +170,8 @@ def test_customer_registration_uses_selected_plan_without_trial_access():
 
         user, organization, token = identities.register_customer(
             organization_name="Self Service Network",
+            channel_name="Self Service News",
+            channel_code="self-service-news",
             display_name="Account Owner",
             email="owner@example.com",
             password="a-secure-password",
@@ -181,9 +183,13 @@ def test_customer_registration_uses_selected_plan_without_trial_access():
             amount_cents=19900,
         )
         access = entitlements.effective_entitlements(organization["id"])
+        channels = tenants.list_organization_channels(organization["id"])
 
         assert identities.user_from_session(token) == user
         assert organization["plan"] == "enterprise"
+        assert len(channels) == 1
+        assert channels[0]["name"] == "Self Service News"
+        assert channels[0]["channel_code"] == "self-service-news"
         assert subscription["provider"] == "stripe_pending"
         assert subscription["access_state"] == "awaiting_payment"
         assert access["access"]["active"] is False

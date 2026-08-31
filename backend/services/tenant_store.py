@@ -266,6 +266,21 @@ class TenantStore:
             ).fetchall()
         return [self._channel(row) for row in rows]
 
+    def list_organization_channels(self, organization_id: str) -> list[dict]:
+        self.get_organization(organization_id)
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT channels.*
+                FROM channels
+                JOIN workspaces ON workspaces.id = channels.workspace_id
+                WHERE workspaces.organization_id = ?
+                ORDER BY channels.active DESC, channels.name
+                """,
+                (organization_id,),
+            ).fetchall()
+        return [self._channel(row) for row in rows]
+
     def get_channel(self, channel_id: str) -> dict:
         with self._connection() as connection:
             row = connection.execute(

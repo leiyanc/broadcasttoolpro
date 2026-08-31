@@ -293,6 +293,10 @@ def register_customer(
     try:
         user, organization, token = identity_store.register_customer(
             organization_name=request.organization_name,
+            channel_name=request.channel_name,
+            channel_code=request.channel_code,
+            channel_timezone=request.channel_timezone,
+            channel_language=request.channel_language,
             display_name=request.display_name,
             email=request.email,
             password=request.password,

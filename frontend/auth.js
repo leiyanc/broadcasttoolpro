@@ -66,6 +66,55 @@ const suspendedAdminButton = document.querySelector(
 );
 let currentIdentity = null;
 let currentEntitlements = null;
+let currentChannel = null;
+const activeChannelSelect = document.querySelector("#active-channel-select");
+const activeChannelName = document.querySelector("#active-channel-name");
+const activeChannelDetails = document.querySelector("#active-channel-details");
+
+function publishActiveChannel(channel) {
+  currentChannel = channel || null;
+  window.BTPActiveChannel = currentChannel;
+  if (activeChannelName) {
+    activeChannelName.textContent = channel?.name || "No registered channel";
+  }
+  if (activeChannelDetails) {
+    activeChannelDetails.textContent = channel
+      ? `${channel.channel_code || channel.slug} · ${channel.timezone}`
+      : "";
+  }
+  window.dispatchEvent(new CustomEvent("btp:channel", {
+    detail: currentChannel,
+  }));
+}
+
+async function loadOrganizationChannels(organization) {
+  if (!organization || !activeChannelSelect) return;
+  const result = await authRequest(
+    `/api/platform/organizations/${organization.id}/channels`,
+  );
+  const channels = (result.channels || []).filter((channel) => channel.active);
+  activeChannelSelect.replaceChildren();
+  for (const channel of channels) {
+    const option = document.createElement("option");
+    option.value = channel.id;
+    option.textContent = channel.name;
+    activeChannelSelect.appendChild(option);
+  }
+  const storageKey = `btp.active-channel.${organization.id}`;
+  const storedId = localStorage.getItem(storageKey);
+  const selected = channels.find((channel) => channel.id === storedId)
+    || channels[0]
+    || null;
+  if (selected) activeChannelSelect.value = selected.id;
+  publishActiveChannel(selected);
+  activeChannelSelect.onchange = () => {
+    const channel = channels.find(
+      (candidate) => candidate.id === activeChannelSelect.value,
+    ) || null;
+    if (channel) localStorage.setItem(storageKey, channel.id);
+    publishActiveChannel(channel);
+  };
+}
 
 function updateAccessRequestPricing() {
   const plan = accessRequestPlan.value;
@@ -314,6 +363,7 @@ function requestedAuthenticationMode() {
 function showAuthentication(bootstrapRequired) {
   currentIdentity = null;
   currentEntitlements = null;
+  publishActiveChannel(null);
   resetAdministrativeSurface();
   authGate.classList.remove("is-hidden");
   platformContent.classList.add("is-hidden");
@@ -360,6 +410,7 @@ function showPlatform(identity) {
   window.dispatchEvent(new CustomEvent("btp:identity", {
     detail: identity,
   }));
+  loadOrganizationChannels(organization).catch(() => publishActiveChannel(null));
   refreshOrganizationEntitlements();
 }
 

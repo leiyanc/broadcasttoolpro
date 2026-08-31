@@ -109,6 +109,19 @@ def list_workspaces(
     return {"workspaces": workspaces}
 
 
+@router.get("/organizations/{organization_id}/channels")
+def list_organization_channels(
+    organization_id: str,
+    user: dict = Depends(current_user),
+):
+    require_organization_role(user["id"], organization_id)
+    try:
+        channels = tenant_store.list_organization_channels(organization_id)
+    except KeyError as exc:
+        raise _not_found(exc) from exc
+    return {"channels": channels}
+
+
 @router.get("/workspaces/{workspace_id}")
 def get_workspace(
     workspace_id: str,

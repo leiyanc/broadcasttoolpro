@@ -117,6 +117,19 @@ class TrialRegistrationRequest(BaseModel):
 
 class SignupRegistrationRequest(BaseModel):
     organization_name: str = Field(min_length=2, max_length=120)
+    channel_name: str = Field(min_length=2, max_length=120)
+    channel_code: str = Field(
+        min_length=2,
+        max_length=80,
+        pattern=r"^[A-Za-z0-9]+(?:[-_.][A-Za-z0-9]+)*$",
+    )
+    channel_timezone: str = Field(default="America/New_York", max_length=64)
+    channel_language: str = Field(
+        default="en",
+        min_length=2,
+        max_length=12,
+        pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
+    )
     display_name: str = Field(min_length=2, max_length=120)
     email: str
     password: str = Field(min_length=10, max_length=128)

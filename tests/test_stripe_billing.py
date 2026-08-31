@@ -57,6 +57,7 @@ def test_checkout_uses_server_side_prices_and_metadata(monkeypatch):
         {"price": "price_monitoring", "quantity": 1},
     ]
     assert captured["subscription_data"]["metadata"]["organization_id"]
+    assert captured["metadata"]["channel_quantity"] == "1"
     assert "price" not in captured["metadata"]
 
 

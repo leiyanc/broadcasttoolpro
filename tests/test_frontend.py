@@ -747,6 +747,19 @@ def test_public_contact_uses_an_internal_sales_form():
     assert 'href="/security" data-i18n="landing.footer.security"' in html
 
 
+def test_self_service_signup_requires_initial_channel_identity():
+    html = (FRONTEND_DIR / "index.html").read_text()
+    javascript = (FRONTEND_DIR / "auth.js").read_text()
+
+    assert 'name="channel_name" required' in html
+    assert 'name="channel_code" required' in html
+    assert 'name="channel_timezone" required' in html
+    assert 'name="channel_language" required' in html
+    assert 'id="active-channel-select"' in html
+    assert "/channels`" in javascript
+    assert 'new CustomEvent("btp:channel"' in javascript
+
+
 def test_customer_help_routes_topics_to_the_right_mailbox():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "help.js").read_text()

@@ -8,6 +8,7 @@ import stripe
 from backend.services.billing_store import billing_store
 from backend.services.email_outbox import email_outbox_store
 from backend.services.identity_store import identity_store
+from backend.services.tenant_store import TenantStore
 
 
 PLAN_PRICE_ENV = {
@@ -153,9 +154,25 @@ class StripeBillingService:
             raise ValueError(
                 "This organization already has an active Stripe subscription."
             )
-        line_items = [{"price": self.price_id(plan_code), "quantity": 1}]
+        channel_quantity = max(
+            1,
+            len(
+                TenantStore(
+                    billing_store.database_path
+                ).list_organization_channels(organization_id)
+            ),
+        )
+        line_items = [
+            {
+                "price": self.price_id(plan_code),
+                "quantity": channel_quantity,
+            }
+        ]
         if include_stream_monitoring:
-            line_items.append({"price": self.stream_price_id(), "quantity": 1})
+            line_items.append({
+                "price": self.stream_price_id(),
+                "quantity": channel_quantity,
+            })
         application_url = os.getenv(
             "BTP_APPLICATION_URL",
             "http://127.0.0.1:8000/app",
@@ -164,6 +181,7 @@ class StripeBillingService:
             "organization_id": organization_id,
             "plan_code": plan_code,
             "stream_monitoring": str(include_stream_monitoring).lower(),
+            "channel_quantity": str(channel_quantity),
         }
         stripe.api_key = secret_key
         session = stripe.checkout.Session.create(

@@ -1453,6 +1453,22 @@ main {
   border-radius: 50%;
 }
 
+.channel-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.channel-context .eyebrow { margin: 0 0 5px; }
+.channel-context strong,
+.channel-context small { display: block; }
+.channel-context small { margin-top: 3px; color: var(--muted); }
+.channel-context label { width: min(100%, 320px); }
+.channel-context select { width: 100%; }
+
 .module-launcher {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2840,6 +2856,11 @@ footer {
   .operations-assurance,
   .module-launcher {
     grid-template-columns: 1fr;
+  }
+
+  .channel-context {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .module-launcher a {
