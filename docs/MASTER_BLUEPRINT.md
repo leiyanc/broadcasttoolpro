@@ -208,6 +208,8 @@ access, SSO, contractual service levels, and additional identity controls.
 Billing is organization-scoped and separated from product entitlements.
 
 - The organization plan defines the core product package.
+- Every plan includes one registered channel. Additional channel quantities are
+  priced by plan and remain on the organization's single subscription cycle.
 - Add-ons define optional product access.
 - The subscription records the commercial lifecycle: status, billing cycle,
   renewal period, cancellation state, currency, and payment-provider
@@ -235,11 +237,24 @@ stored only in Render as `BTP_STRIPE_WEBHOOK_SECRET`. The earlier staging
 `onrender.com` destination was removed after two real subscription-update
 deliveries returned HTTP 200 through the custom domain.
 
-The initial Stripe release uses monthly recurring subscriptions for Programming
-Suite, Professional, Enterprise, and the Professional Stream Monitoring add-on.
-Enterprise includes Stream Monitoring. Existing Stripe subscriptions cannot be
-duplicated through Checkout; later self-service changes and cancellations will
-use the Stripe Customer Portal after its commercial policy is finalized.
+The Stripe release uses monthly recurring subscriptions for Programming Suite,
+Professional, Enterprise, plan-specific additional-channel quantities, and
+Professional Stream Monitoring per monitored channel. Enterprise includes
+Stream Monitoring. Programming Suite includes one channel for $39/month and
+additional channels at $25/month; Professional includes one for $99/month and
+additional channels at $49/month; Enterprise includes one for $199/month and
+additional channels at $79/month. Existing Stripe subscriptions cannot be
+duplicated through Checkout.
+
+Adding a channel updates the existing Stripe subscription and may create a
+prorated charge for the remainder of the current period. The channel is created
+only after Stripe accepts that update, and it adopts the organization's existing
+renewal date. A channel removal is scheduled for period end with no mid-cycle
+credit. The channel remains active until that date, the removal can be canceled
+before it becomes effective, and at least one active channel must remain. Prior
+reports, invoices, and audit history are preserved after operational
+deactivation. Stripe subscription schedules serialize future plan and channel
+changes; conflicting scheduled changes must be resolved first.
 
 Cancellation is distinct from organization suspension and request rejection.
 An immediately canceled subscription blocks product modules while preserving
@@ -263,37 +278,25 @@ confirmation. Stripe remains authoritative for recurring plan, billing-cycle,
 renewal, and cancellation state; these fields are read-only in the Control
 Panel for provider-managed subscriptions.
 
-## Account Access and Trial Lifecycle
+## Account Access and Self-Service Subscription Lifecycle
 
-Account creation supports two distinct commercial paths:
+Get Started creates the customer identity, organization, and required first
+registered channel. The customer selects Programming Suite, Professional, or
+Enterprise and proceeds directly to hosted Stripe Checkout. There is no paid
+Request Access approval gate and no separate trial: the public XMLTV Validator
+is the free, no-account product experience.
 
-- Start an optional 7-day free trial.
-- Submit a Request Access form for a paid account without starting a trial.
+Creating an account or returning from Checkout is not proof of payment. Paid
+module access begins only after the verified Stripe webhook confirms the
+subscription. If Checkout is interrupted, the organization remains available
+to its owner so Billing can resume the approved plan selection without creating
+duplicate users, organizations, workspaces, or channels.
 
-The trial must never be mandatory. A Request Access submission creates only a
-pending commercial request and grants no product access. A Super Admin reviews
-the request, assigns Professional or Enterprise, and creates a separate paid
-organization account. The customer then uses a single-use activation link to
-create a password. Activation links expire after seven days.
-
-After submission, the request form is replaced by a dedicated confirmation
-screen with the request reference and next steps. The platform queues an
-acknowledgement for the requester and a review notification for every active
-Super Admin. Email delivery depends on the configured provider. Amazon SES
-production access is enabled in `us-east-1`, with authenticated sending and
-signed delivery-event processing.
-
-A rejected request does not prevent the same email address from submitting a
-future request. Existing or suspended customer identities may also submit a
-new commercial review request. Approval reactivates the existing organization
-and preserves its history instead of creating duplicate users or workspaces.
-
-Professional approval creates an active manual subscription at the published
-Professional price and enables Programming plus Traffic Operations.
-Enterprise approval creates an active manual subscription at the published
-Enterprise price and enables the complete currently available Enterprise
-entitlement set. Payment-provider integration may replace manual subscription
-activation later without changing the onboarding domain model.
+Amazon SES provides authenticated transactional messages for account,
+subscription, payment, and support events in `us-east-1`, with signed
+delivery-event processing. Super Admin review remains available for support,
+security, complimentary access, and exceptional commercial handling, but it is
+not part of normal self-service activation.
 
 Super Admins may grant internal complimentary access when approving a trusted
 Professional or Enterprise evaluator. This is an administrative waiver, not a
@@ -308,8 +311,7 @@ public plan:
 
 Authentication requirements:
 
-- Sign In, Request Access, Free Trial, and Account Activation entry points
-  must preserve their
+- Sign In and Get Started are independent entry points and must preserve their
   requested mode.
 - Sessions are temporary by default.
 - An explicit Remember Me option may extend the authenticated session for 30

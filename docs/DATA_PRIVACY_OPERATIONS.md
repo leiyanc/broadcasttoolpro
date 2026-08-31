@@ -14,8 +14,9 @@ Authenticated account contacts submit requests through:
 
 The request must identify the organization, requested action, and categories
 of information involved. Operational source files are not attached
-automatically. Requests from people who cannot sign in must first be matched to
-an existing organization contact through the public Request Access workflow.
+automatically. Requests from people who cannot sign in must be submitted to
+`security@broadcasttoolpro.com` and matched to an existing authorized
+organization contact before any account information is disclosed or changed.
 
 Privacy requests are classified under `Account & Privacy` regardless of which
 product module was open when the Help Center was launched. They must not be
@@ -70,6 +71,7 @@ No destructive privacy operation is automatic during the pilot.
 | Authentication and security audit records | Retained for active pilot operations | Restricted administrative access |
 | Support and privacy-request history | Retained with the account during the pilot | Customer and administrator case history |
 | Provider email delivery events | Retained for delivery diagnostics and suppression enforcement | Email Health |
+| Inactive-channel identity, reports, invoices, and audit references | Retained with the organization under the applicable record schedule; channel removal is not a deletion request | Organization-scoped access and controlled privacy-request review |
 
 The final post-account-closure retention schedule requires product-owner and
 legal approval before commercial launch. Until then, account deletion cannot

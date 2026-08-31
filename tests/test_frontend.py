@@ -513,7 +513,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260828-8' in html
-    assert '/static/i18n.js?v=20260828-4' in html
+    assert '/static/i18n.js?v=20260831-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html

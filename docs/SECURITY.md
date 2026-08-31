@@ -60,6 +60,11 @@ hosting provider's secret-variable manager, not uploaded as a file.
 
 ## Operational Requirements
 
+- Keep channel identity, reports, and operational history scoped to the owning
+  organization. Channel deactivation must not expose or transfer those records.
+- Treat removal from future channel billing as an access-state change, not a
+  destructive deletion. Historical records remain subject to documented
+  retention and authorized privacy-request controls.
 - Every push and pull request must pass the complete automated test suite and
   the production-dependency vulnerability audit in GitHub Actions.
 - Dependabot checks Python packages weekly and GitHub Actions monthly. Updates

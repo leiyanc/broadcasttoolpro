@@ -10,7 +10,7 @@
     <title>Security &amp; Data Handling — Broadcast Tool Pro</title>
     <link rel="icon" href="/static/assets/broadcast-tool-pro-mark.png" />
     <link rel="stylesheet" href="/static/legal.css?v=20260826-1" />
-    <script src="/static/i18n.js?v=20260826-3" defer></script>
+    <script src="/static/i18n.js?v=20260831-1" defer></script>
   </head>
   <body>
     <header class="legal-header">
@@ -37,7 +37,7 @@
         through controlled access, tenant separation, monitored workflows,
         and verified recovery practices.
       </p>
-      <p class="legal-date" data-i18n="security.updated">Last updated August 26, 2026</p>
+      <p class="legal-date" data-i18n="security.updated">Last updated August 31, 2026</p>
 
       <div class="security-facts" aria-label="Security highlights">
         <article><span data-i18n="security.fact.access.label">ACCESS</span><strong data-i18n="security.fact.access.value">Role-based and organization-scoped</strong></article>
@@ -69,7 +69,7 @@
       <section class="legal-section">
         <h2 data-i18n="security.access.title">3. Identity and access controls</h2>
         <ul>
-          <li data-i18n="security.access.tenant">Customer records and reports are scoped to their organization.</li>
+          <li data-i18n="security.access.tenant">Customer records and reports are scoped to their organization and registered channel context.</li>
           <li data-i18n="security.access.roles">Owner, administrator, operator, and viewer roles control permitted actions.</li>
           <li data-i18n="security.access.sessions">Production sessions use Secure, HttpOnly, SameSite cookies and expire automatically.</li>
           <li data-i18n="security.access.passwords">Passwords use salted one-way hashing; raw passwords and session tokens are not stored.</li>
@@ -109,7 +109,9 @@
           preserve auditability, resolve disputes, or meet legal obligations.
           Authorized contacts may request access, export, correction, or
           deletion; residual backup copies expire through the normal rotation
-          cycle.
+          cycle. Removing a channel from future billing disables its operational
+          use at the effective date but does not bypass these retention,
+          auditability, or authorized-deletion controls.
         </p>
       </section>
 
