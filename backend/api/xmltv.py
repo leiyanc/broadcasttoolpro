@@ -168,6 +168,7 @@ async def process_schedule(
     programmes = []
     parsing_issues = []
     auto_fixes = []
+    missing_channel_rows = []
 
     extension = Path(filename).suffix.lower()
     first_data_row = 5 if extension == ".xlsx" else 2
@@ -196,6 +197,21 @@ async def process_schedule(
 
     for position, row in enumerate(rows):
         source_row = first_data_row + position
+
+        if not str(row.get("Channel (Optional)") or "").strip():
+            missing_channel_rows.append(source_row)
+            parsing_issues.append(
+                ValidationIssue(
+                    rule_id="VAL-011",
+                    row=source_row,
+                    field="Channel",
+                    severity="warning",
+                    message=(
+                        "Channel is required. Select the registered channel "
+                        "and enter its name on every programme row."
+                    ),
+                )
+            )
 
         try:
             programme = build_programme(
@@ -227,7 +243,9 @@ async def process_schedule(
     )
     utc_schedule = []
 
-    if report.critical == 0:
+    channel_identity_blocked = bool(missing_channel_rows)
+
+    if report.critical == 0 and not channel_identity_blocked:
         try:
             utc_schedule = build_utc_schedule(
                 programmes,
@@ -255,14 +273,19 @@ async def process_schedule(
         for (code, message), count in fix_counts.items()
     ]
 
+    validation = report.to_dict()
+    if channel_identity_blocked:
+        validation["ready_to_generate"] = False
+        validation["processing_blocked"] = True
+
     return {
-        "success": report.critical == 0,
+        "success": report.critical == 0 and not channel_identity_blocked,
         "filename": filename,
         "file_type": extension,
         "rows_received": len(rows),
         "programmes_imported": len(programmes),
         "channel_timezone": channel_timezone,
-        "validation": report.to_dict(),
+        "validation": validation,
         "missing_columns": [],
         "unknown_columns": unknown_columns,
         "suggested_fixes": len(auto_fixes),
@@ -270,7 +293,7 @@ async def process_schedule(
         "fixes_applied": apply_fixes,
         "fix_summary": fix_summary,
         "auto_fixes": auto_fixes,
-        "programmes": utc_schedule,
+        "programmes": utc_schedule if not channel_identity_blocked else [],
     }
 
 

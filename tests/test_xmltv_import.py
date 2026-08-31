@@ -65,6 +65,28 @@ def test_empty_schedule_is_not_ready_to_generate():
     assert result["validation"]["ready_to_generate"] is False
 
 
+def test_missing_channel_is_a_blocking_warning():
+    lines = Path("tests/sample_schedule.csv").read_text().splitlines()
+    row = lines[1].replace("Sample TV,", ",", 1)
+
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "missing_channel.csv"
+        path.write_text("\n".join([lines[0], row]))
+        result = import_file(path)
+
+    issue = next(
+        item for item in result["validation"]["issues"]
+        if item["rule_id"] == "VAL-011"
+    )
+    assert result["success"] is False
+    assert result["programmes"] == []
+    assert result["validation"]["ready_to_generate"] is False
+    assert result["validation"]["processing_blocked"] is True
+    assert issue["severity"] == "warning"
+    assert issue["field"] == "Channel"
+    assert issue["row"] == 2
+
+
 def test_invalid_csv_reports_source_row():
     lines = Path("tests/sample_schedule.csv").read_text().splitlines()
     invalid_row = lines[1].replace("Morning News", "", 1)

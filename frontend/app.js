@@ -64,6 +64,16 @@ function localizedFixMessage(fix) {
   return key ? uiText(key, fallback) : fallback;
 }
 
+function localizedIssueMessage(issue) {
+  const fallback = issue.message || uiText(
+    "generator.unknownIssue",
+    "Unknown issue",
+  );
+  return issue.rule_id === "VAL-011"
+    ? uiText("generator.rule.VAL-011", fallback)
+    : fallback;
+}
+
 const fallbackValidation = (message, ruleId = "REQUEST") => ({
   score: 0,
   critical: 1,
@@ -404,9 +414,7 @@ function showResult(result) {
       ? ` (${uiText("generator.issueRow", "row {row}", { row: issue.row })})`
       : "";
     appendListItem(
-      `${issue.rule_id || "VALIDATION"}: ${
-        issue.message || uiText("generator.unknownIssue", "Unknown issue")
-      }${row}`,
+      `${issue.rule_id || "VALIDATION"}: ${localizedIssueMessage(issue)}${row}`,
     );
   }
   for (const fix of fixSummary) {

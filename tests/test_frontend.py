@@ -760,6 +760,15 @@ def test_self_service_signup_requires_initial_channel_identity():
     assert 'new CustomEvent("btp:channel"' in javascript
 
 
+def test_missing_template_channel_warning_is_localized():
+    javascript = (FRONTEND_DIR / "app.js").read_text()
+    translations = (FRONTEND_DIR / "i18n.js").read_text()
+
+    assert 'issue.rule_id === "VAL-011"' in javascript
+    assert '"generator.rule.VAL-011"' in translations
+    assert "El canal es obligatorio." in translations
+
+
 def test_customer_help_routes_topics_to_the_right_mailbox():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "help.js").read_text()
