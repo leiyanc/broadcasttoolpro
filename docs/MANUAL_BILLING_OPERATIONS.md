@@ -7,7 +7,9 @@ changes, and approved complimentary or manual exceptions.
 
 ## Stripe recurring access
 
-1. The customer creates an organization and its required first channel.
+1. The customer creates an organization and enters only the customer-facing
+   name of its required first channel. BTP generates the initial Channel ID;
+   time zone and language are configured later in the relevant workflow.
 2. The customer selects a plan and continues to hosted Stripe Checkout.
 3. Only the confirmed webhook activates recurring paid access and establishes
    the organization's renewal date.

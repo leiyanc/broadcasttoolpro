@@ -171,7 +171,6 @@ def test_customer_registration_uses_selected_plan_without_trial_access():
         user, organization, token = identities.register_customer(
             organization_name="Self Service Network",
             channel_name="Self Service News",
-            channel_code="self-service-news",
             display_name="Account Owner",
             email="owner@example.com",
             password="a-secure-password",
@@ -190,6 +189,8 @@ def test_customer_registration_uses_selected_plan_without_trial_access():
         assert len(channels) == 1
         assert channels[0]["name"] == "Self Service News"
         assert channels[0]["channel_code"] == "self-service-news"
+        assert channels[0]["timezone"] == "UTC"
+        assert channels[0]["primary_language"] == "und"
         assert subscription["provider"] == "stripe_pending"
         assert subscription["access_state"] == "awaiting_payment"
         assert access["access"]["active"] is False

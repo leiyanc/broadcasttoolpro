@@ -294,9 +294,6 @@ def register_customer(
         user, organization, token = identity_store.register_customer(
             organization_name=request.organization_name,
             channel_name=request.channel_name,
-            channel_code=request.channel_code,
-            channel_timezone=request.channel_timezone,
-            channel_language=request.channel_language,
             channel_stream_monitoring=(
                 request.include_stream_monitoring
                 or request.requested_plan == "enterprise"

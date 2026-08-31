@@ -747,14 +747,17 @@ def test_public_contact_uses_an_internal_sales_form():
     assert 'href="/security" data-i18n="landing.footer.security"' in html
 
 
-def test_self_service_signup_requires_initial_channel_identity():
+def test_self_service_signup_only_requests_initial_channel_name():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "auth.js").read_text()
+    signup = html.split('id="access-request-form"', 1)[1].split(
+        "</form>", 1
+    )[0]
 
-    assert 'name="channel_name" required' in html
-    assert 'name="channel_code" required' in html
-    assert 'name="channel_timezone" required' in html
-    assert 'name="channel_language" required' in html
+    assert 'name="channel_name" required' in signup
+    assert 'name="channel_code"' not in signup
+    assert 'name="channel_timezone"' not in signup
+    assert 'name="channel_language"' not in signup
     assert 'id="active-channel-select"' in html
     assert "/channels`" in javascript
     assert 'new CustomEvent("btp:channel"' in javascript

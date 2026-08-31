@@ -286,6 +286,13 @@ Enterprise and proceeds directly to hosted Stripe Checkout. There is no paid
 Request Access approval gate and no separate trial: the public XMLTV Validator
 is the free, no-account product experience.
 
+Signup requests only the customer-facing channel name. BTP generates the stable
+internal Channel ID from that name and does not ask the customer to choose a
+time zone or primary language during account creation. Time zone and language
+are confirmed later in the operational workflow or channel settings where they
+affect an export or report; the initial stored language is undefined rather
+than inferred from the interface language.
+
 Creating an account or returning from Checkout is not proof of payment. Paid
 module access begins only after the verified Stripe webhook confirms the
 subscription. If Checkout is interrupted, the organization remains available
