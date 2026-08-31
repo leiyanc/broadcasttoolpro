@@ -311,6 +311,11 @@ def test_failed_stripe_channel_update_does_not_create_channel(monkeypatch):
         ),
     )
     monkeypatch.setattr(
+        service,
+        "_validate_new_channel",
+        lambda *_args, **_kwargs: [{"id": "existing-channel"}],
+    )
+    monkeypatch.setattr(
         stripe_module.stripe.Subscription,
         "modify",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
@@ -339,6 +344,55 @@ def test_failed_stripe_channel_update_does_not_create_channel(monkeypatch):
         raise AssertionError("Expected the Stripe update to fail.")
 
     assert store_requested["value"] is False
+
+
+def test_legacy_organization_receives_first_channel_without_stripe_charge(
+    monkeypatch,
+):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "legacy-first-channel.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Legacy Network", slug=None, plan="professional"
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.create_manual_paid_subscription(
+            organization["id"], amount_cents=9900
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("The included first channel must not call Stripe")
+            ),
+        )
+        service = StripeBillingService()
+
+        preview = service.preview_channel_purchase(
+            organization_id=organization["id"],
+            name="Legacy Primary",
+            channel_code="legacy-primary",
+            timezone="UTC",
+            primary_language="es",
+            stream_monitoring=False,
+        )
+        channel = service.purchase_channel(
+            organization_id=organization["id"],
+            name="Legacy Primary",
+            channel_code="legacy-primary",
+            timezone="UTC",
+            primary_language="es",
+            stream_monitoring=False,
+        )
+
+    assert preview["first_channel_included"] is True
+    assert preview["amount_due_now_cents"] == 0
+    assert preview["monthly_increase_cents"] == 0
+    assert channel["name"] == "Legacy Primary"
 
 
 def test_upgrade_preview_uses_stripe_proration_and_enterprise_includes_monitoring(

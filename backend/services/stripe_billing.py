@@ -86,6 +86,46 @@ class StripeBillingService:
             raise ValueError("A channel with this name already exists.")
         return channels
 
+    def _local_plan_code(self, organization_id: str) -> tuple[dict, str]:
+        local = billing_store.get_subscription(organization_id)
+        plan_code = local.get("plan") or "programming_suite"
+        if plan_code == "starter":
+            plan_code = "programming_suite"
+        if plan_code not in PLAN_RANK:
+            raise ValueError("The organization has an unknown subscription plan.")
+        return local, plan_code
+
+    def _create_channel_record(
+        self,
+        *,
+        organization_id: str,
+        name: str,
+        channel_code: str,
+        timezone: str,
+        primary_language: str,
+        stream_monitoring: bool,
+    ) -> dict:
+        store = self._channel_store()
+        workspaces = store.list_workspaces(organization_id)
+        if not workspaces:
+            workspace = store.create_workspace(
+                organization_id=organization_id,
+                name="Channel Operations",
+                slug=None,
+                default_timezone=timezone,
+            )
+        else:
+            workspace = workspaces[0]
+        return store.create_channel(
+            workspace_id=workspace["id"],
+            name=name,
+            slug=None,
+            channel_code=channel_code,
+            timezone=timezone,
+            primary_language=primary_language,
+            stream_monitoring=stream_monitoring,
+        )
+
     def _subscription_recipient(self, organization_id: str) -> str:
         members = identity_store.list_members(organization_id)
         preferred = next((
@@ -359,6 +399,26 @@ class StripeBillingService:
         stream_monitoring: bool,
     ) -> dict:
         _validate_timezone(timezone)
+        channels = self._validate_new_channel(
+            organization_id,
+            name=name,
+            channel_code=channel_code,
+        )
+        if not channels:
+            local, plan_code = self._local_plan_code(organization_id)
+            if local["status"] not in {"active", "trialing"}:
+                raise ValueError("An active subscription is required.")
+            return {
+                "plan_code": plan_code,
+                "new_channel_count": 1,
+                "first_channel_included": True,
+                "additional_channel_monthly_cents": 0,
+                "stream_monitoring_monthly_cents": 0,
+                "monthly_increase_cents": 0,
+                "amount_due_now_cents": 0,
+                "currency": "usd",
+                "monitoring_channel_count": int(plan_code == "enterprise"),
+            }
         (
             _local, subscription, plan_code, changes,
             additional_quantity, monitoring_quantity,
@@ -405,6 +465,25 @@ class StripeBillingService:
         stream_monitoring: bool,
     ) -> dict:
         _validate_timezone(timezone)
+        channels = self._validate_new_channel(
+            organization_id,
+            name=name,
+            channel_code=channel_code,
+        )
+        if not channels:
+            local, plan_code = self._local_plan_code(organization_id)
+            if local["status"] not in {"active", "trialing"}:
+                raise ValueError("An active subscription is required.")
+            return self._create_channel_record(
+                organization_id=organization_id,
+                name=name,
+                channel_code=channel_code,
+                timezone=timezone,
+                primary_language=primary_language,
+                stream_monitoring=(
+                    stream_monitoring or plan_code == "enterprise"
+                ),
+            )
         (
             _local, subscription, plan_code, changes,
             additional_quantity, monitoring_quantity,
@@ -427,21 +506,9 @@ class StripeBillingService:
                 "monitoring_channel_quantity": str(monitoring_quantity),
             },
         )
-        store = self._channel_store()
-        workspaces = store.list_workspaces(organization_id)
-        if not workspaces:
-            workspace = store.create_workspace(
-                organization_id=organization_id,
-                name="Channel Operations",
-                slug=None,
-                default_timezone=timezone,
-            )
-        else:
-            workspace = workspaces[0]
-        channel = store.create_channel(
-            workspace_id=workspace["id"],
+        channel = self._create_channel_record(
+            organization_id=organization_id,
             name=name,
-            slug=None,
             channel_code=channel_code,
             timezone=timezone,
             primary_language=primary_language,

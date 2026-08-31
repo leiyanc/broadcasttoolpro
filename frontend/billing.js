@@ -198,9 +198,13 @@ async function previewChannelPurchase(event) {
     pendingChannelPurchase = {payload, preview};
     billingChannelCosts.replaceChildren(
       billingCard(
-        billingText("billing.additionalChannel", "Additional channel"),
+        preview.first_channel_included
+          ? billingText("billing.includedChannel", "Included channel")
+          : billingText("billing.additionalChannel", "Additional channel"),
         billingMoney(preview.additional_channel_monthly_cents, preview.currency),
-        billingText("billing.perMonth", "per month"),
+        preview.first_channel_included
+          ? billingText("billing.includedWithPlan", "included with the plan")
+          : billingText("billing.perMonth", "per month"),
       ),
       billingCard(
         billingText("billing.streamMonitoring", "Stream Monitoring"),
