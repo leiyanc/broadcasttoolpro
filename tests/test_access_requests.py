@@ -373,13 +373,17 @@ def test_rejected_email_can_submit_a_future_access_request():
 def test_existing_suspended_account_can_request_and_regain_access():
     with TemporaryDirectory() as directory:
         identities, billing, _, requests = _stores(directory)
-        user, organization, _ = identities.register_trial(
+        user, organization, _ = identities.register_customer(
             organization_name="Returning Network",
             display_name="Operations Manager",
             email="existing@example.com",
-            password="secure-trial-password",
+            password="secure-account-password",
+            plan_code="professional",
         )
-        billing.create_trial_subscription(organization["id"])
+        billing.update_subscription(
+            organization["id"], status="canceled", billing_cycle=None,
+            current_period_end=None, cancel_at_period_end=True,
+        )
         with identities._connection() as connection:
             connection.execute(
                 """

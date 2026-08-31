@@ -854,7 +854,7 @@ function renderOrganizations(organizations) {
     const subscriptionStatus = adminSelect(
       awaitingPayment
         ? ["awaiting_payment"]
-        : ["trialing", "active", "past_due", "canceled"],
+        : ["active", "past_due", "canceled"],
       awaitingPayment
         ? "awaiting_payment"
         : organization.subscription.status,

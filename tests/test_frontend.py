@@ -274,7 +274,6 @@ def test_account_access_workflows_localize_without_mutating_identity_data():
         "auth.selfService",
         "auth.continueCheckout",
         "auth.accountApproved",
-        "account.trialReminders",
         "account.suspended",
     ):
         assert f'data-i18n="{key}"' in html
@@ -579,8 +578,8 @@ def test_secure_account_interface_is_present():
     assert "Continue to Secure Checkout" in html
     assert 'id="platform-content"' in html
     assert 'id="account-button"' in html
-    assert 'id="trial-reminder-preference"' in html
-    assert 'id="account-preference-message"' in html
+    assert 'id="trial-reminder-preference"' not in html
+    assert 'id="trial-expired"' not in html
     assert "/static/auth.js" in html
     assert "/static/admin.js" in html
     assert "/static/billing.js" in html
@@ -596,7 +595,8 @@ def test_secure_account_interface_is_present():
     help_javascript = (FRONTEND_DIR / "help.js").read_text()
     assert "refreshOrganizationEntitlements" in auth_javascript
     assert "applyOrganizationAccess" in auth_javascript
-    assert "/api/auth/email-preferences" in auth_javascript
+    assert "/api/auth/email-preferences" not in auth_javascript
+    assert '"trialing"' not in admin_javascript
     assert "/api/auth/signup" in auth_javascript
     assert "/api/auth/trial" not in auth_javascript
     assert 'requestedMode === "trial"' not in auth_javascript

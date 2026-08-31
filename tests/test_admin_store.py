@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 
 from backend.main import app
 from backend.services.admin_store import AdminStore
+from backend.services.billing_store import BillingStore
 from backend.services.entitlements import EntitlementStore
 from backend.services.identity_store import IdentityStore
 from backend.services.tenant_store import TenantStore
@@ -61,6 +62,9 @@ def test_control_plane_manages_addons_and_incidents():
             slug=None,
             plan="professional",
         )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.get_subscription(organization["id"])
         entitlements = EntitlementStore(database_path)
         entitlements.initialize()
         admin = AdminStore(database_path)

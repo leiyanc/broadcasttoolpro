@@ -28,7 +28,6 @@ from backend.services.xmltv.validation_report import (
 )
 from backend.api.auth import (
     current_user,
-    is_trial_user,
     require_active_organization,
     require_module,
 )
@@ -337,10 +336,7 @@ def download_xmltv_validation_report(
     user: dict = Depends(current_user),
     _module_user: dict = Depends(require_module("xmltv_validator")),
 ):
-    content = generate_xmltv_validation_report(
-        report,
-        trial_watermark=is_trial_user(user),
-    )
+    content = generate_xmltv_validation_report(report)
     return Response(
         content=content,
         media_type="application/pdf",

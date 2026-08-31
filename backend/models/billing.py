@@ -6,7 +6,6 @@ from pydantic import Field
 
 
 SubscriptionStatus = Literal[
-    "trialing",
     "active",
     "past_due",
     "canceled",

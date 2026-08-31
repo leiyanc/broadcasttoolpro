@@ -43,10 +43,13 @@ def _outbox(directory: str) -> tuple[EmailOutboxStore, str]:
     )
     outbox = EmailOutboxStore(database_path)
     outbox.initialize()
-    outbox.schedule_trial_lifecycle(
+    outbox.schedule_self_service_signup(
         organization_id=organization["id"],
         recipient_email="owner@example.com",
-        trial_ends_at=datetime.now(timezone.utc).isoformat(),
+        administrator_emails=[],
+        organization_name="Delivery Test",
+        plan_code="professional",
+        include_stream_monitoring=False,
     )
     return outbox, organization["id"]
 
@@ -58,7 +61,7 @@ def test_due_email_is_delivered_and_audited():
 
         result = EmailDeliveryService(outbox, provider).deliver_due()
 
-        assert result["sent"] == 4
+        assert result["sent"] == 1
         assert result["failed"] == 0
         messages = outbox.list_for_organization(organization_id)
         assert all(message["status"] == "sent" for message in messages)
@@ -75,7 +78,7 @@ def test_failed_email_is_requeued_without_losing_the_error():
 
         result = EmailDeliveryService(outbox, provider).deliver_due()
 
-        assert result["failed"] == 4
+        assert result["failed"] == 1
         messages = outbox.list_for_organization(organization_id)
         assert all(message["status"] == "queued" for message in messages)
         assert all(

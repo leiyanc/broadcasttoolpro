@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sqlite3
 from tempfile import TemporaryDirectory
+
+import pytest
 
 from backend.main import app
 from backend.services.billing_store import BillingStore
@@ -49,19 +52,81 @@ def test_subscription_status_and_cycle_can_be_updated():
 
         result = billing.update_subscription(
             organization["id"],
-            status="trialing",
+            status="past_due",
             billing_cycle="annual",
             current_period_end=period_end,
             cancel_at_period_end=True,
             lifecycle_note="Annual access scheduled to end.",
         )
 
-        assert result["status"] == "trialing"
+        assert result["status"] == "past_due"
         assert result["billing_cycle"] == "annual"
         assert result["cancel_at_period_end"] is True
         events = billing.subscription_events(organization["id"])
         assert len(events) == 1
         assert events[0]["details"] == "Annual access scheduled to end."
+
+
+def test_trial_status_cannot_be_assigned():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="No Trial Network", slug=None, plan="professional"
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+
+        with pytest.raises(ValueError, match="valid subscription status"):
+            billing.update_subscription(
+                organization["id"], status="trialing", billing_cycle=None,
+                current_period_end=None, cancel_at_period_end=None,
+            )
+
+
+def test_legacy_trial_is_migrated_to_canceled():
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "billing.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Legacy Trial Network", slug=None, plan="professional"
+        )
+        now = datetime.now(timezone.utc).isoformat()
+        with sqlite3.connect(database_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE subscriptions (
+                    id TEXT PRIMARY KEY, organization_id TEXT NOT NULL UNIQUE,
+                    status TEXT NOT NULL, billing_cycle TEXT NOT NULL,
+                    currency TEXT NOT NULL, amount_cents INTEGER,
+                    provider TEXT NOT NULL, current_period_start TEXT NOT NULL,
+                    current_period_end TEXT NOT NULL,
+                    cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                INSERT INTO subscriptions VALUES (
+                    'legacy-sub', ?, 'trialing', 'monthly', 'USD', 0,
+                    'trial', ?, ?, 1, ?, ?
+                )
+                """,
+                (organization["id"], now, now, now, now),
+            )
+
+        billing = BillingStore(database_path)
+        billing.initialize()
+        migrated = billing.get_subscription(organization["id"])
+
+        assert migrated["status"] == "canceled"
+        assert migrated["provider"] == "manual"
+        assert billing.subscription_events(organization["id"])[0][
+            "event_type"
+        ] == "legacy_trial_retired"
 
 
 def test_pending_stripe_subscription_preserves_commercial_plan():

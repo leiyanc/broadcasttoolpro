@@ -18,6 +18,9 @@ def test_professional_plan_and_addons_are_separated():
             slug=None,
             plan="professional",
         )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.get_subscription(organization["id"])
         entitlements = EntitlementStore(database_path)
         entitlements.initialize()
 
@@ -51,6 +54,9 @@ def test_enterprise_plan_enables_media_loudness_compliance():
             slug=None,
             plan="enterprise",
         )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.get_subscription(organization["id"])
         entitlements = EntitlementStore(database_path)
         entitlements.initialize()
 
@@ -70,6 +76,9 @@ def test_stream_monitoring_addon_enables_media_loudness_compliance():
             slug=None,
             plan="professional",
         )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.get_subscription(organization["id"])
         entitlements = EntitlementStore(database_path)
         entitlements.initialize()
         entitlements.set_addon(

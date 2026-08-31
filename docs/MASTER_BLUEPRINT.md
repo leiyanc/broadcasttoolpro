@@ -89,8 +89,8 @@ terminology remain in English.
   interface never alters selected source files, filters, report content, or
   export formats.
 - Account access localizes initial setup, sign-in, recovery, paid-access
-  requests, request confirmation, free trial, activation, account preferences,
-  trial expiration, and suspension states. Stored roles, plan codes,
+  requests, request confirmation, activation, account preferences, and
+  suspension states. Stored roles, plan codes,
   organization statuses, entitlements, and authentication decisions remain
   canonical backend data and are never rewritten by interface localization.
 - Report History localizes archive navigation, table labels, state messages,
@@ -328,24 +328,16 @@ Authentication requirements:
 - Browser password-manager autofill is separate from product session
   persistence and must not be treated as authenticated access.
 
-The free trial includes only XMLTV Validator, Pre-Logs, and HLS Validator.
-Trial exports are limited to branded PDF files. Every trial PDF carries a
-visible Broadcast Tool Pro watermark above the report content while preserving
-the readability of operational data.
+The public XMLTV Validator is the product's free, no-account-required utility.
+Authenticated modules require a paid subscription or an explicit, auditable
+administrative payment waiver. BTP does not offer a time-limited product trial.
 
 User preferences and remembered operational values must be scoped to the
 authenticated organization or user. A new account must never inherit filters,
 customer names, channel settings, or other operational values from another
 account using the same browser.
 
-Trial communications are scheduled as an auditable lifecycle:
-
-- Welcome email when registration is completed
-- Three-day remaining reminder
-- One-day remaining reminder
-- Trial-ended notification
-
-These messages are stored in a provider-neutral email outbox. Amazon SES is
+Transactional messages are stored in a provider-neutral email outbox. Amazon SES is
 the initial production provider because it offers usage-based pricing without
 a fixed monthly subscription. The delivery worker atomically claims queued
 messages, records the SES message ID, retries transient failures with bounded
@@ -431,7 +423,7 @@ The Stage 1 security baseline now includes:
   and cross-organization report access returns no artifact
 - Request identifiers and structured operational logging without recording
   credentials, tokens, query strings, uploaded content, or request bodies
-- Process-local rate limits on login, password recovery, trial registration,
+- Process-local rate limits on login, password recovery, signup registration,
   access requests, and web bootstrap. This has no external infrastructure
   cost and is intentionally scoped to the single-worker Stage 1 deployment;
   a shared limiter becomes necessary only when the service scales to multiple

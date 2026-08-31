@@ -29,7 +29,7 @@ class BillingStore:
                     organization_id TEXT NOT NULL UNIQUE,
                     status TEXT NOT NULL CHECK (
                         status IN (
-                            'trialing', 'active', 'past_due', 'canceled'
+                            'active', 'past_due', 'canceled'
                         )
                     ),
                     billing_cycle TEXT NOT NULL CHECK (
@@ -147,6 +147,36 @@ class BillingStore:
                 if column not in columns:
                     connection.execute(statement)
 
+            legacy_trials = connection.execute(
+                """
+                SELECT organization_id FROM subscriptions
+                WHERE status = 'trialing' OR provider = 'trial'
+                """
+            ).fetchall()
+            now = _utc_now()
+            for row in legacy_trials:
+                connection.execute(
+                    """
+                    INSERT INTO subscription_events (
+                        id, organization_id, event_type, details, created_at
+                    ) VALUES (?, ?, 'legacy_trial_retired', ?, ?)
+                    """,
+                    (
+                        str(uuid4()), row["organization_id"],
+                        "Legacy trial status retired; subscription set to canceled.",
+                        now,
+                    ),
+                )
+            connection.execute(
+                """
+                UPDATE subscriptions
+                SET status = 'canceled', provider = 'manual',
+                    cancel_at_period_end = 1, updated_at = ?
+                WHERE status = 'trialing' OR provider = 'trial'
+                """,
+                (now,),
+            )
+
     def mark_payment_failed(
         self,
         organization_id: str,
@@ -251,45 +281,6 @@ class BillingStore:
                     organization_id,
                     now.isoformat(),
                     (now + timedelta(days=30)).isoformat(),
-                    now.isoformat(),
-                    now.isoformat(),
-                ),
-            )
-        return self.get_subscription(organization_id)
-
-    def create_trial_subscription(
-        self,
-        organization_id: str,
-        days: int = 7,
-    ) -> dict:
-        if days < 1 or days > 30:
-            raise ValueError("Trial length must be between 1 and 30 days.")
-        now = datetime.now(timezone.utc)
-        with self._connection() as connection:
-            connection.execute(
-                """
-                INSERT INTO subscriptions (
-                    id, organization_id, status, billing_cycle, currency,
-                    amount_cents, provider, current_period_start,
-                    current_period_end, cancel_at_period_end,
-                    created_at, updated_at
-                ) VALUES (?, ?, 'trialing', 'monthly', 'USD', 0, 'trial',
-                          ?, ?, 1, ?, ?)
-                ON CONFLICT (organization_id)
-                DO UPDATE SET
-                    status = 'trialing',
-                    amount_cents = 0,
-                    provider = 'trial',
-                    current_period_start = excluded.current_period_start,
-                    current_period_end = excluded.current_period_end,
-                    cancel_at_period_end = 1,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    str(uuid4()),
-                    organization_id,
-                    now.isoformat(),
-                    (now + timedelta(days=days)).isoformat(),
                     now.isoformat(),
                     now.isoformat(),
                 ),
@@ -556,6 +547,10 @@ class BillingStore:
         actor_user_id: str | None = None,
     ) -> dict:
         self.ensure_subscription(organization_id)
+        if status is not None and status not in {
+            "active", "past_due", "canceled"
+        }:
+            raise ValueError("A valid subscription status is required.")
         assignments: list[str] = []
         values: list[object] = []
         for field, value in (
@@ -1016,7 +1011,7 @@ class BillingStore:
             if result.get("provider") == "stripe"
             and result.get("status") == "past_due"
             else "active"
-            if result.get("status") in {"active", "trialing"}
+            if result.get("status") == "active"
             else "canceled"
         )
         return result

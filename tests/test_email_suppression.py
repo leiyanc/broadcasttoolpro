@@ -26,10 +26,13 @@ def _stores(directory: str):
 def test_permanent_bounce_suppresses_recipient_and_cancels_queue():
     with TemporaryDirectory() as directory:
         outbox, suppressions, organization = _stores(directory)
-        outbox.schedule_trial_lifecycle(
+        outbox.schedule_self_service_signup(
             organization_id=organization["id"],
             recipient_email="BOUNCED@example.com",
-            trial_ends_at=datetime.now(timezone.utc).isoformat(),
+            administrator_emails=[],
+            organization_name="Suppression Test",
+            plan_code="professional",
+            include_stream_monitoring=False,
         )
 
         event = suppressions.record_event(

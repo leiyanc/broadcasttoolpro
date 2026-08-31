@@ -18,7 +18,6 @@ from backend.services.traffic.playlist import (
 from backend.api.auth import (
     access_for_user,
     current_user,
-    is_trial_user,
     require_module,
 )
 
@@ -166,13 +165,7 @@ async def export_prelog(
     client_name: str | None = Form(None),
     user: dict = Depends(current_user),
 ):
-    is_trial = is_trial_user(user)
     report_owner = access_for_user(user) if isinstance(user, dict) else None
-    if is_trial and output_format != "pdf":
-        raise HTTPException(
-            status_code=403,
-            detail="Free Trial reports can only be downloaded as PDF.",
-        )
     try:
         _, _, matches = await _filtered_events(
             playlist_files,
@@ -227,7 +220,6 @@ async def export_prelog(
                 client_name=client_name if isinstance(client_name, str) else None,
                 logo_content=logo_content,
                 report_type="prelog",
-                trial_watermark=is_trial,
             )
             media_type = "application/pdf"
         else:

@@ -140,21 +140,10 @@ class EntitlementStore:
                 subscription = None
 
         plan = organization["plan"]
-        trial_active = False
-        trial_ends_at = None
-        access_active = True
+        access_active = False
         access_type = "paid"
         access_ends_at = None
-        if subscription and subscription["status"] == "trialing":
-            trial_ends_at = subscription["current_period_end"]
-            trial_active = (
-                datetime.fromisoformat(trial_ends_at)
-                > datetime.now(timezone.utc)
-            )
-            access_active = trial_active
-            access_type = "trial"
-            access_ends_at = trial_ends_at
-        elif subscription:
+        if subscription:
             grace_end = subscription["grace_period_ends_at"]
             parsed_grace_end = None
             if grace_end:
@@ -193,30 +182,18 @@ class EntitlementStore:
                 ):
                     access_active = False
         enabled_addons = {row["addon_code"] for row in rows}
-        trial_modules = {
-            "xmltv_validator",
-            "prelogs",
-            "hls_validator",
-        }
         modules = {}
         for code, definition in MODULE_CATALOG.items():
             source = definition["source"]
-            if subscription and subscription["status"] == "trialing":
-                enabled = (
-                    trial_active
-                    and definition.get("available", True)
-                    and code in trial_modules
+            enabled = (
+                access_active
+                and definition.get("available", True)
+                and (
+                    source == "professional"
+                    or plan == "enterprise"
+                    or source in enabled_addons
                 )
-            else:
-                enabled = (
-                    access_active
-                    and definition.get("available", True)
-                    and (
-                        source == "professional"
-                        or plan == "enterprise"
-                        or source in enabled_addons
-                    )
-                )
+            )
             modules[code] = {
                 **definition,
                 "enabled": enabled,
@@ -231,14 +208,8 @@ class EntitlementStore:
                     subscription["grace_period_ends_at"]
                     if subscription else None
                 ),
-                "download_formats": (
-                    ["pdf"] if subscription and subscription[
-                        "status"
-                    ] == "trialing" else ["xlsx", "pdf", "json", "html"]
-                ),
-                "watermark": bool(
-                    subscription and subscription["status"] == "trialing"
-                ),
+                "download_formats": ["xlsx", "pdf", "json", "html"],
+                "watermark": False,
             },
             "addons": [
                 {

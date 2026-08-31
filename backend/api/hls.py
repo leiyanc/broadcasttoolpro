@@ -15,7 +15,6 @@ from backend.services.hls.loudness import (
 from backend.api.auth import (
     access_for_user,
     current_user,
-    is_trial_user,
     require_active_organization,
     require_module,
 )
@@ -115,10 +114,7 @@ def download_hls_report(
     user: dict = Depends(current_user),
     _module_user: dict = Depends(require_module("hls_validator")),
 ):
-    content = generate_hls_report(
-        report,
-        trial_watermark=is_trial_user(user),
-    )
+    content = generate_hls_report(report)
     return Response(
         content=content,
         media_type="application/pdf",

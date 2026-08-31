@@ -495,22 +495,6 @@ class IdentityStore:
             token,
         )
 
-    def register_trial(
-        self,
-        *,
-        organization_name: str,
-        display_name: str,
-        email: str,
-        password: str,
-    ) -> tuple[dict, dict, str]:
-        return self.register_customer(
-            organization_name=organization_name,
-            display_name=display_name,
-            email=email,
-            password=password,
-            plan_code="professional",
-        )
-
     def create_session(
         self,
         user_id: str,

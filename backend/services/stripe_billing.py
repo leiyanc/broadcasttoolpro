@@ -26,7 +26,7 @@ ADDITIONAL_CHANNEL_PRICE_ENV = {
     "enterprise": "BTP_STRIPE_PRICE_ADDITIONAL_CHANNEL_ENTERPRISE",
 }
 STREAM_PRICE_ENV = "BTP_STRIPE_PRICE_STREAM_MONITORING"
-STRIPE_ACTIVE_STATUSES = {"active", "trialing"}
+STRIPE_ACTIVE_STATUSES = {"active"}
 PLAN_RANK = {
     "programming_suite": 1,
     "professional": 2,
@@ -357,7 +357,7 @@ class StripeBillingService:
         )
         local = billing_store.get_subscription(organization_id)
         if local["provider"] != "stripe" or local["status"] not in {
-            "active", "trialing"
+            "active"
         }:
             raise ValueError(
                 "An active Stripe subscription is required to add a channel."
@@ -406,7 +406,7 @@ class StripeBillingService:
         )
         if not channels:
             local, plan_code = self._local_plan_code(organization_id)
-            if local["status"] not in {"active", "trialing"}:
+            if local["status"] != "active":
                 raise ValueError("An active subscription is required.")
             return {
                 "plan_code": plan_code,
@@ -472,7 +472,7 @@ class StripeBillingService:
         )
         if not channels:
             local, plan_code = self._local_plan_code(organization_id)
-            if local["status"] not in {"active", "trialing"}:
+            if local["status"] != "active":
                 raise ValueError("An active subscription is required.")
             return self._create_channel_record(
                 organization_id=organization_id,
@@ -545,7 +545,7 @@ class StripeBillingService:
             )
         local = billing_store.get_subscription(organization_id)
         if local["provider"] != "stripe" or local["status"] not in {
-            "active", "trialing"
+            "active"
         }:
             raise ValueError(
                 "An active Stripe subscription is required to remove a channel."
@@ -774,7 +774,7 @@ class StripeBillingService:
     ) -> tuple[dict, Any, str, bool, bool, list[Any], list[str]]:
         local = billing_store.get_subscription(organization_id)
         if local["provider"] != "stripe" or local["status"] not in {
-            "active", "trialing", "past_due"
+            "active", "past_due"
         }:
             raise ValueError("An active Stripe subscription is required.")
         stripe.api_key = self._secret_key()
@@ -1181,7 +1181,7 @@ class StripeBillingService:
         )
         status = (
             "active" if stripe_status == "active"
-            else "trialing" if stripe_status == "trialing"
+            else "canceled" if stripe_status == "trialing"
             else "past_due" if payment_failure_cancellation
             else "canceled" if stripe_status == "canceled"
             else "past_due"

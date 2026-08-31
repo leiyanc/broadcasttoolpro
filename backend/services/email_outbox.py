@@ -6,46 +6,6 @@ from uuid import uuid4
 from backend.services.tenant_store import DATABASE_PATH
 
 
-TRIAL_EMAILS = (
-    {
-        "code": "trial_welcome",
-        "days_before_end": 7,
-        "subject": "Welcome to your Broadcast Tool Pro trial",
-        "body": (
-            "Your 7-day trial is active. You can use XMLTV Validator, "
-            "Pre-Logs, and HLS Validator. Trial reports are branded PDF files."
-        ),
-    },
-    {
-        "code": "trial_three_days_remaining",
-        "days_before_end": 3,
-        "subject": "Three days remain in your Broadcast Tool Pro trial",
-        "body": (
-            "Your Broadcast Tool Pro trial ends in three days. Review the "
-            "available plans if you want uninterrupted access."
-        ),
-    },
-    {
-        "code": "trial_one_day_remaining",
-        "days_before_end": 1,
-        "subject": "Your Broadcast Tool Pro trial ends tomorrow",
-        "body": (
-            "Your Broadcast Tool Pro trial ends tomorrow. Choose a plan to "
-            "keep access to your workflows and reports."
-        ),
-    },
-    {
-        "code": "trial_expired",
-        "days_before_end": 0,
-        "subject": "Your Broadcast Tool Pro trial has ended",
-        "body": (
-            "Your Broadcast Tool Pro trial has ended. Your account and "
-            "history remain available when you activate a plan."
-        ),
-    },
-)
-
-
 class EmailOutboxStore:
     def __init__(self, database_path: Path = DATABASE_PATH):
         self.database_path = database_path
@@ -99,12 +59,6 @@ class EmailOutboxStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
-
-                CREATE TABLE IF NOT EXISTS email_preferences (
-                    recipient_email TEXT PRIMARY KEY,
-                    trial_reminders INTEGER NOT NULL DEFAULT 1,
-                    updated_at TEXT NOT NULL
-                );
             """)
             columns = {
                 row["name"]
@@ -117,47 +71,18 @@ class EmailOutboxStore:
                     "ALTER TABLE email_outbox "
                     "ADD COLUMN provider_message_id TEXT"
                 )
-
-    def schedule_trial_lifecycle(
-        self,
-        *,
-        organization_id: str,
-        recipient_email: str,
-        trial_ends_at: str,
-    ) -> list[dict]:
-        trial_end = datetime.fromisoformat(trial_ends_at)
-        if trial_end.tzinfo is None:
-            trial_end = trial_end.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-        created_at = now.isoformat()
-        with self._connection() as connection:
-            for message in TRIAL_EMAILS:
-                if message["code"] == "trial_welcome":
-                    scheduled_for = now
-                else:
-                    scheduled_for = trial_end - timedelta(
-                        days=message["days_before_end"]
-                    )
-                connection.execute(
-                    """
-                    INSERT INTO email_outbox (
-                        id, organization_id, recipient_email, template_code,
-                        subject, body_text, scheduled_for, status, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)
-                    ON CONFLICT (organization_id, template_code) DO NOTHING
-                    """,
-                    (
-                        str(uuid4()),
-                        organization_id,
-                        recipient_email.strip().lower(),
-                        message["code"],
-                        message["subject"],
-                        message["body"],
-                        max(scheduled_for, now).isoformat(),
-                        created_at,
-                    ),
-                )
-        return self.list_for_organization(organization_id)
+            connection.execute(
+                """
+                UPDATE email_outbox
+                SET status = 'canceled',
+                    last_error = 'Trial program retired.'
+                WHERE status IN ('queued', 'sending')
+                  AND template_code IN (
+                      'trial_welcome', 'trial_three_days_remaining',
+                      'trial_one_day_remaining', 'trial_expired'
+                  )
+                """
+            )
 
     def schedule_password_reset(
         self,
@@ -1042,62 +967,6 @@ class EmailOutboxStore:
             ).fetchone()
         return dict(retried)
 
-    def preferences_for(self, recipient_email: str) -> dict:
-        normalized = recipient_email.strip().lower()
-        with self._connection() as connection:
-            row = connection.execute(
-                """
-                SELECT trial_reminders, updated_at
-                FROM email_preferences
-                WHERE recipient_email = ?
-                """,
-                (normalized,),
-            ).fetchone()
-        return {
-            "recipient_email": normalized,
-            "trial_reminders": (
-                bool(row["trial_reminders"]) if row is not None else True
-            ),
-            "updated_at": row["updated_at"] if row is not None else None,
-        }
-
-    def update_preferences(
-        self,
-        recipient_email: str,
-        *,
-        trial_reminders: bool,
-    ) -> dict:
-        normalized = recipient_email.strip().lower()
-        updated_at = datetime.now(timezone.utc).isoformat()
-        with self._connection() as connection:
-            connection.execute(
-                """
-                INSERT INTO email_preferences (
-                    recipient_email, trial_reminders, updated_at
-                ) VALUES (?, ?, ?)
-                ON CONFLICT (recipient_email) DO UPDATE SET
-                    trial_reminders = excluded.trial_reminders,
-                    updated_at = excluded.updated_at
-                """,
-                (normalized, int(trial_reminders), updated_at),
-            )
-            if not trial_reminders:
-                connection.execute(
-                    """
-                    UPDATE email_outbox
-                    SET status = 'canceled',
-                        last_error = 'Disabled by recipient preference.'
-                    WHERE recipient_email = ?
-                      AND status = 'queued'
-                      AND template_code IN (
-                          'trial_three_days_remaining',
-                          'trial_one_day_remaining'
-                      )
-                    """,
-                    (normalized,),
-                )
-        return self.preferences_for(normalized)
-
     def pending(self, limit: int = 100) -> list[dict]:
         with self._connection() as connection:
             rows = connection.execute(
@@ -1108,18 +977,6 @@ class EmailOutboxStore:
                       SELECT 1 FROM email_suppressions
                       WHERE email_suppressions.recipient_email =
                             email_outbox.recipient_email
-                  )
-                  AND (
-                      template_code NOT IN (
-                          'trial_three_days_remaining',
-                          'trial_one_day_remaining'
-                      )
-                      OR NOT EXISTS (
-                          SELECT 1 FROM email_preferences
-                          WHERE email_preferences.recipient_email =
-                                email_outbox.recipient_email
-                            AND email_preferences.trial_reminders = 0
-                      )
                   )
                 ORDER BY scheduled_for
                 LIMIT ?
@@ -1142,18 +999,6 @@ class EmailOutboxStore:
                       SELECT 1 FROM email_suppressions
                       WHERE email_suppressions.recipient_email =
                             email_outbox.recipient_email
-                  )
-                  AND (
-                      template_code NOT IN (
-                          'trial_three_days_remaining',
-                          'trial_one_day_remaining'
-                      )
-                      OR NOT EXISTS (
-                          SELECT 1 FROM email_preferences
-                          WHERE email_preferences.recipient_email =
-                                email_outbox.recipient_email
-                            AND email_preferences.trial_reminders = 0
-                      )
                   )
                 ORDER BY scheduled_for
                 LIMIT ?

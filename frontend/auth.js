@@ -47,20 +47,10 @@ const accountPanelEmail = document.querySelector("#account-panel-email");
 const accountPanelOrganization = document.querySelector(
   "#account-panel-organization",
 );
-const trialReminderPreference = document.querySelector(
-  "#trial-reminder-preference",
-);
-const trialReminderSetting = document.querySelector(
-  "#trial-reminder-setting",
-);
-const accountPreferenceMessage = document.querySelector(
-  "#account-preference-message",
-);
 const logoutButton = document.querySelector("#logout-button");
 const openAdminButton = document.querySelector("#open-admin-button");
 const authAdminControlPanel = document.querySelector("#admin-control-plane");
 const suspendedPanel = document.querySelector("#organization-suspended");
-const trialExpiredPanel = document.querySelector("#trial-expired");
 const suspendedAdminButton = document.querySelector(
   "#suspended-admin-button",
 );
@@ -152,7 +142,6 @@ if (["programming_suite", "professional", "enterprise"].includes(signupPlan)) {
   accessRequestPlan.value = signupPlan;
   updateAccessRequestPricing();
 }
-let preferenceMessageState = "";
 
 function resetAdministrativeSurface(identity = null) {
   const isSuperuser = Boolean(identity?.user?.is_superuser);
@@ -193,14 +182,6 @@ function renderLocalizedIdentity() {
     accountPanelOrganization.textContent = organization
       ? `${organization.name} · ${organization.plan}`
       : authText("account.none", "No organization assigned");
-  }
-  if (preferenceMessageState) {
-    accountPreferenceMessage.textContent = authText(
-      `account.${preferenceMessageState}`,
-      preferenceMessageState === "saving"
-        ? "Saving preference..."
-        : "Email preference saved.",
-    );
   }
 }
 
@@ -250,24 +231,12 @@ async function refreshOrganizationEntitlements() {
     const modules = entitlements.modules || {};
     currentEntitlements = entitlements;
     document.body.dataset.accessType = entitlements.access?.type || "paid";
-    trialReminderSetting.classList.toggle(
-      "is-hidden",
-      entitlements.access?.type !== "trial",
-    );
     const productAccessActive = Boolean(entitlements.access?.active);
     document.querySelector("#report-history")?.classList.toggle(
       "is-hidden",
       !productAccessActive
         || !(modules.prelogs?.enabled || modules.postlogs?.enabled),
     );
-    const trialExpired = (
-      entitlements.access?.type === "trial"
-      && !entitlements.access?.active
-    );
-    trialExpiredPanel.classList.toggle("is-hidden", !trialExpired);
-    if (trialExpired) {
-      platformContent.classList.add("is-hidden");
-    }
     for (const [moduleCode, selectors] of Object.entries(moduleSurfaces)) {
       for (const selector of selectors) {
         document.querySelectorAll(selector).forEach((element) => {
@@ -370,7 +339,6 @@ function showAuthentication(bootstrapRequired) {
   accountButton.classList.add("is-hidden");
   accountPanel.classList.add("is-hidden");
   suspendedPanel.classList.add("is-hidden");
-  trialExpiredPanel.classList.add("is-hidden");
   window.dispatchEvent(new CustomEvent("btp:identity", {
     detail: null,
   }));
@@ -624,47 +592,6 @@ showGetStartedTab.addEventListener("click", () => {
 
 accountButton.addEventListener("click", () => {
   accountPanel.classList.toggle("is-hidden");
-  if (!accountPanel.classList.contains("is-hidden")) {
-    accountPreferenceMessage.textContent = "";
-    authRequest("/api/auth/email-preferences")
-      .then((preferences) => {
-        trialReminderPreference.checked = preferences.trial_reminders;
-      })
-      .catch((error) => {
-        accountPreferenceMessage.textContent = error.message;
-        accountPreferenceMessage.classList.add("is-error");
-      });
-  }
-});
-
-trialReminderPreference.addEventListener("change", async () => {
-  trialReminderPreference.disabled = true;
-  accountPreferenceMessage.classList.remove("is-error");
-  preferenceMessageState = "saving";
-  accountPreferenceMessage.textContent = authText(
-    "account.saving",
-    "Saving preference...",
-  );
-  try {
-    const preferences = await authRequest("/api/auth/email-preferences", {
-      method: "PUT",
-      body: JSON.stringify({
-        trial_reminders: trialReminderPreference.checked,
-      }),
-    });
-    trialReminderPreference.checked = preferences.trial_reminders;
-    preferenceMessageState = "saved";
-    accountPreferenceMessage.textContent = authText(
-      "account.saved",
-      "Email preference saved.",
-    );
-  } catch (error) {
-    trialReminderPreference.checked = !trialReminderPreference.checked;
-    accountPreferenceMessage.textContent = error.message;
-    accountPreferenceMessage.classList.add("is-error");
-  } finally {
-    trialReminderPreference.disabled = false;
-  }
 });
 
 logoutButton.addEventListener("click", async () => {

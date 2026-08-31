@@ -24,7 +24,6 @@ BRAND_LOGO = (
 
 def generate_xmltv_validation_report(
     payload: dict,
-    trial_watermark: bool = False,
 ) -> bytes:
     validation = payload.get("validation") or {}
     issues = validation.get("issues") or []
@@ -122,20 +121,5 @@ def generate_xmltv_validation_report(
         issue_table,
     ]
 
-    def page(canvas, doc):
-        if not trial_watermark:
-            return
-        canvas.saveState()
-        canvas.setFillColor(colors.Color(0.08, 0.22, 0.48, alpha=0.12))
-        canvas.setFont("Helvetica-Bold", 28)
-        canvas.translate(letter[0] / 2, letter[1] / 2)
-        canvas.rotate(32)
-        canvas.drawCentredString(
-            0,
-            0,
-            "BROADCAST TOOL PRO - FREE TRIAL",
-        )
-        canvas.restoreState()
-
-    document.build(story, onFirstPage=page, onLaterPages=page)
+    document.build(story)
     return output.getvalue()
