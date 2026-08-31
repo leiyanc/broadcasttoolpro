@@ -103,7 +103,7 @@ class StripeBillingService:
         channel_code: str,
         timezone: str,
         primary_language: str,
-        stream_monitoring: bool,
+        stream_monitoring: bool = False,
     ) -> dict:
         store = self._channel_store()
         workspaces = store.list_workspaces(organization_id)
@@ -348,7 +348,7 @@ class StripeBillingService:
         *,
         name: str,
         channel_code: str,
-        stream_monitoring: bool,
+        stream_monitoring: bool = False,
     ) -> tuple[dict, Any, str, list[dict], int, int]:
         channels = self._validate_new_channel(
             organization_id,
@@ -393,11 +393,12 @@ class StripeBillingService:
         *,
         organization_id: str,
         name: str,
-        channel_code: str,
-        timezone: str,
-        primary_language: str,
+        channel_code: str | None = None,
+        timezone: str = "UTC",
+        primary_language: str = "und",
         stream_monitoring: bool,
     ) -> dict:
+        channel_code = channel_code or _slugify(name)
         _validate_timezone(timezone)
         channels = self._validate_new_channel(
             organization_id,
@@ -459,11 +460,12 @@ class StripeBillingService:
         *,
         organization_id: str,
         name: str,
-        channel_code: str,
-        timezone: str,
-        primary_language: str,
+        channel_code: str | None = None,
+        timezone: str = "UTC",
+        primary_language: str = "und",
         stream_monitoring: bool,
     ) -> dict:
+        channel_code = channel_code or _slugify(name)
         _validate_timezone(timezone)
         channels = self._validate_new_channel(
             organization_id,
@@ -542,6 +544,10 @@ class StripeBillingService:
         if len(channels) <= 1:
             raise ValueError(
                 "The organization's only active channel cannot be removed."
+            )
+        if channel_id == store.included_channel_id(organization_id):
+            raise ValueError(
+                "The included channel is required and cannot be removed."
             )
         local = billing_store.get_subscription(organization_id)
         if local["provider"] != "stripe" or local["status"] not in {

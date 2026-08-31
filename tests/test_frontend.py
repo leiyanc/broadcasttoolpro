@@ -778,9 +778,18 @@ def test_billing_supports_reviewed_additional_channel_purchase():
 
     assert 'id="billing-channel-form"' in html
     assert 'id="billing-channel-preview"' in html
+    channel_form = html.split('id="billing-channel-form"', 1)[1].split(
+        "</form>", 1
+    )[0]
+    assert 'name="name"' in channel_form
+    assert 'name="channel_code"' not in channel_form
+    assert 'name="timezone"' not in channel_form
+    assert 'name="primary_language"' not in channel_form
     assert "/channels/preview`" in javascript
     assert "confirmChannelPurchase" in javascript
     assert "Stripe prorated amount" in javascript
+    assert "channel.is_included" in javascript
+    assert "activeChannels.length === 1" not in javascript
 
 
 def test_billing_supports_channel_removal_at_period_end():

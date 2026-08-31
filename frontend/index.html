@@ -424,36 +424,6 @@
               <span data-i18n="auth.channelName">Channel Name</span>
               <input name="name" required minlength="2" maxlength="120">
             </label>
-            <label>
-              <span data-i18n="auth.channelId">Channel ID</span>
-              <input name="channel_code" required minlength="2" maxlength="80" pattern="[A-Za-z0-9]+(?:[-_.][A-Za-z0-9]+)*">
-            </label>
-            <label>
-              <span data-i18n="auth.channelTimezone">Channel Time Zone</span>
-              <select name="timezone" required>
-                <option value="America/New_York">Eastern Time — New York</option>
-                <option value="America/Chicago">Central Time — Chicago</option>
-                <option value="America/Denver">Mountain Time — Denver</option>
-                <option value="America/Los_Angeles">Pacific Time — Los Angeles</option>
-                <option value="America/Santo_Domingo">Atlantic Time — Santo Domingo</option>
-                <option value="America/Bogota">UTC-05:00 — Bogotá / Lima / Quito</option>
-                <option value="America/Mexico_City">Central Time — Mexico City</option>
-                <option value="America/Panama">UTC-05:00 — Panama</option>
-                <option value="America/Caracas">UTC-04:00 — Caracas</option>
-                <option value="America/Santiago">Chile Time — Santiago</option>
-                <option value="America/Argentina/Buenos_Aires">UTC-03:00 — Buenos Aires</option>
-                <option value="America/Sao_Paulo">Brasília Time — São Paulo</option>
-                <option value="UTC">UTC</option>
-              </select>
-            </label>
-            <label>
-              <span data-i18n="auth.channelLanguage">Primary Channel Language</span>
-              <select name="primary_language" required>
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="pt">Português</option>
-              </select>
-            </label>
             <label class="remember-session" id="billing-channel-monitoring-field">
               <input name="stream_monitoring" type="checkbox">
               <span>

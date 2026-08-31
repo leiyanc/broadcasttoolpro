@@ -30,17 +30,6 @@ class SubscriptionChangeCreate(BaseModel):
 
 class ChannelPurchaseCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
-    channel_code: str = Field(
-        min_length=2,
-        max_length=80,
-        pattern=r"^[A-Za-z0-9]+(?:[-_.][A-Za-z0-9]+)*$",
-    )
-    timezone: str = Field(min_length=1, max_length=64)
-    primary_language: str = Field(
-        min_length=2,
-        max_length=12,
-        pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
-    )
     stream_monitoring: bool = False
 
 

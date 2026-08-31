@@ -341,7 +341,7 @@ const helpGuides = {
       steps: [
         "Confirm the active organization, plan, subscription status, and renewal date.",
         "Review the registered channels. Every plan includes one channel; additional channels use the rate shown for that plan.",
-        "To add a channel, enter its identity and review Stripe's prorated charge before confirming. The channel joins the organization's existing billing cycle.",
+        "To add a channel, enter its name and review Stripe's prorated charge before confirming. Broadcast Tool Pro creates its internal identity automatically, and the channel joins the organization's existing billing cycle.",
         "To remove an additional channel, review the renewal adjustment and confirm removal at period end. The channel stays active until that date and no mid-cycle credit is issued.",
         "Cancel a scheduled removal before renewal if the organization decides to keep the channel.",
         "Use Payment History to retrieve issued invoices.",

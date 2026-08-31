@@ -40,6 +40,11 @@ def organization_billing(
             organization_id
         )
         channels = tenant_store.list_organization_channels(organization_id)
+        included_channel_id = tenant_store.included_channel_id(organization_id)
+        channels = [
+            {**channel, "is_included": channel["id"] == included_channel_id}
+            for channel in channels
+        ]
         channel_count = len([
             channel for channel in channels if channel["active"]
         ])
@@ -142,9 +147,6 @@ def preview_channel_purchase(
         return stripe_billing.preview_channel_purchase(
             organization_id=organization_id,
             name=request.name,
-            channel_code=request.channel_code,
-            timezone=request.timezone,
-            primary_language=request.primary_language,
             stream_monitoring=request.stream_monitoring,
         )
     except ValueError as exc:

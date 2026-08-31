@@ -165,9 +165,6 @@ function channelPurchasePayload() {
   const data = new FormData(billingChannelForm);
   return {
     name: String(data.get("name") || "").trim(),
-    channel_code: String(data.get("channel_code") || "").trim(),
-    timezone: String(data.get("timezone") || "UTC"),
-    primary_language: String(data.get("primary_language") || "en"),
     stream_monitoring: data.get("stream_monitoring") === "on",
   };
 }
@@ -294,17 +291,22 @@ function renderBillingChannels(channels = []) {
     row.className = "billing-channel-row";
     const identity = document.createElement("div");
     const name = document.createElement("strong");
-    const detail = document.createElement("small");
     name.textContent = channel.name;
-    detail.textContent = `${channel.channel_code || "—"} · ${channel.timezone}`;
-    identity.append(name, detail);
+    identity.append(name);
     const status = document.createElement("div");
     status.className = "billing-channel-status";
     const statusText = document.createElement("small");
     const button = document.createElement("button");
     button.className = "button button-secondary";
     button.type = "button";
-    if (channel.deactivation_scheduled_at) {
+    if (channel.is_included) {
+      statusText.textContent = billingText(
+        "billing.includedChannelProtected",
+        "Included channel · required for this organization",
+      );
+      button.textContent = billingText("billing.included", "Included");
+      button.disabled = true;
+    } else if (channel.deactivation_scheduled_at) {
       statusText.textContent = billingText(
         "billing.removalDate",
         "Removal scheduled for {date}",
@@ -312,13 +314,6 @@ function renderBillingChannels(channels = []) {
       );
       button.textContent = billingText("billing.keepChannel", "Keep Channel");
       button.addEventListener("click", () => cancelChannelRemoval(channel));
-    } else if (activeChannels.length === 1) {
-      statusText.textContent = billingText(
-        "billing.includedChannelProtected",
-        "Included channel · required for this organization",
-      );
-      button.textContent = billingText("billing.included", "Included");
-      button.disabled = true;
     } else {
       statusText.textContent = channel.stream_monitoring
         ? billingText("billing.monitoringEnabled", "Stream Monitoring enabled")
@@ -368,8 +363,12 @@ async function previewChannelPurchase(event) {
         billingText("billing.streamMonitoring", "Stream Monitoring"),
         preview.stream_monitoring_monthly_cents
           ? billingMoney(preview.stream_monitoring_monthly_cents, preview.currency)
-          : billingText("billing.includedOrNotSelected", "Included or not selected"),
-        billingText("billing.perMonth", "per month"),
+          : preview.plan_code === "enterprise"
+            ? billingText("billing.included", "Included")
+            : billingText("billing.notSelected", "Not selected"),
+        preview.stream_monitoring_monthly_cents
+          ? billingText("billing.perMonth", "per month")
+          : "",
       ),
       billingCard(
         billingText("billing.dueNow", "Due now"),

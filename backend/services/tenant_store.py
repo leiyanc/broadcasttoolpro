@@ -303,6 +303,23 @@ class TenantStore:
             ).fetchall()
         return [self._channel(row) for row in rows]
 
+    def included_channel_id(self, organization_id: str) -> str | None:
+        """Return the organization's original channel, which is plan-included."""
+        self.get_organization(organization_id)
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT channels.id
+                FROM channels
+                JOIN workspaces ON workspaces.id = channels.workspace_id
+                WHERE workspaces.organization_id = ?
+                ORDER BY channels.created_at ASC, channels.id ASC
+                LIMIT 1
+                """,
+                (organization_id,),
+            ).fetchone()
+        return row["id"] if row is not None else None
+
     def schedule_channel_deactivation(
         self,
         channel_id: str,

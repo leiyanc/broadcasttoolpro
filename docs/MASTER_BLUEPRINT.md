@@ -247,11 +247,14 @@ additional channels at $79/month. Existing Stripe subscriptions cannot be
 duplicated through Checkout.
 
 Adding a channel updates the existing Stripe subscription and may create a
-prorated charge for the remainder of the current period. The channel is created
-only after Stripe accepts that update, and it adopts the organization's existing
-renewal date. A channel removal is scheduled for period end with no mid-cycle
-credit. The channel remains active until that date, the removal can be canceled
-before it becomes effective, and at least one active channel must remain. Prior
+prorated charge for the remainder of the current period. The customer supplies
+only its name; BTP generates its internal ID and initializes operational time
+zone and language defaults. The channel is created only after Stripe accepts
+that update, and it adopts the organization's existing renewal date. The
+original plan-included channel is permanently protected from removal. Removal
+of an additional channel is scheduled for period end with no mid-cycle credit.
+The channel remains active until that date, and the removal can be canceled
+before it becomes effective. Prior
 reports, invoices, and audit history are preserved after operational
 deactivation. Stripe subscription schedules serialize future plan and channel
 changes; conflicting scheduled changes must be resolved first.

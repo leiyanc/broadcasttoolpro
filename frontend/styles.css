@@ -1552,6 +1552,34 @@ main {
   gap: 12px;
 }
 
+#billing-channel-costs > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+#billing-channel-costs small,
+#billing-channel-costs strong,
+#billing-channel-costs p {
+  display: block;
+  margin: 0;
+}
+
+#billing-channel-costs small,
+#billing-channel-costs p {
+  color: var(--muted);
+}
+
+#billing-channel-costs strong {
+  color: var(--navy);
+  font-size: 20px;
+}
+
 .module-launcher {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

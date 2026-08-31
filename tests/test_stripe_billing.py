@@ -1,5 +1,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+import pytest
 from types import SimpleNamespace
 
 from backend.services.billing_store import BillingStore
@@ -131,7 +133,7 @@ def test_additional_channel_preview_uses_discounted_plan_price(monkeypatch):
             slug=None,
             default_timezone="UTC",
         )
-        tenants.create_channel(
+        included = tenants.create_channel(
             workspace_id=workspace["id"],
             name="Primary Channel",
             slug=None,
@@ -375,17 +377,11 @@ def test_legacy_organization_receives_first_channel_without_stripe_charge(
         preview = service.preview_channel_purchase(
             organization_id=organization["id"],
             name="Legacy Primary",
-            channel_code="legacy-primary",
-            timezone="UTC",
-            primary_language="es",
             stream_monitoring=False,
         )
         channel = service.purchase_channel(
             organization_id=organization["id"],
             name="Legacy Primary",
-            channel_code="legacy-primary",
-            timezone="UTC",
-            primary_language="es",
             stream_monitoring=False,
         )
 
@@ -393,6 +389,9 @@ def test_legacy_organization_receives_first_channel_without_stripe_charge(
     assert preview["amount_due_now_cents"] == 0
     assert preview["monthly_increase_cents"] == 0
     assert channel["name"] == "Legacy Primary"
+    assert channel["channel_code"] == "legacy-primary"
+    assert channel["timezone"] == "UTC"
+    assert channel["primary_language"] == "und"
 
 
 def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
@@ -413,7 +412,7 @@ def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
             slug=None,
             default_timezone="UTC",
         )
-        tenants.create_channel(
+        included = tenants.create_channel(
             workspace_id=workspace["id"],
             name="Primary Channel",
             slug=None,
@@ -495,6 +494,12 @@ def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
             lambda schedule_id: released.append(schedule_id),
         )
         service = StripeBillingService()
+
+        with pytest.raises(ValueError, match="included channel"):
+            service.preview_channel_removal(
+                organization_id=organization["id"],
+                channel_id=included["id"],
+            )
 
         preview = service.preview_channel_removal(
             organization_id=organization["id"],
