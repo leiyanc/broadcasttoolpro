@@ -102,6 +102,34 @@ function normalizeResult(payload, responseOk = true) {
     return body;
   }
 
+  if (Array.isArray(detail)) {
+    const issues = detail.map((item) => {
+      const location = Array.isArray(item?.loc)
+        ? item.loc.filter((part) => part !== "body").join(" → ")
+        : "Request";
+      return {
+        rule_id: "REQUEST",
+        severity: "critical",
+        field: location,
+        message: `${location}: ${item?.msg || "Invalid value."}`,
+      };
+    });
+    return {
+      success: false,
+      programmes_imported: 0,
+      suggested_fixes: 0,
+      validation: {
+        score: 0,
+        critical: issues.length || 1,
+        errors: 0,
+        warnings: 0,
+        issues: issues.length
+          ? issues
+          : fallbackValidation("Invalid request.").issues,
+      },
+    };
+  }
+
   if (detail && typeof detail === "object") {
     return {
       success: false,
@@ -314,6 +342,18 @@ function buildFormData(includeProfile = false) {
 
   if (!file) {
     fileInput.reportValidity();
+    return null;
+  }
+
+  if (!form.elements.channel_id.value) {
+    showResult({
+      success: false,
+      programmes_imported: 0,
+      validation: fallbackValidation(uiText(
+        "generator.channelSelectionRequired",
+        "Select an active registered channel before validating the schedule.",
+      ), "CHANNEL"),
+    });
     return null;
   }
 

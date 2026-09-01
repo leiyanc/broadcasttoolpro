@@ -511,8 +511,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260828-8' in html
-    assert '/static/i18n.js?v=20260831-1' in html
+    assert '/static/hls-validator.js?v=20260901-1' in html
+    assert '/static/i18n.js?v=20260901-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -770,6 +770,9 @@ def test_missing_template_channel_warning_is_localized():
     assert '["VAL-011", "VAL-012"].includes(issue.rule_id)' in javascript
     assert '"generator.rule.VAL-011"' in translations
     assert "El canal es obligatorio." in translations
+    assert "Array.isArray(detail)" in javascript
+    assert 'rule_id: "REQUEST"' in javascript
+    assert '"generator.channelSelectionRequired"' in translations
 
 
 def test_template_download_links_are_cache_busted():
@@ -777,6 +780,15 @@ def test_template_download_links_are_cache_busted():
 
     assert html.count("/api/xmltv/template/excel?v=20260901-1") == 2
     assert html.count("/api/xmltv/template/csv?v=20260901-1") == 2
+    for script in (
+        "i18n.js",
+        "auth.js",
+        "app.js",
+        "prelog-filter.js",
+        "postlog-certification.js",
+        "hls-validator.js",
+    ):
+        assert f"/static/{script}?v=20260901-1" in html
 
 
 def test_billing_supports_reviewed_additional_channel_purchase():
