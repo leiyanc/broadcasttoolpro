@@ -772,6 +772,13 @@ def test_missing_template_channel_warning_is_localized():
     assert "El canal es obligatorio." in translations
 
 
+def test_template_download_links_are_cache_busted():
+    html = (FRONTEND_DIR / "index.html").read_text()
+
+    assert html.count("/api/xmltv/template/excel?v=20260901-1") == 2
+    assert html.count("/api/xmltv/template/csv?v=20260901-1") == 2
+
+
 def test_billing_supports_reviewed_additional_channel_purchase():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "billing.js").read_text()

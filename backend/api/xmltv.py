@@ -97,6 +97,7 @@ def download_excel_template(
             "spreadsheetml.sheet"
         ),
         filename="Broadcast_Tool_Pro_XMLTV_Template.xlsx",
+        headers={"Cache-Control": "no-store, max-age=0"},
     )
 
 
@@ -109,6 +110,7 @@ def download_csv_template(
         content=content,
         media_type="text/csv",
         headers={
+            "Cache-Control": "no-store, max-age=0",
             "Content-Disposition": (
                 'attachment; filename="Broadcast_Tool_Pro_XMLTV_Template.csv"'
             ),

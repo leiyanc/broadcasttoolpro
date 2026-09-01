@@ -34,6 +34,7 @@ def test_excel_template_endpoint_returns_download():
 
     assert Path(response.path) == EXCEL_TEMPLATE
     assert response.filename == "Broadcast_Tool_Pro_XMLTV_Template.xlsx"
+    assert response.headers["cache-control"] == "no-store, max-age=0"
 
 
 def test_csv_template_endpoint_returns_expected_headers():
@@ -44,3 +45,4 @@ def test_csv_template_endpoint_returns_expected_headers():
     assert "Broadcast_Tool_Pro_XMLTV_Template.csv" in response.headers[
         "content-disposition"
     ]
+    assert response.headers["cache-control"] == "no-store, max-age=0"
