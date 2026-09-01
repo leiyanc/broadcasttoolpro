@@ -73,13 +73,13 @@ def test_programming_grid_endpoint_uses_the_original_epg_upload():
         download_programming_grid(
             upload,
             "America/New_York",
-            "Comercio TV",
+            "Sample TV",
             False,
         )
     )
 
     assert response.media_type == "application/pdf"
     assert response.body.startswith(b"%PDF")
-    assert "comercio-tv-programming-grid.pdf" in response.headers[
+    assert "sample-tv-programming-grid.pdf" in response.headers[
         "content-disposition"
     ]

@@ -426,7 +426,23 @@ def test_prelog_workbook_exports_optional_client_name():
     )
     worksheet = load_workbook(BytesIO(content))["Pre Log"]
 
-    assert worksheet["C4"].value == "Client Name: Banco Ejemplo"
+    assert worksheet["C4"].value == "Organization: Banco Ejemplo"
+
+
+def test_prelog_workbook_stamps_organization_and_channel_id():
+    _, events = parse_playlist_events(SAMPLE_PLAYLIST.read_bytes())
+    content = generate_prelog_workbook(
+        events[:2],
+        channel_name="Comercio TV",
+        channel_code="comercio-tv",
+        client_name="Example Media",
+    )
+    worksheet = load_workbook(BytesIO(content))["Pre Log"]
+
+    assert worksheet["C2"].value == "Comercio TV"
+    assert worksheet["C4"].value == (
+        "Organization: Example Media · Channel ID: comercio-tv"
+    )
 
 
 def test_prelog_export_endpoint_downloads_xlsx():

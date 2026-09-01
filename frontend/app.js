@@ -36,6 +36,18 @@ const programmingGridLogo = document.querySelector(
 
 let latestSchedule = [];
 
+function applyRegisteredChannel(channel) {
+  if (!channel) return;
+  form.elements.channel_id.value = channel.id;
+  form.elements.channel_name.value = channel.name;
+  form.elements.channel_timezone.value = channel.timezone;
+  form.elements.primary_language.value = channel.primary_language || "en";
+}
+
+window.addEventListener("btp:channel", (event) => {
+  applyRegisteredChannel(event.detail);
+});
+
 function uiText(key, fallback, values = {}) {
   const template = window.BTPi18n?.t(key, fallback) ?? fallback;
   return Object.entries(values).reduce(
@@ -69,8 +81,8 @@ function localizedIssueMessage(issue) {
     "generator.unknownIssue",
     "Unknown issue",
   );
-  return issue.rule_id === "VAL-011"
-    ? uiText("generator.rule.VAL-011", fallback)
+  return ["VAL-011", "VAL-012"].includes(issue.rule_id)
+    ? uiText(`generator.rule.${issue.rule_id}`, fallback)
     : fallback;
 }
 
@@ -310,10 +322,10 @@ function buildFormData(includeProfile = false) {
     "channel_timezone",
     form.elements.channel_timezone.value,
   );
+  data.append("channel_id", form.elements.channel_id.value);
 
   if (includeProfile) {
     for (const field of [
-      "channel_id",
       "channel_name",
       "primary_language",
       "original_language",
@@ -530,7 +542,6 @@ programmingGridButton.addEventListener("click", async () => {
 
   const data = buildFormData();
   if (!data) return;
-  data.append("channel_name", form.elements.channel_name.value);
   data.append(
     "accept_auto_fixes",
     acceptAutoFixes.checked ? "true" : "false",

@@ -122,6 +122,8 @@ def _draw_page(
     week: date,
     by_day: dict[date, list[dict]],
     channel_name: str,
+    channel_code: str,
+    organization_name: str,
     timezone_name: str,
     logo_content: bytes | None,
 ) -> None:
@@ -154,7 +156,7 @@ def _draw_page(
     pdf.drawString(
         left,
         page_height - 40,
-        f"Week of {week.strftime('%B %d, %Y')}  |  {timezone_name}",
+        f"{organization_name}  |  Channel ID: {channel_code}  |  {timezone_name}",
     )
 
     pdf.setFillColor(NAVY)
@@ -273,6 +275,8 @@ def generate_programming_grid(
     programmes: list[dict],
     channel_name: str,
     timezone_name: str,
+    channel_code: str = "channel",
+    organization_name: str = "Organization",
     logo_content: bytes | None = None,
 ) -> bytes:
     if not programmes:
@@ -293,6 +297,8 @@ def generate_programming_grid(
             week,
             by_day,
             channel_name,
+            channel_code,
+            organization_name,
             timezone_name,
             logo_content,
         )

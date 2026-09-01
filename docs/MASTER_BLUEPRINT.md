@@ -627,10 +627,9 @@ eligibility, suppression, preference, and reputation controls.
   must also use a trusted Amazon SNS HTTPS host.
 - The platform must never repeatedly send to a permanently bounced address or
   to a recipient who submitted a complaint.
-- Authenticated recipients can disable optional three-day and one-day trial
-  reminders from their account panel. Account access, password recovery,
-  billing, security, support, welcome, and trial-expiration messages remain
-  operational because they are essential transactional communications.
+- Account access, password recovery, billing, security, support, and welcome
+  messages remain operational because they are essential transactional
+  communications. BTP does not operate a time-limited trial programme.
 
 ## Public Trust and Compliance Pages
 

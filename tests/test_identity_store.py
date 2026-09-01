@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi import HTTPException, Response
 
-from backend.api.auth import _web_bootstrap_allowed, bootstrap_platform
+from backend.api.auth import (
+    _web_bootstrap_allowed,
+    bootstrap_platform,
+    registered_channel_for_user,
+)
+import backend.api.auth as auth_module
 from backend.main import app
 from backend.models.identity import BootstrapRequest
 from backend.services.billing_store import BillingStore
@@ -110,6 +115,60 @@ def test_roles_are_scoped_to_each_organization():
             second_organization["id"],
             "viewer",
         )["role"] == "viewer"
+
+
+def test_registered_channel_is_scoped_to_the_users_organization(monkeypatch):
+    with TemporaryDirectory() as directory:
+        tenants, identities = _stores(directory)
+        owner, organization, _ = identities.bootstrap(
+            organization_name="Owner Network",
+            display_name="Owner",
+            email="owner@example.com",
+            password="a-secure-password",
+        )
+        own_workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        own_channel = tenants.create_channel(
+            workspace_id=own_workspace["id"],
+            name="Owner Channel",
+            slug=None,
+            channel_code=None,
+            timezone="UTC",
+            primary_language="en",
+        )
+        foreign_organization = tenants.create_organization(
+            name="Foreign Network",
+            slug=None,
+            plan="professional",
+        )
+        foreign_workspace = tenants.create_workspace(
+            organization_id=foreign_organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        foreign_channel = tenants.create_channel(
+            workspace_id=foreign_workspace["id"],
+            name="Foreign Channel",
+            slug=None,
+            channel_code=None,
+            timezone="UTC",
+            primary_language="en",
+        )
+        entitlements = EntitlementStore(tenants.database_path)
+        entitlements.initialize()
+        monkeypatch.setattr(auth_module, "identity_store", identities)
+        monkeypatch.setattr(auth_module, "tenant_store", tenants)
+        monkeypatch.setattr(auth_module, "entitlement_store", entitlements)
+
+        assert registered_channel_for_user(owner, own_channel["id"])["id"] == own_channel["id"]
+        with pytest.raises(HTTPException) as exc_info:
+            registered_channel_for_user(owner, foreign_channel["id"])
+        assert exc_info.value.status_code == 403
 
 
 def test_authentication_routes_are_registered():

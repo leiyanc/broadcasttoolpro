@@ -248,19 +248,8 @@ async function refreshOrganizationEntitlements() {
       }
     }
     document.querySelectorAll(".paid-download-option").forEach((element) => {
-      element.classList.toggle(
-        "is-hidden",
-        entitlements.access?.type === "trial",
-      );
+      element.classList.remove("is-hidden");
     });
-    const prelogFormat = document.querySelector("#prelog-output-format");
-    const prelogExcel = prelogFormat?.querySelector('option[value="xlsx"]');
-    if (prelogExcel) {
-      prelogExcel.disabled = entitlements.access?.type === "trial";
-      if (entitlements.access?.type === "trial") {
-        prelogFormat.value = "pdf";
-      }
-    }
     const monitorEnabled = Boolean(modules.hls_monitor?.enabled);
     setModuleAvailability(
       document.querySelector("#monitor-hls-button"),

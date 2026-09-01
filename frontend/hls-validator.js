@@ -751,7 +751,8 @@ function hlsReportPayload() {
     triggers,
     bandwidth_samples: hlsBandwidthSamples,
     issues,
-    channel_name: hlsChannelName.value.trim(),
+    channel_id: window.BTPActiveChannel?.id || "",
+    channel_name: window.BTPActiveChannel?.name || "",
     client_name: hlsClientName.value.trim(),
     test_reference: hlsTestReference.value.trim(),
     operator_name: hlsOperatorName.value.trim(),
@@ -887,4 +888,12 @@ window.addEventListener("btp:languagechange", () => {
       "Loudness assessment could not be completed",
     );
   }
+});
+
+window.addEventListener("btp:channel", (event) => {
+  hlsChannelName.value = event.detail?.name || "";
+});
+
+window.addEventListener("btp:identity", (event) => {
+  hlsClientName.value = event.detail?.organizations?.[0]?.name || "";
 });

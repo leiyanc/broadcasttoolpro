@@ -47,8 +47,8 @@ def test_generate_endpoint_returns_downloadable_xml():
         generate_schedule(
             upload,
             "America/New_York",
-            "comercio-tv",
-            "Comercio TV",
+            "sample-tv",
+            "Sample TV",
             "en",
             "en",
             "VCHIP",
@@ -58,7 +58,7 @@ def test_generate_endpoint_returns_downloadable_xml():
     root = ElementTree.fromstring(response.body)
 
     assert response.media_type == "application/xml"
-    assert "comerciotv_07182026-07182026.xml" in response.headers[
+    assert "sampletv_07182026-07182026.xml" in response.headers[
         "content-disposition"
     ]
     assert len(root.findall("./programme")) == 2
@@ -98,8 +98,8 @@ def test_generate_requires_authorization_for_safe_corrections():
             generate_schedule(
                 localized_upload(),
                 "America/New_York",
-                "comercio-tv",
-                "Comercio TV",
+                "sample-tv",
+                "Sample TV",
                 "es",
                 "es",
                 "VCHIP",
@@ -118,8 +118,8 @@ def test_generate_applies_authorized_safe_corrections():
         generate_schedule(
             localized_upload(),
             "America/New_York",
-            "comercio-tv",
-            "Comercio TV",
+            "sample-tv",
+            "Sample TV",
             "es",
             "es",
             "VCHIP",

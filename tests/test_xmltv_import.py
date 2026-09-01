@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 from starlette.datastructures import UploadFile
 
-from backend.api.xmltv import import_schedule
+from backend.api.xmltv import import_schedule, process_schedule
 from backend.services.xmltv.parser import parse_date, parse_time
 
 
@@ -85,6 +85,28 @@ def test_missing_channel_is_a_blocking_warning():
     assert issue["severity"] == "warning"
     assert issue["field"] == "Channel"
     assert issue["row"] == 2
+
+
+def test_channel_mismatch_is_a_blocking_warning():
+    path = Path("tests/sample_schedule.csv")
+    upload = UploadFile(
+        filename=path.name,
+        file=BytesIO(path.read_bytes()),
+    )
+    result = asyncio.run(process_schedule(
+        upload,
+        "America/New_York",
+        expected_channel_name="Different Registered Channel",
+    ))
+
+    issues = [
+        item for item in result["validation"]["issues"]
+        if item["rule_id"] == "VAL-012"
+    ]
+    assert result["success"] is False
+    assert result["programmes"] == []
+    assert result["validation"]["processing_blocked"] is True
+    assert [item["row"] for item in issues] == [2, 3]
 
 
 def test_invalid_csv_reports_source_row():

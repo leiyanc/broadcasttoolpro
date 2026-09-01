@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -432,6 +433,8 @@ def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
         billing = BillingStore(database_path)
         billing.initialize()
         EntitlementStore(database_path).initialize()
+        period_start = datetime.now(timezone.utc)
+        period_end = period_start + timedelta(days=30)
         billing.apply_stripe_subscription(
             organization["id"],
             plan_code="professional",
@@ -441,16 +444,16 @@ def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(
             currency="usd",
             customer_id="cus_removal",
             subscription_id="sub_removal",
-            period_start="2026-08-01T00:00:00+00:00",
-            period_end="2026-09-01T00:00:00+00:00",
+            period_start=period_start.isoformat(),
+            period_end=period_end.isoformat(),
             cancel_at_period_end=False,
         )
         monkeypatch.setattr(stripe_module, "billing_store", billing)
         subscription = {
             "id": "sub_removal",
             "schedule": None,
-            "current_period_start": 1_785_542_400,
-            "current_period_end": 1_788_220_800,
+            "current_period_start": int(period_start.timestamp()),
+            "current_period_end": int(period_end.timestamp()),
             "items": {"data": [
                 {
                     "id": "si_plan",

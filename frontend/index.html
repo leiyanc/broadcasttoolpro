@@ -711,7 +711,7 @@
           <h3>Access Requests</h3>
           <p class="section-copy">
             Review the requested package and approve or override it.
-            These accounts are independent of the free trial.
+            Access begins only after approval and subscription activation.
           </p>
           <p
             class="auth-message admin-inline-message"
@@ -1079,33 +1079,35 @@
 
           <div class="form-grid">
 
-            <label>
+            <label class="is-hidden">
 
               <span data-i18n="generator.channelName">Channel Name</span>
 
               <input
                 name="channel_name"
                 type="text"
-                value="Comercio TV"
+                value=""
+                readonly
                 required
               />
 
             </label>
 
-            <label>
+            <label class="is-hidden">
 
               <span data-i18n="generator.channelId">Channel ID</span>
 
               <input
                 name="channel_id"
                 type="text"
-                value="comercio-tv"
+                value=""
+                readonly
                 required
               />
 
             </label>
 
-            <label>
+            <label class="is-hidden">
 
               <span data-i18n="generator.timezone">Channel Time Zone</span>
 
@@ -1890,11 +1892,12 @@
 
           <div class="filter-grid">
             <label>
-              <span data-i18n="traffic.clientOptional">Client Name (Optional)</span>
+              <span data-i18n="traffic.clientOptional">Organization</span>
               <input
                 id="prelog-client-name"
                 type="text"
                 autocomplete="off"
+                readonly
               />
             </label>
             <label>
@@ -1904,6 +1907,7 @@
                 type="text"
                 required
                 autocomplete="off"
+                readonly
               />
             </label>
             <label>
@@ -2134,12 +2138,12 @@
 
           <div class="filter-grid">
             <label>
-              <span data-i18n="traffic.clientOptional">Client Name (Optional)</span>
-              <input id="postlog-client-name" type="text" />
+              <span data-i18n="traffic.clientOptional">Organization</span>
+              <input id="postlog-client-name" type="text" readonly />
             </label>
             <label>
               <span data-i18n="traffic.channelName">Channel Name</span>
-              <input id="postlog-channel-name" type="text" required />
+              <input id="postlog-channel-name" type="text" required readonly />
             </label>
             <label>
               <span data-i18n="traffic.reportLanguage">Report Language</span>
@@ -2228,16 +2232,16 @@
             </label>
           </div>
           <p class="eyebrow" data-i18n="hls.optionalDetails">
-            OPTIONAL REPORT DETAILS
+            REPORT DETAILS
           </p>
           <div class="hls-monitor-controls">
             <label>
-              <span data-i18n="hls.channelOptional">Channel / Service (Optional)</span>
-              <input id="hls-channel-name" type="text" />
+              <span data-i18n="hls.channelOptional">Channel / Service</span>
+              <input id="hls-channel-name" type="text" readonly />
             </label>
             <label>
-              <span data-i18n="hls.clientOptional">Client / Organization (Optional)</span>
-              <input id="hls-client-name" type="text" />
+              <span data-i18n="hls.clientOptional">Organization</span>
+              <input id="hls-client-name" type="text" readonly />
             </label>
             <label>
               <span data-i18n="hls.referenceOptional">Test Reference (Optional)</span>
@@ -2259,7 +2263,7 @@
               <span data-i18n="hls.expectedDurationOptional">Expected Break Duration (Optional)</span>
               <input id="hls-expected-break-duration" type="number" min="1" step="1" />
             </label>
-            <label>
+            <label class="is-hidden">
               <span data-i18n="hls.timezoneOptional">Report Time Zone (Optional)</span>
               <select id="hls-report-timezone">
                 <option value="" data-i18n="hls.utcOnly">UTC only</option>

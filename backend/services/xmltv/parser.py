@@ -14,7 +14,7 @@ from backend.models.programme import Programme
 
 
 EXPECTED_COLUMNS = [
-    "Channel (Optional)",
+    "Channel",
     "Air Date",
     "Start Time",
     "Program Title",
@@ -455,7 +455,7 @@ def build_programme(
 
     return Programme(
         source_row=source_row,
-        channel=clean_text(row.get("Channel (Optional)")),
+        channel=clean_text(row.get("Channel")),
         air_date=air_date,
         start_time=parse_time(row.get("Start Time")),
         program_title=title,

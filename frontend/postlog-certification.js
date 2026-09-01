@@ -396,7 +396,7 @@ exportPostlogButton.addEventListener("click", async () => {
   if (postlogClientName.value.trim()) {
     data.append("client_name", postlogClientName.value.trim());
   }
-  data.append("channel_name", postlogChannelName.value);
+  data.append("channel_id", window.BTPActiveChannel?.id || "");
   data.append(
     "report_language",
     document.querySelector("#postlog-report-language").value,
@@ -512,4 +512,12 @@ window.addEventListener("btp:languagechange", () => {
   window.BTPi18n?.apply(document.querySelector("#postlog"));
   refreshProfileList(postlogProfileSelect.value).catch(() => {});
   if (postlogFiles.files.length) handlePostlogFilesChanged();
+});
+
+window.addEventListener("btp:channel", (event) => {
+  postlogChannelName.value = event.detail?.name || "";
+});
+
+window.addEventListener("btp:identity", (event) => {
+  postlogClientName.value = event.detail?.organizations?.[0]?.name || "";
 });

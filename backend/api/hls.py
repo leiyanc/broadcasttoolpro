@@ -15,6 +15,7 @@ from backend.services.hls.loudness import (
 from backend.api.auth import (
     access_for_user,
     current_user,
+    registered_channel_for_user,
     require_active_organization,
     require_module,
 )
@@ -114,7 +115,28 @@ def download_hls_report(
     user: dict = Depends(current_user),
     _module_user: dict = Depends(require_module("hls_validator")),
 ):
-    content = generate_hls_report(report)
+    channel = (
+        registered_channel_for_user(user, str(report.get("channel_id", "")))
+        if isinstance(user, dict)
+        else {
+            "name": report.get("channel_name"),
+            "slug": report.get("channel_id") or "channel",
+            "channel_code": report.get("channel_id"),
+            "timezone": report.get("report_timezone"),
+        }
+    )
+    trusted_report = {
+        **report,
+        "channel_id": channel.get("channel_code") or channel["slug"],
+        "channel_name": channel["name"],
+        "client_name": (
+            access_for_user(user)["organization"]["name"]
+            if isinstance(user, dict)
+            else report.get("client_name")
+        ),
+        "report_timezone": channel["timezone"],
+    }
+    content = generate_hls_report(trusted_report)
     return Response(
         content=content,
         media_type="application/pdf",

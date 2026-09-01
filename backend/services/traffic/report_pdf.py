@@ -47,6 +47,7 @@ def _logo(logo_content: bytes | None) -> Image | None:
 def generate_report_pdf(
     events: list[PlaylistEvent],
     channel_name: str,
+    channel_code: str | None = None,
     language: str = "en",
     product: str | None = None,
     agency: str | None = None,
@@ -130,6 +131,11 @@ def generate_report_pdf(
     if client_name and client_name.strip():
         heading.append(Paragraph(
             f"{labels['client']}: {client_name.strip()}",
+            meta_style,
+        ))
+    if channel_code and channel_code.strip():
+        heading.append(Paragraph(
+            f"Channel ID: {channel_code.strip()}",
             meta_style,
         ))
     logo = _logo(logo_content)

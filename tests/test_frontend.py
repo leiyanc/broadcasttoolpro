@@ -284,7 +284,7 @@ def test_account_access_workflows_localize_without_mutating_identity_data():
     assert "localizedRole" in javascript
     assert 'organization.plan' in javascript
     assert 'organization?.status === "suspended"' in javascript
-    assert 'entitlements.access?.type === "trial"' in javascript
+    assert 'entitlements.access?.type === "trial"' not in javascript
 
 
 def test_report_history_localizes_without_mutating_archived_files():
@@ -767,7 +767,7 @@ def test_missing_template_channel_warning_is_localized():
     javascript = (FRONTEND_DIR / "app.js").read_text()
     translations = (FRONTEND_DIR / "i18n.js").read_text()
 
-    assert 'issue.rule_id === "VAL-011"' in javascript
+    assert '["VAL-011", "VAL-012"].includes(issue.rule_id)' in javascript
     assert '"generator.rule.VAL-011"' in translations
     assert "El canal es obligatorio." in translations
 

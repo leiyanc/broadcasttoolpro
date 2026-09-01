@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend.api.prelogs import _filtered_events
-from backend.api.auth import access_for_user, current_user, require_module
+from backend.api.auth import (
+    access_for_user,
+    current_user,
+    registered_channel_for_user,
+    require_module,
+)
 from backend.services.traffic.playlist import parse_playlist_file
 from backend.services.traffic.prelog_export import (
     generate_prelog_workbook,
@@ -134,7 +139,7 @@ async def export_postlog(
     end_date: str | None = Form(None),
     broadcast_day_start: str = Form("06:00:00"),
     source_timezone: str | None = Form(None),
-    channel_name: str = Form(...),
+    channel_id: str = Form(...),
     report_language: str = Form("en"),
     product: str | None = Form(None),
     agency: str | None = Form(None),
@@ -144,6 +149,15 @@ async def export_postlog(
     user: dict = Depends(current_user),
 ):
     report_owner = access_for_user(user) if isinstance(user, dict) else None
+    channel = (
+        registered_channel_for_user(user, channel_id)
+        if isinstance(user, dict)
+        else {"name": channel_id, "channel_code": None, "slug": None}
+    )
+    channel_name = channel["name"]
+    channel_code = channel.get("channel_code") or channel.get("slug")
+    if report_owner:
+        client_name = report_owner["organization"]["name"]
     try:
         _, _, matches = await _filtered_events(
             as_run_files,
@@ -185,6 +199,7 @@ async def export_postlog(
             content = generate_prelog_workbook(
                 asset_events,
                 channel_name=channel_name,
+                channel_code=channel_code,
                 language=report_language,
                 product=product,
                 agency=agency,
@@ -201,6 +216,7 @@ async def export_postlog(
             content = generate_report_pdf(
                 asset_events,
                 channel_name=channel_name,
+                channel_code=channel_code,
                 language=report_language,
                 product=product,
                 agency=agency,
@@ -236,6 +252,7 @@ async def export_postlog(
                     report = generate_prelog_workbook(
                         asset_events,
                         channel_name=channel_name,
+                        channel_code=channel_code,
                         language=report_language,
                         product=product,
                         agency=agency,
@@ -250,6 +267,7 @@ async def export_postlog(
                     report = generate_report_pdf(
                         asset_events,
                         channel_name=channel_name,
+                        channel_code=channel_code,
                         language=report_language,
                         product=product,
                         agency=agency,

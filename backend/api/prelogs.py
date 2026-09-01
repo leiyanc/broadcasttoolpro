@@ -18,6 +18,7 @@ from backend.services.traffic.playlist import (
 from backend.api.auth import (
     access_for_user,
     current_user,
+    registered_channel_for_user,
     require_module,
 )
 
@@ -156,7 +157,7 @@ async def export_prelog(
     end_date: str | None = Form(None),
     broadcast_day_start: str = Form("06:00:00"),
     source_timezone: str | None = Form(None),
-    channel_name: str = Form(...),
+    channel_id: str = Form(...),
     report_language: str = Form("en"),
     product: str | None = Form(None),
     agency: str | None = Form(None),
@@ -166,6 +167,15 @@ async def export_prelog(
     user: dict = Depends(current_user),
 ):
     report_owner = access_for_user(user) if isinstance(user, dict) else None
+    channel = (
+        registered_channel_for_user(user, channel_id)
+        if isinstance(user, dict)
+        else {"name": channel_id, "channel_code": None, "slug": None}
+    )
+    channel_name = channel["name"]
+    channel_code = channel.get("channel_code") or channel.get("slug")
+    if report_owner:
+        client_name = report_owner["organization"]["name"]
     try:
         _, _, matches = await _filtered_events(
             playlist_files,
@@ -200,6 +210,7 @@ async def export_prelog(
             content = generate_prelog_workbook(
                 matches,
                 channel_name=channel_name,
+                channel_code=channel_code,
                 language=report_language,
                 product=product,
                 agency=agency,
@@ -214,6 +225,7 @@ async def export_prelog(
             content = generate_report_pdf(
                 matches,
                 channel_name=channel_name,
+                channel_code=channel_code,
                 language=report_language,
                 product=product,
                 agency=agency,

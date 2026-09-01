@@ -349,7 +349,7 @@ exportPrelogButton.addEventListener("click", async () => {
   if (prelogClientName.value.trim()) {
     data.append("client_name", prelogClientName.value.trim());
   }
-  data.append("channel_name", prelogChannelName.value);
+  data.append("channel_id", window.BTPActiveChannel?.id || "");
   data.append("report_language", prelogReportLanguage.value);
   data.append("output_format", prelogOutputFormat.value);
   if (prelogProduct.value.trim()) {
@@ -433,7 +433,13 @@ window.addEventListener("btp:identity", (event) => {
     prelogAgency.value = "";
     prelogClientName.value = "";
     prelogChannelName.value = "";
+  } else {
+    prelogClientName.value = identity.organizations?.[0]?.name || "";
   }
+});
+
+window.addEventListener("btp:channel", (event) => {
+  prelogChannelName.value = event.detail?.name || "";
 });
 
 restoreAccountPreferences();

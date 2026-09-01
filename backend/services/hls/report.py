@@ -512,6 +512,7 @@ def generate_hls_report(
     ]
     optional_rows = [
         ("Canal / Servicio" if spanish else "Channel / Service", payload.get("channel_name")),
+        ("ID del Canal" if spanish else "Channel ID", payload.get("channel_id")),
         ("Cliente / Organizacion" if spanish else "Client / Organization", payload.get("client_name")),
         ("Referencia de Prueba" if spanish else "Test Reference", payload.get("test_reference")),
         ("Operador" if spanish else "Operator", payload.get("operator_name")),

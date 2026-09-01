@@ -27,7 +27,9 @@ from backend.services.xmltv.validation_report import (
     generate_xmltv_validation_report,
 )
 from backend.api.auth import (
+    access_for_user,
     current_user,
+    registered_channel_for_user,
     require_active_organization,
     require_module,
 )
@@ -118,6 +120,7 @@ async def process_schedule(
     schedule_file: UploadFile,
     channel_timezone: str,
     apply_fixes: bool = False,
+    expected_channel_name: str | None = None,
 ) -> dict:
     filename = schedule_file.filename or ""
     content = await schedule_file.read()
@@ -168,6 +171,7 @@ async def process_schedule(
     parsing_issues = []
     auto_fixes = []
     missing_channel_rows = []
+    mismatched_channel_rows = []
 
     extension = Path(filename).suffix.lower()
     first_data_row = 5 if extension == ".xlsx" else 2
@@ -197,7 +201,8 @@ async def process_schedule(
     for position, row in enumerate(rows):
         source_row = first_data_row + position
 
-        if not str(row.get("Channel (Optional)") or "").strip():
+        row_channel = str(row.get("Channel") or "").strip()
+        if not row_channel:
             missing_channel_rows.append(source_row)
             parsing_issues.append(
                 ValidationIssue(
@@ -208,6 +213,23 @@ async def process_schedule(
                     message=(
                         "Channel is required. Select the registered channel "
                         "and enter its name on every programme row."
+                    ),
+                )
+            )
+        elif (
+            expected_channel_name
+            and row_channel.casefold() != expected_channel_name.strip().casefold()
+        ):
+            mismatched_channel_rows.append(source_row)
+            parsing_issues.append(
+                ValidationIssue(
+                    rule_id="VAL-012",
+                    row=source_row,
+                    field="Channel",
+                    severity="warning",
+                    message=(
+                        f'Channel must match the selected registered channel '
+                        f'"{expected_channel_name}".'
                     ),
                 )
             )
@@ -242,7 +264,9 @@ async def process_schedule(
     )
     utc_schedule = []
 
-    channel_identity_blocked = bool(missing_channel_rows)
+    channel_identity_blocked = bool(
+        missing_channel_rows or mismatched_channel_rows
+    )
 
     if report.critical == 0 and not channel_identity_blocked:
         try:
@@ -300,12 +324,19 @@ async def process_schedule(
 async def import_schedule(
     schedule_file: UploadFile = File(...),
     channel_timezone: str = Form(...),
-    _user: dict = Depends(require_module("xmltv_generator")),
+    channel_id: str = Form(...),
+    user: dict = Depends(require_module("xmltv_generator")),
 ):
+    channel = (
+        registered_channel_for_user(user, channel_id)
+        if isinstance(user, dict)
+        else None
+    )
     return await process_schedule(
         schedule_file,
-        channel_timezone,
+        channel["timezone"] if channel else channel_timezone,
         apply_fixes=False,
+        expected_channel_name=channel["name"] if channel else None,
     )
 
 
@@ -423,21 +454,33 @@ async def generate_schedule(
     schedule_file: UploadFile = File(...),
     channel_timezone: str = Form(...),
     channel_id: str = Form(...),
-    channel_name: str = Form(...),
+    channel_name: str = Form(""),
     primary_language: str = Form("en"),
     original_language: str = Form("en"),
     rating_system: str = Form("VCHIP"),
     accept_auto_fixes: bool = Form(False),
     timestamp_format: str = Form("xmltv"),
-    _user: dict = Depends(require_module("xmltv_generator")),
+    user: dict = Depends(require_module("xmltv_generator")),
 ):
     if not isinstance(timestamp_format, str):
         timestamp_format = "xmltv"
 
+    channel = (
+        registered_channel_for_user(user, channel_id)
+        if isinstance(user, dict)
+        else {
+            "name": channel_name,
+            "slug": channel_id,
+            "channel_code": channel_id,
+            "timezone": channel_timezone,
+            "primary_language": primary_language,
+        }
+    )
     result = await process_schedule(
         schedule_file,
-        channel_timezone,
+        channel["timezone"],
         apply_fixes=accept_auto_fixes,
+        expected_channel_name=channel["name"],
     )
 
     if not result["success"]:
@@ -466,24 +509,18 @@ async def generate_schedule(
             },
         )
 
-    if not channel_id.strip() or not channel_name.strip():
-        raise HTTPException(
-            status_code=422,
-            detail="Channel ID and Channel Name are required.",
-        )
-
     xml = generate_xmltv(
         programmes=result["programmes"],
-        channel_id=channel_id.strip(),
-        channel_name=channel_name.strip(),
-        primary_language=primary_language.strip(),
+        channel_id=(channel.get("channel_code") or channel["slug"]),
+        channel_name=channel["name"],
+        primary_language=channel["primary_language"],
         original_language=original_language.strip(),
         rating_system=rating_system.strip(),
         timestamp_format=timestamp_format.strip(),
     )
     output_name = xmltv_output_filename(
-        channel_name.strip(),
-        channel_id.strip(),
+        channel["name"],
+        channel.get("channel_code") or channel["slug"],
         result["programmes"],
     )
 
@@ -502,15 +539,28 @@ async def generate_schedule(
 async def download_programming_grid(
     schedule_file: UploadFile = File(...),
     channel_timezone: str = Form(...),
-    channel_name: str = Form(...),
+    channel_name: str = Form(""),
+    channel_id: str = Form(...),
     accept_auto_fixes: bool = Form(False),
     channel_logo: UploadFile | None = File(None),
-    _user: dict = Depends(require_module("programming_grid")),
+    user: dict = Depends(require_module("programming_grid")),
 ):
+    channel = (
+        registered_channel_for_user(user, channel_id)
+        if isinstance(user, dict)
+        else {
+            "name": channel_name,
+            "slug": "channel",
+            "channel_code": "channel",
+            "timezone": channel_timezone,
+        }
+    )
+    access = access_for_user(user) if isinstance(user, dict) else None
     result = await process_schedule(
         schedule_file,
-        channel_timezone,
+        channel["timezone"],
         apply_fixes=accept_auto_fixes,
+        expected_channel_name=channel["name"],
     )
 
     if not result["success"]:
@@ -539,12 +589,7 @@ async def download_programming_grid(
             },
         )
 
-    clean_channel_name = channel_name.strip()
-    if not clean_channel_name:
-        raise HTTPException(
-            status_code=422,
-            detail="Channel Name is required.",
-        )
+    clean_channel_name = channel["name"]
 
     logo_content = None
     if channel_logo and getattr(channel_logo, "filename", None):
@@ -560,7 +605,11 @@ async def download_programming_grid(
         pdf = generate_programming_grid(
             programmes=result["programmes"],
             channel_name=clean_channel_name,
-            timezone_name=channel_timezone,
+            channel_code=channel.get("channel_code") or channel["slug"],
+            organization_name=(
+                access["organization"]["name"] if access else "Organization"
+            ),
+            timezone_name=channel["timezone"],
             logo_content=logo_content,
         )
     except ValueError as exc:

@@ -22,6 +22,7 @@ from backend.models.identity import (
     SignupRegistrationRequest,
 )
 from backend.services.billing_store import billing_store
+from backend.services.tenant_store import tenant_store
 from backend.services.identity_store import (
     AuthenticationLockedError,
     identity_store,
@@ -159,6 +160,32 @@ def access_for_user(user: dict) -> dict:
         "organization": organization,
         "entitlements": entitlements,
     }
+
+
+def registered_channel_for_user(user: dict, channel_id: str) -> dict:
+    """Resolve an active channel owned by the user's organization."""
+    access = access_for_user(user)
+    organization_id = access["organization"]["id"]
+    try:
+        tenant_store.deactivate_due_channels(organization_id)
+        channel = tenant_store.get_channel(channel_id.strip())
+        workspace = tenant_store.get_workspace(channel["workspace_id"])
+    except (AttributeError, KeyError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Select a valid registered channel.",
+        ) from None
+    if workspace["organization_id"] != organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The selected channel does not belong to this organization.",
+        )
+    if not channel["active"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The selected channel is not active.",
+        )
+    return channel
 
 
 def require_active_organization(
