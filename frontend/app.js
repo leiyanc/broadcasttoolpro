@@ -352,7 +352,7 @@ function buildFormData(includeProfile = false) {
       programmes_imported: 0,
       validation: fallbackValidation(uiText(
         "generator.channelSelectionRequired",
-        "Select an active registered channel before validating the schedule.",
+        "This account has no active registered channel. Register or activate a channel before validating. The Channel value in the Excel file must exactly match the registered channel name.",
       ), "CHANNEL"),
     });
     return null;
