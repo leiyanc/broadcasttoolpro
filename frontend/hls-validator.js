@@ -893,6 +893,7 @@ window.addEventListener("btp:languagechange", () => {
 window.addEventListener("btp:channel", (event) => {
   hlsChannelName.value = event.detail?.name || "";
 });
+hlsChannelName.value = window.BTPActiveChannel?.name || "";
 
 window.addEventListener("btp:identity", (event) => {
   hlsClientName.value = event.detail?.organizations?.[0]?.name || "";

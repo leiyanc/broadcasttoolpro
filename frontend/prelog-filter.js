@@ -441,6 +441,7 @@ window.addEventListener("btp:identity", (event) => {
 window.addEventListener("btp:channel", (event) => {
   prelogChannelName.value = event.detail?.name || "";
 });
+prelogChannelName.value = window.BTPActiveChannel?.name || "";
 
 restoreAccountPreferences();
 

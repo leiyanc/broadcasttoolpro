@@ -517,6 +517,7 @@ window.addEventListener("btp:languagechange", () => {
 window.addEventListener("btp:channel", (event) => {
   postlogChannelName.value = event.detail?.name || "";
 });
+postlogChannelName.value = window.BTPActiveChannel?.name || "";
 
 window.addEventListener("btp:identity", (event) => {
   postlogClientName.value = event.detail?.organizations?.[0]?.name || "";

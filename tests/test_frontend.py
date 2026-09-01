@@ -761,6 +761,9 @@ def test_self_service_signup_only_requests_initial_channel_name():
     assert 'id="active-channel-select"' in html
     assert "/channels`" in javascript
     assert 'new CustomEvent("btp:channel"' in javascript
+    assert "applyRegisteredChannel(window.BTPActiveChannel)" in (
+        FRONTEND_DIR / "app.js"
+    ).read_text()
 
 
 def test_missing_template_channel_warning_is_localized():

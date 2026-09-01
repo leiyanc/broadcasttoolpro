@@ -47,6 +47,7 @@ function applyRegisteredChannel(channel) {
 window.addEventListener("btp:channel", (event) => {
   applyRegisteredChannel(event.detail);
 });
+applyRegisteredChannel(window.BTPActiveChannel);
 
 function uiText(key, fallback, values = {}) {
   const template = window.BTPi18n?.t(key, fallback) ?? fallback;
