@@ -174,6 +174,7 @@ async def process_schedule(
     auto_fixes = []
     missing_channel_rows = []
     mismatched_channel_rows = []
+    mismatched_channel_values = {}
 
     extension = Path(filename).suffix.lower()
     first_data_row = 5 if extension == ".xlsx" else 2
@@ -223,6 +224,7 @@ async def process_schedule(
             and row_channel.casefold() != expected_channel_name.strip().casefold()
         ):
             mismatched_channel_rows.append(source_row)
+            mismatched_channel_values[source_row] = row_channel
             parsing_issues.append(
                 ValidationIssue(
                     rule_id="VAL-012",
@@ -299,6 +301,14 @@ async def process_schedule(
     ]
 
     validation = report.to_dict()
+    for issue in validation["issues"]:
+        if issue["rule_id"] in {"VAL-011", "VAL-012"}:
+            issue["expected_channel"] = expected_channel_name
+        if issue["rule_id"] == "VAL-012":
+            issue["actual_channel"] = mismatched_channel_values.get(
+                issue["row"],
+                "",
+            )
     if channel_identity_blocked:
         validation["ready_to_generate"] = False
         validation["processing_blocked"] = True

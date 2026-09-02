@@ -511,8 +511,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260901-2' in html
-    assert '/static/i18n.js?v=20260901-2' in html
+    assert '/static/hls-validator.js?v=20260902-1' in html
+    assert '/static/i18n.js?v=20260902-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -778,6 +778,9 @@ def test_missing_template_channel_warning_is_localized():
     assert '"generator.channelSelectionRequired"' in translations
     assert "must exactly match the registered channel name" in translations
     assert "debe coincidir exactamente con el nombre del canal registrado" in translations
+    assert 'actual: issue.actual_channel || ""' in javascript
+    assert 'expected: issue.expected_channel || ""' in javascript
+    assert "no coincide con el canal registrado" in translations
 
 
 def test_template_download_links_are_cache_busted():
@@ -793,7 +796,7 @@ def test_template_download_links_are_cache_busted():
         "postlog-certification.js",
         "hls-validator.js",
     ):
-        assert f"/static/{script}?v=20260901-2" in html
+        assert f"/static/{script}?v=20260902-1" in html
 
 
 def test_billing_supports_reviewed_additional_channel_purchase():

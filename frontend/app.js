@@ -83,7 +83,10 @@ function localizedIssueMessage(issue) {
     "Unknown issue",
   );
   return ["VAL-011", "VAL-012"].includes(issue.rule_id)
-    ? uiText(`generator.rule.${issue.rule_id}`, fallback)
+    ? uiText(`generator.rule.${issue.rule_id}`, fallback, {
+      actual: issue.actual_channel || "",
+      expected: issue.expected_channel || "",
+    })
     : fallback;
 }
 

@@ -85,6 +85,7 @@ def test_missing_channel_is_a_blocking_warning():
     assert issue["severity"] == "warning"
     assert issue["field"] == "Channel"
     assert issue["row"] == 2
+    assert issue["expected_channel"] is None
 
 
 def test_channel_mismatch_is_a_blocking_warning():
@@ -107,6 +108,10 @@ def test_channel_mismatch_is_a_blocking_warning():
     assert result["programmes"] == []
     assert result["validation"]["processing_blocked"] is True
     assert [item["row"] for item in issues] == [2, 3]
+    assert {item["actual_channel"] for item in issues} == {"Sample TV"}
+    assert {item["expected_channel"] for item in issues} == {
+        "Different Registered Channel"
+    }
 
 
 def test_invalid_csv_reports_source_row():
