@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from backend.main import app
 from backend.services.tenant_store import TenantStore
+from backend.models.tenancy import ChannelProfileUpdate
 
 
 def test_tenant_hierarchy_is_persisted_and_isolated():
@@ -141,6 +142,14 @@ def test_channel_primary_language_can_be_updated():
         updated = store.update_channel_primary_language(channel["id"], "pt-BR")
 
         assert updated["primary_language"] == "pt-BR"
+
+
+def test_channel_profile_accepts_chinese_script_and_region_tags():
+    simplified = ChannelProfileUpdate(primary_language="zh-Hans")
+    traditional_taiwan = ChannelProfileUpdate(primary_language="zh-Hant-TW")
+
+    assert simplified.primary_language == "zh-Hans"
+    assert traditional_taiwan.primary_language == "zh-Hant-TW"
 
 
 def test_channel_deactivation_can_be_scheduled_canceled_and_applied():

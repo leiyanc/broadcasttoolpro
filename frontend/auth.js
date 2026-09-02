@@ -94,10 +94,10 @@ function publishActiveChannel(channel) {
 saveChannelLanguage?.addEventListener("click", async () => {
   if (!currentChannel) return;
   const value = activeChannelLanguage.value.trim();
-  if (!/^[a-z]{2}(?:-[A-Z]{2})?$/.test(value)) {
+  if (!value) {
     channelLanguageStatus.textContent = authText(
       "channel.languageInvalid",
-      "Enter a language code such as en, es, or pt-BR.",
+      "Select the channel's primary language.",
     );
     return;
   }

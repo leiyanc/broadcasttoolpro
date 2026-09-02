@@ -335,7 +335,15 @@
       "channel.primaryLanguage": "Channel primary language",
       "channel.saveLanguage": "Save language",
       "channel.languageSaved": "Channel language saved.",
-      "channel.languageInvalid": "Enter a language code such as en, es, or pt-BR.",
+      "channel.languageInvalid": "Select the channel's primary language.",
+      "channel.selectLanguage": "Select language",
+      "channel.languages.general": "General",
+      "channel.languages.americas": "Americas",
+      "channel.languages.europe": "Europe",
+      "channel.languages.asia": "Asia",
+      "channel.languages.middleEast": "Middle East",
+      "channel.languages.africa": "Africa",
+      "channel.languages.oceania": "Oceania",
       "channel.select": "Select channel",
       "module.generator.copy": "Create compliant XMLTV files",
       "module.validator.copy": "Inspect syntax and schedule integrity",
@@ -1150,7 +1158,15 @@
       "channel.primaryLanguage": "Idioma principal del canal",
       "channel.saveLanguage": "Guardar idioma",
       "channel.languageSaved": "Idioma del canal guardado.",
-      "channel.languageInvalid": "Ingresa un código de idioma como en, es o pt-BR.",
+      "channel.languageInvalid": "Selecciona el idioma principal del canal.",
+      "channel.selectLanguage": "Selecciona un idioma",
+      "channel.languages.general": "General",
+      "channel.languages.americas": "Américas",
+      "channel.languages.europe": "Europa",
+      "channel.languages.asia": "Asia",
+      "channel.languages.middleEast": "Medio Oriente",
+      "channel.languages.africa": "África",
+      "channel.languages.oceania": "Oceanía",
       "channel.select": "Seleccionar canal",
       "module.generator.copy": "Crea archivos XMLTV compatibles",
       "module.validator.copy": "Inspecciona la sintaxis y la integridad de la programación",
@@ -1666,6 +1682,9 @@
     });
     root.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
       translateAttribute(element, "aria-label", element.dataset.i18nAriaLabel);
+    });
+    root.querySelectorAll("[data-i18n-label]").forEach((element) => {
+      translateAttribute(element, "label", element.dataset.i18nLabel);
     });
     document.querySelectorAll("[data-language-select]").forEach((select) => {
       select.value = language;

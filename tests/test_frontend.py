@@ -511,8 +511,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260902-3' in html
-    assert '/static/i18n.js?v=20260902-3' in html
+    assert '/static/hls-validator.js?v=20260902-4' in html
+    assert '/static/i18n.js?v=20260902-4' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -767,6 +767,11 @@ def test_self_service_signup_only_requests_initial_channel_name():
     assert 'id="active-channel-language"' in html
     assert 'id="save-channel-language"' in html
     assert 'method: "PATCH"' in javascript
+    assert 'value="zh-Hans"' in html
+    assert 'value="zh-Hant"' in html
+    assert 'value="zh-HK"' in html
+    assert 'data-i18n-label="channel.languages.africa"' in html
+    assert 'data-i18n-label="channel.languages.oceania"' in html
 
 
 def test_missing_template_channel_warning_is_localized():
@@ -805,7 +810,7 @@ def test_template_download_links_are_cache_busted():
         "postlog-certification.js",
         "hls-validator.js",
     ):
-        assert f"/static/{script}?v=20260902-3" in html
+        assert f"/static/{script}?v=20260902-4" in html
 
 
 def test_billing_supports_reviewed_additional_channel_purchase():

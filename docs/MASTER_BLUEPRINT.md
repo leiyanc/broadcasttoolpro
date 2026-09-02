@@ -83,6 +83,9 @@ terminology remain in English.
   channel. Original-language and rating-system metadata are optional per
   programme in the schedule template; BTP does not assume VCHIP or another
   regional classification system.
+  Channel Settings presents major languages grouped by world region and
+  includes material regional or script variants such as Simplified and
+  Traditional Chinese.
 - XMLTV Validator and XMLTV Repair localize their upload, analysis, result,
   authorization, and download surfaces. Known validation and repair rule IDs
   provide controlled Spanish explanations while canonical backend messages,

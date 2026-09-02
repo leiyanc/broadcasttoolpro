@@ -49,14 +49,22 @@ class ChannelCreate(BaseModel):
     primary_language: str = Field(
         default="en",
         min_length=2,
-        max_length=12,
-        pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
+        max_length=35,
+        pattern=(
+            r"^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?"
+            r"(?:-(?:[A-Za-z]{2}|[0-9]{3}))?"
+            r"(?:-[A-Za-z0-9]{5,8})*$"
+        ),
     )
 
 
 class ChannelProfileUpdate(BaseModel):
     primary_language: str = Field(
         min_length=2,
-        max_length=12,
-        pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
+        max_length=35,
+        pattern=(
+            r"^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?"
+            r"(?:-(?:[A-Za-z]{2}|[0-9]{3}))?"
+            r"(?:-[A-Za-z0-9]{5,8})*$"
+        ),
     )

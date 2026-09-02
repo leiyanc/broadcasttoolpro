@@ -162,7 +162,7 @@ const helpGuides = {
       steps: [
         "Download and complete the official schedule template.",
         "Select the registered channel and enter its name in the required Channel column on every programme row.",
-        "Confirm the channel's primary language in Channel Settings. Broadcast Tool Pro applies it automatically to the XMLTV.",
+        "Confirm the channel's primary language in Channel Settings. Choose a major language or regional/script variant, such as Simplified or Traditional Chinese. Broadcast Tool Pro applies it automatically to the XMLTV.",
         "When needed, enter Original Language per programme. Enter Parental Rating and Rating System together; no US or regional rating system is assumed.",
         "Validate the schedule and review suggested safe corrections.",
         "Authorize corrections when appropriate, then generate XMLTV.",
@@ -176,7 +176,7 @@ const helpGuides = {
       steps: [
         "Descarga y completa la plantilla oficial.",
         "Selecciona el canal registrado e ingresa su nombre en la columna obligatoria Channel de cada fila de programación.",
-        "Confirma el idioma principal del canal en Configuración del canal. Broadcast Tool Pro lo aplica automáticamente al XMLTV.",
+        "Confirma el idioma principal del canal en Configuración del canal. Elige un idioma principal o una variante regional/de escritura, como chino simplificado o tradicional. Broadcast Tool Pro lo aplica automáticamente al XMLTV.",
         "Cuando corresponda, ingresa Original Language por programa. Ingresa Parental Rating y Rating System juntos; no se presume ningún sistema estadounidense o regional.",
         "Valida la programación y revisa las correcciones sugeridas.",
         "Autoriza las correcciones apropiadas y genera el XMLTV.",

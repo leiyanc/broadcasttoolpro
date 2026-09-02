@@ -22,22 +22,22 @@
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
     <link rel="stylesheet" href="/static/styles.css?v=20260902-1" />
-    <script src="/static/i18n.js?v=20260902-3" defer></script>
+    <script src="/static/i18n.js?v=20260902-4" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
-    <script src="/static/auth.js?v=20260902-3" defer></script>
+    <script src="/static/auth.js?v=20260902-4" defer></script>
     <script src="/static/admin.js?v=20260811-1" defer></script>
     <script src="/static/billing.js?v=20260818-1" defer></script>
-    <script src="/static/help.js?v=20260902-1" defer></script>
-    <script src="/static/app.js?v=20260902-3" defer></script>
+    <script src="/static/help.js?v=20260902-2" defer></script>
+    <script src="/static/app.js?v=20260902-4" defer></script>
     <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
-    <script src="/static/prelog-filter.js?v=20260902-3" defer></script>
+    <script src="/static/prelog-filter.js?v=20260902-4" defer></script>
     <script
-      src="/static/postlog-certification.js?v=20260902-3"
+      src="/static/postlog-certification.js?v=20260902-4"
       defer
     ></script>
     <script src="/static/report-history.js?v=20260811-1" defer></script>
-    <script src="/static/hls-validator.js?v=20260902-3" defer></script>
+    <script src="/static/hls-validator.js?v=20260902-4" defer></script>
   </head>
 
   <body>
@@ -968,26 +968,77 @@
             <div class="channel-profile-settings" id="channel-profile-settings">
               <label>
                 <span data-i18n="channel.primaryLanguage">Channel primary language</span>
-                <input
-                  id="active-channel-language"
-                  list="channel-language-options"
-                  maxlength="12"
-                  placeholder="es"
-                />
+                <select id="active-channel-language" required>
+                  <option value="" data-i18n="channel.selectLanguage">Select language</option>
+                  <optgroup label="General" data-i18n-label="channel.languages.general">
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="pt">Português</option>
+                    <option value="zh">中文</option>
+                  </optgroup>
+                  <optgroup label="Americas" data-i18n-label="channel.languages.americas">
+                    <option value="en-US">English — United States</option>
+                    <option value="en-CA">English — Canada</option>
+                    <option value="fr-CA">Français — Canada</option>
+                    <option value="es-MX">Español — México</option>
+                    <option value="es-419">Español — Latinoamérica</option>
+                    <option value="pt-BR">Português — Brasil</option>
+                    <option value="ht">Kreyòl ayisyen</option>
+                  </optgroup>
+                  <optgroup label="Europe" data-i18n-label="channel.languages.europe">
+                    <option value="en-GB">English — United Kingdom</option>
+                    <option value="es-ES">Español — España</option>
+                    <option value="fr-FR">Français — France</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="pt-PT">Português — Portugal</option>
+                    <option value="nl">Nederlands</option>
+                    <option value="pl">Polski</option>
+                    <option value="ru">Русский</option>
+                    <option value="uk">Українська</option>
+                  </optgroup>
+                  <optgroup label="Asia" data-i18n-label="channel.languages.asia">
+                    <option value="zh-Hans">中文 — 简体</option>
+                    <option value="zh-Hant">中文 — 繁體</option>
+                    <option value="zh-CN">中文 — 中国</option>
+                    <option value="zh-TW">中文 — 台灣</option>
+                    <option value="zh-HK">中文 — 香港</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="bn">বাংলা</option>
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="ms">Bahasa Melayu</option>
+                    <option value="th">ไทย</option>
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="fil">Filipino</option>
+                  </optgroup>
+                  <optgroup label="Middle East" data-i18n-label="channel.languages.middleEast">
+                    <option value="ar">العربية</option>
+                    <option value="he">עברית</option>
+                    <option value="fa">فارسی</option>
+                    <option value="tr">Türkçe</option>
+                    <option value="ur">اردو</option>
+                  </optgroup>
+                  <optgroup label="Africa" data-i18n-label="channel.languages.africa">
+                    <option value="sw">Kiswahili</option>
+                    <option value="am">አማርኛ</option>
+                    <option value="ha">Hausa</option>
+                    <option value="yo">Yorùbá</option>
+                    <option value="zu">isiZulu</option>
+                    <option value="af">Afrikaans</option>
+                  </optgroup>
+                  <optgroup label="Oceania" data-i18n-label="channel.languages.oceania">
+                    <option value="en-AU">English — Australia</option>
+                    <option value="en-NZ">English — New Zealand</option>
+                    <option value="mi">Te reo Māori</option>
+                    <option value="fj">Vosa Vakaviti</option>
+                    <option value="sm">Gagana Sāmoa</option>
+                    <option value="to">Lea faka-Tonga</option>
+                  </optgroup>
+                </select>
               </label>
-              <datalist id="channel-language-options">
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="pt">Português</option>
-                <option value="fr">Français</option>
-                <option value="de">Deutsch</option>
-                <option value="it">Italiano</option>
-                <option value="ar">العربية</option>
-                <option value="hi">हिन्दी</option>
-                <option value="ja">日本語</option>
-                <option value="ko">한국어</option>
-                <option value="zh">中文</option>
-              </datalist>
               <button
                 class="button button-secondary"
                 id="save-channel-language"
