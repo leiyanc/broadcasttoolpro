@@ -79,6 +79,10 @@ terminology remain in English.
   surfaces, including validation states, EPG preview metrics, filters, and
   download feedback. Source metadata, XMLTV language fields, and report
   language selections remain independent and are never translated implicitly.
+  XMLTV primary-language metadata is inherited from the selected registered
+  channel. Original-language and rating-system metadata are optional per
+  programme in the schedule template; BTP does not assume VCHIP or another
+  regional classification system.
 - XMLTV Validator and XMLTV Repair localize their upload, analysis, result,
   authorization, and download surfaces. Known validation and repair rule IDs
   provide controlled Spanish explanations while canonical backend messages,
@@ -291,10 +295,11 @@ is the free, no-account product experience.
 
 Signup requests only the customer-facing channel name. BTP generates the stable
 internal Channel ID from that name and does not ask the customer to choose a
-time zone or primary language during account creation. Time zone and language
-are confirmed later in the operational workflow or channel settings where they
-affect an export or report; the initial stored language is undefined rather
-than inferred from the interface language.
+time zone or primary language during account creation. Time zone and primary
+language are confirmed later in Channel Settings; the initial stored language
+is undefined rather than inferred from the interface language. XMLTV exports
+inherit that registered primary language. Original Language and Rating System
+remain optional programme-level fields because they can vary within one feed.
 
 Creating an account or returning from Checkout is not proof of payment. Paid
 module access begins only after the verified Stripe webhook confirms the

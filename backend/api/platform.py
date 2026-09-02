@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from backend.api.auth import current_user, require_organization_role
 from backend.models.tenancy import (
     ChannelCreate,
+    ChannelProfileUpdate,
     OrganizationCreate,
     WorkspaceCreate,
 )
@@ -196,3 +197,25 @@ def get_channel(
         workspace["organization_id"],
     )
     return channel
+
+
+@router.patch("/channels/{channel_id}")
+def update_channel_profile(
+    channel_id: str,
+    request: ChannelProfileUpdate,
+    user: dict = Depends(current_user),
+):
+    try:
+        channel = tenant_store.get_channel(channel_id)
+        workspace = tenant_store.get_workspace(channel["workspace_id"])
+        require_organization_role(
+            user["id"],
+            workspace["organization_id"],
+            "admin",
+        )
+        return tenant_store.update_channel_primary_language(
+            channel_id,
+            request.primary_language,
+        )
+    except KeyError as exc:
+        raise _not_found(exc) from exc

@@ -256,7 +256,6 @@ class RequiredMetadataRule(ValidationRule):
                     or programme.program_description,
                 ),
                 ("Genre", programme.genre),
-                ("Parental Rating", programme.parental_rating),
                 ("Asset ID", programme.asset_id),
             )
             for field, value in required:
@@ -273,8 +272,32 @@ class RequiredMetadataRule(ValidationRule):
         return issues
 
 
+class RatingMetadataRule(ValidationRule):
+    rule_id = "VAL-013"
+
+    def validate(
+        self,
+        programmes: list[Programme],
+    ) -> list[ValidationIssue]:
+        return [
+            ValidationIssue(
+                rule_id=self.rule_id,
+                severity="warning",
+                row=programme.source_row,
+                field="Parental Rating / Rating System",
+                message=(
+                    "Parental Rating and Rating System must both be provided "
+                    "to export a rating. The incomplete rating will be omitted."
+                ),
+            )
+            for programme in programmes
+            if bool(programme.parental_rating) != bool(programme.rating_system)
+        ]
+
+
 DEFAULT_RULES: tuple[ValidationRule, ...] = (
     ProductionYearRule(),
+    RatingMetadataRule(),
     DurationRule(),
     ChronologicalOrderRule(),
     DuplicateStartRule(),

@@ -467,18 +467,12 @@ async def generate_schedule(
     channel_timezone: str = Form(...),
     channel_id: str = Form(...),
     channel_name: str = Form(""),
-    primary_language: str = Form("en"),
-    original_language: str = Form("en"),
-    rating_system: str = Form("VCHIP"),
     accept_auto_fixes: bool = Form(False),
     timestamp_format: str = Form("xmltv"),
     user: dict = Depends(require_module("xmltv_generator")),
 ):
     if not isinstance(timestamp_format, str):
         timestamp_format = "xmltv"
-
-    primary_language = primary_language.strip().lower()
-    original_language = original_language.strip().lower()
 
     channel = (
         registered_channel_for_user(user, channel_id)
@@ -488,9 +482,30 @@ async def generate_schedule(
             "slug": channel_id,
             "channel_code": channel_id,
             "timezone": channel_timezone,
-            "primary_language": primary_language,
+            "primary_language": "en",
         }
     )
+    if not channel.get("primary_language") or channel["primary_language"] == "und":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "score": 0,
+                "critical": 1,
+                "errors": 0,
+                "warnings": 0,
+                "ready_to_generate": False,
+                "issues": [{
+                    "rule_id": "CHANNEL-LANGUAGE",
+                    "severity": "critical",
+                    "message": (
+                        "Set the active channel's primary language in Channel "
+                        "Settings before generating XMLTV."
+                    ),
+                    "row": None,
+                    "field": "Channel Primary Language",
+                }],
+            },
+        )
     result = await process_schedule(
         schedule_file,
         channel["timezone"],
@@ -528,9 +543,7 @@ async def generate_schedule(
         programmes=result["programmes"],
         channel_id=(channel.get("channel_code") or channel["slug"]),
         channel_name=channel["name"],
-        primary_language=primary_language,
-        original_language=original_language,
-        rating_system=rating_system.strip(),
+        primary_language=channel["primary_language"],
         timestamp_format=timestamp_format.strip(),
     )
     output_name = xmltv_output_filename(

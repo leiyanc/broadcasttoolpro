@@ -11,8 +11,10 @@ def make_programme(**overrides) -> Programme:
         "program_title": "Morning News",
         "duration": "00:30:00",
         "parental_rating": "TV-PG",
+        "rating_system": "VCHIP",
         "program_description": "Daily morning news.",
         "original_title": "Morning News",
+        "original_language": "en",
         "cast": [],
         "season_number": 1,
         "episode_number": 1,
@@ -46,6 +48,17 @@ def test_valid_schedule_is_ready_to_generate():
     assert report.score == 100
     assert report.critical == 0
     assert report.errors == 0
+
+
+def test_incomplete_rating_metadata_is_a_warning():
+    report = ValidationEngine().validate([
+        make_programme(rating_system=None),
+    ])
+
+    issue = next(item for item in report.issues if item.rule_id == "VAL-013")
+    assert report.warnings == 1
+    assert issue.severity == "warning"
+    assert issue.field == "Parental Rating / Rating System"
 
 
 def test_duplicate_start_is_critical_without_repeated_overlap():

@@ -511,8 +511,8 @@ def test_hls_stream_monitor_has_bounded_periods():
     html = (FRONTEND_DIR / "index.html").read_text()
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
-    assert '/static/hls-validator.js?v=20260902-2' in html
-    assert '/static/i18n.js?v=20260902-2' in html
+    assert '/static/hls-validator.js?v=20260902-3' in html
+    assert '/static/i18n.js?v=20260902-3' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -764,13 +764,19 @@ def test_self_service_signup_only_requests_initial_channel_name():
     assert "applyRegisteredChannel(window.BTPActiveChannel)" in (
         FRONTEND_DIR / "app.js"
     ).read_text()
+    assert 'id="active-channel-language"' in html
+    assert 'id="save-channel-language"' in html
+    assert 'method: "PATCH"' in javascript
 
 
 def test_missing_template_channel_warning_is_localized():
     javascript = (FRONTEND_DIR / "app.js").read_text()
     translations = (FRONTEND_DIR / "i18n.js").read_text()
 
-    assert '["VAL-011", "VAL-012"].includes(issue.rule_id)' in javascript
+    assert (
+        '["VAL-011", "VAL-012", "VAL-013", "CHANNEL-LANGUAGE"]'
+        ".includes(issue.rule_id)"
+    ) in javascript
     assert '"generator.rule.VAL-011"' in translations
     assert "El canal es obligatorio." in translations
     assert "Array.isArray(detail)" in javascript
@@ -789,8 +795,8 @@ def test_missing_template_channel_warning_is_localized():
 def test_template_download_links_are_cache_busted():
     html = (FRONTEND_DIR / "index.html").read_text()
 
-    assert html.count("/api/xmltv/template/excel?v=20260901-1") == 2
-    assert html.count("/api/xmltv/template/csv?v=20260901-1") == 2
+    assert html.count("/api/xmltv/template/excel?v=20260902-1") == 2
+    assert html.count("/api/xmltv/template/csv?v=20260902-1") == 2
     for script in (
         "i18n.js",
         "auth.js",
@@ -799,7 +805,7 @@ def test_template_download_links_are_cache_busted():
         "postlog-certification.js",
         "hls-validator.js",
     ):
-        assert f"/static/{script}?v=20260902-2" in html
+        assert f"/static/{script}?v=20260902-3" in html
 
 
 def test_billing_supports_reviewed_additional_channel_purchase():
@@ -931,11 +937,24 @@ def test_frontend_preserves_backend_field_names():
         "channel_timezone",
         "channel_id",
         "channel_name",
+    ):
+        assert f'name="{field_name}"' in html
+    for removed_field in (
         "primary_language",
         "original_language",
         "rating_system",
     ):
-        assert f'name="{field_name}"' in html
+        assert f'name="{removed_field}"' not in html
+    assert "VCHIP — US Television" not in html
+
+
+def test_help_explains_global_xmltv_metadata():
+    help_javascript = (FRONTEND_DIR / "help.js").read_text()
+
+    assert "no US or regional rating system is assumed" in help_javascript
+    assert "no se presume ningún sistema estadounidense" in help_javascript
+    assert "Channel Settings" in help_javascript
+    assert "Configuración del canal" in help_javascript
 
 
 def test_xmltv_generator_offers_us_latam_and_fixed_timezones():

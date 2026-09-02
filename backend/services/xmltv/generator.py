@@ -21,8 +21,6 @@ def add_programme_metadata(
     element: ElementTree.Element,
     programme: dict,
     primary_language: str,
-    original_language: str,
-    rating_system: str,
 ) -> None:
     add_text_element(
         element,
@@ -33,18 +31,24 @@ def add_programme_metadata(
 
     original_title = programme.get("original_title")
     if original_title and original_title != programme["program_title"]:
+        original_attributes = {}
+        if programme.get("original_language"):
+            original_attributes["lang"] = programme["original_language"]
         add_text_element(
             element,
             "title",
             original_title,
-            lang=original_language,
+            **original_attributes,
         )
 
+    original_attributes = {}
+    if programme.get("original_language"):
+        original_attributes["lang"] = programme["original_language"]
     add_text_element(
         element,
         "sub-title",
         programme.get("original_episode_title"),
-        lang=original_language,
+        **original_attributes,
     )
     add_text_element(
         element,
@@ -54,7 +58,11 @@ def add_programme_metadata(
         lang=primary_language,
     )
     add_text_element(element, "language", primary_language)
-    add_text_element(element, "orig-language", original_language)
+    add_text_element(
+        element,
+        "orig-language",
+        programme.get("original_language"),
+    )
 
     cast = programme.get("cast") or []
     if cast:
@@ -125,7 +133,8 @@ def add_programme_metadata(
     )
 
     rating = programme.get("parental_rating")
-    if rating:
+    rating_system = programme.get("rating_system")
+    if rating and rating_system:
         rating_element = ElementTree.SubElement(
             element,
             "rating",
@@ -154,8 +163,6 @@ def generate_xmltv(
     channel_id: str,
     channel_name: str,
     primary_language: str = "en",
-    original_language: str = "en",
-    rating_system: str = "VCHIP",
     timestamp_format: str = "xmltv",
 ) -> bytes:
     root = ElementTree.Element(
@@ -190,8 +197,6 @@ def generate_xmltv(
             element,
             programme,
             primary_language,
-            original_language,
-            rating_system,
         )
 
     ElementTree.indent(root, space="  ")

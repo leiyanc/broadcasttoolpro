@@ -36,6 +36,31 @@ def test_generator_creates_valid_xmltv_structure():
     assert programme.findtext("length") == "1800"
     assert programme.findtext("episode-num[@system='onscreen']") == "S01E01"
     assert programme.find("live") is not None
+    assert programme.find("rating").attrib["system"] == "VCHIP"
+    assert programme.findtext("orig-language") == "en"
+
+
+def test_generator_omits_incomplete_rating_and_original_language():
+    programme = make_programme(
+        parental_rating="TV-PG",
+        rating_system=None,
+        original_language=None,
+    ).to_dict()
+    programme.update({
+        "xmltv_start": "20260718120000 +0000",
+        "xmltv_stop": "20260718123000 +0000",
+        "iso_start": "2026-07-18T12:00:00.000+0000",
+        "iso_stop": "2026-07-18T12:30:00.000+0000",
+    })
+    root = ElementTree.fromstring(generate_xmltv(
+        [programme],
+        channel_id="global-tv",
+        channel_name="Global TV",
+        primary_language="es",
+    ))
+
+    assert root.find("./programme/rating") is None
+    assert root.find("./programme/orig-language") is None
 
 
 def test_generate_endpoint_returns_downloadable_xml():
@@ -50,9 +75,6 @@ def test_generate_endpoint_returns_downloadable_xml():
             "America/New_York",
             "sample-tv",
             "Sample TV",
-            "en",
-            "en",
-            "VCHIP",
             False,
         )
     )
@@ -101,9 +123,6 @@ def test_generate_requires_authorization_for_safe_corrections():
                 "America/New_York",
                 "sample-tv",
                 "Sample TV",
-                "es",
-                "es",
-                "VCHIP",
                 False,
             )
         )
@@ -121,9 +140,6 @@ def test_generate_applies_authorized_safe_corrections():
             "America/New_York",
             "sample-tv",
             "Sample TV",
-            "es",
-            "es",
-            "VCHIP",
             True,
         )
     )
@@ -132,17 +148,17 @@ def test_generate_applies_authorized_safe_corrections():
     assert root.find("./programme").attrib["stop"] == "20260718130000 +0000"
 
 
-def test_generate_uses_export_language_not_legacy_channel_language():
-    legacy_channel = {
+def test_generate_uses_registered_channel_language():
+    registered_channel = {
         "name": "TARIMA TV",
         "slug": "tarima-tv",
         "channel_code": "tarima-tv",
         "timezone": "UTC",
-        "primary_language": "und",
+        "primary_language": "es",
     }
     with patch(
         "backend.api.xmltv.registered_channel_for_user",
-        return_value=legacy_channel,
+        return_value=registered_channel,
     ):
         response = asyncio.run(generate_schedule(
             UploadFile(
@@ -157,9 +173,6 @@ def test_generate_uses_export_language_not_legacy_channel_language():
             "UTC",
             "channel-record-id",
             "TARIMA TV",
-            "es",
-            "es",
-            "VCHIP",
             False,
             user={"id": "user-id"},
         ))
@@ -168,3 +181,36 @@ def test_generate_uses_export_language_not_legacy_channel_language():
     assert root.find("./channel/display-name").attrib["lang"] == "es"
     assert root.find("./programme/title").attrib["lang"] == "es"
     assert root.findtext("./programme/language") == "es"
+    assert root.findtext("./programme/orig-language") == "en"
+    assert root.find("./programme/rating").attrib["system"] == "VCHIP"
+
+
+def test_generate_blocks_undefined_registered_channel_language():
+    channel = {
+        "name": "Legacy TV",
+        "slug": "legacy-tv",
+        "channel_code": "legacy-tv",
+        "timezone": "UTC",
+        "primary_language": "und",
+    }
+    with patch(
+        "backend.api.xmltv.registered_channel_for_user",
+        return_value=channel,
+    ):
+        try:
+            asyncio.run(generate_schedule(
+                UploadFile(
+                    filename="sample_schedule.csv",
+                    file=BytesIO(Path("tests/sample_schedule.csv").read_bytes()),
+                ),
+                "UTC",
+                "channel-record-id",
+                "Legacy TV",
+                False,
+                user={"id": "user-id"},
+            ))
+        except HTTPException as exc:
+            assert exc.status_code == 422
+            assert exc.detail["issues"][0]["rule_id"] == "CHANNEL-LANGUAGE"
+        else:
+            raise AssertionError("Expected undefined channel language to block export.")

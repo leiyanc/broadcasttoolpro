@@ -21,23 +21,23 @@
       rel="icon"
       href="/static/assets/broadcast-tool-pro-mark.png"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260827-2" />
-    <script src="/static/i18n.js?v=20260902-2" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260902-1" />
+    <script src="/static/i18n.js?v=20260902-3" defer></script>
     <script src="/static/theme.js?v=20260728-1" defer></script>
-    <script src="/static/auth.js?v=20260902-2" defer></script>
+    <script src="/static/auth.js?v=20260902-3" defer></script>
     <script src="/static/admin.js?v=20260811-1" defer></script>
     <script src="/static/billing.js?v=20260818-1" defer></script>
-    <script src="/static/help.js?v=20260831-1" defer></script>
-    <script src="/static/app.js?v=20260902-2" defer></script>
+    <script src="/static/help.js?v=20260902-1" defer></script>
+    <script src="/static/app.js?v=20260902-3" defer></script>
     <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
-    <script src="/static/prelog-filter.js?v=20260902-2" defer></script>
+    <script src="/static/prelog-filter.js?v=20260902-3" defer></script>
     <script
-      src="/static/postlog-certification.js?v=20260902-2"
+      src="/static/postlog-certification.js?v=20260902-3"
       defer
     ></script>
     <script src="/static/report-history.js?v=20260811-1" defer></script>
-    <script src="/static/hls-validator.js?v=20260902-2" defer></script>
+    <script src="/static/hls-validator.js?v=20260902-3" defer></script>
   </head>
 
   <body>
@@ -965,6 +965,37 @@
               <span class="sr-only" data-i18n="channel.select">Select channel</span>
               <select id="active-channel-select" aria-label="Select active channel"></select>
             </label>
+            <div class="channel-profile-settings" id="channel-profile-settings">
+              <label>
+                <span data-i18n="channel.primaryLanguage">Channel primary language</span>
+                <input
+                  id="active-channel-language"
+                  list="channel-language-options"
+                  maxlength="12"
+                  placeholder="es"
+                />
+              </label>
+              <datalist id="channel-language-options">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="pt">Português</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="it">Italiano</option>
+                <option value="ar">العربية</option>
+                <option value="hi">हिन्दी</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="zh">中文</option>
+              </datalist>
+              <button
+                class="button button-secondary"
+                id="save-channel-language"
+                type="button"
+                data-i18n="channel.saveLanguage"
+              >Save language</button>
+              <small id="channel-language-status"></small>
+            </div>
           </div>
 
           <nav class="module-launcher" aria-label="Broadcast workflows">
@@ -1062,11 +1093,11 @@
           <details class="download-menu">
             <summary data-i18n="generator.template.download">Download Template</summary>
             <div class="download-menu-options">
-              <a href="/api/xmltv/template/excel?v=20260901-1">
+              <a href="/api/xmltv/template/excel?v=20260902-1">
                 <strong>Excel (.xlsx)</strong>
                 <small data-i18n="generator.template.excelCopy">Recommended · Includes instructions and examples</small>
               </a>
-              <a href="/api/xmltv/template/csv?v=20260901-1">
+              <a href="/api/xmltv/template/csv?v=20260902-1">
                 <strong>CSV (.csv)</strong>
                 <small data-i18n="generator.template.csvCopy">Headers only</small>
               </a>
@@ -1216,65 +1247,6 @@
 
             <label>
 
-              <span data-i18n="generator.primaryLanguage">Primary Language</span>
-
-              <select
-                name="primary_language"
-                required
-              >
-                <option value="es" selected data-i18n="common.spanish">
-                  Spanish
-                </option>
-
-                <option value="en" data-i18n="common.english">
-                  English
-                </option>
-
-              </select>
-
-            </label>
-
-            <label>
-
-              <span data-i18n="generator.originalLanguage">Original Language</span>
-
-              <select
-                name="original_language"
-                required
-              >
-                <option value="es" selected data-i18n="common.spanish">
-                  Spanish
-                </option>
-
-                <option value="en" data-i18n="common.english">
-                  English
-                </option>
-
-              </select>
-
-            </label>
-
-            <label>
-
-              <span data-i18n="generator.ratingSystem">Rating System</span>
-
-              <select
-                name="rating_system"
-                required
-              >
-                <option
-                  value="VCHIP"
-                  selected
-                >
-                  VCHIP — US Television
-                </option>
-
-              </select>
-
-            </label>
-
-            <label>
-
               <span data-i18n="generator.timestampFormat">Timestamp Format</span>
 
               <select
@@ -1294,6 +1266,10 @@
             </label>
 
           </div>
+
+          <p class="section-copy" data-i18n="generator.metadataProfile">
+            Primary language comes from the active channel. Original Language and Rating System are optional per-programme fields in the template.
+          </p>
 
           <label
             class="drop-zone"
@@ -1411,8 +1387,8 @@
                 Start with the official Broadcast Tool Pro template to avoid
                 column, sheet, date, and formatting errors.
               </span>
-              <a href="/api/xmltv/template/excel?v=20260901-1" data-i18n="generator.guidanceExcel">Download Excel Template</a>
-              <a href="/api/xmltv/template/csv?v=20260901-1" data-i18n="generator.guidanceCsv">Download CSV Template</a>
+              <a href="/api/xmltv/template/excel?v=20260902-1" data-i18n="generator.guidanceExcel">Download Excel Template</a>
+              <a href="/api/xmltv/template/csv?v=20260902-1" data-i18n="generator.guidanceCsv">Download CSV Template</a>
             </aside>
 
           </div>

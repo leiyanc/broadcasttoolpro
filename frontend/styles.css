@@ -1468,6 +1468,15 @@ main {
 .channel-context small { margin-top: 3px; color: var(--muted); }
 .channel-context label { width: min(100%, 320px); }
 .channel-context select { width: 100%; }
+.channel-profile-settings {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+.channel-profile-settings label { width: min(100%, 220px); }
+.channel-profile-settings input { width: 100%; }
+.channel-profile-settings small { grid-column: 1 / -1; }
 
 .billing-channel-form {
   display: grid;

@@ -101,6 +101,7 @@ def test_platform_routes_are_registered():
         in paths
     )
     assert "/api/platform/workspaces/{workspace_id}/channels" in paths
+    assert "/api/platform/channels/{channel_id}" in paths
     assert (
         "/api/billing/organizations/{organization_id}/channels/"
         "{channel_id}/removal/preview"
@@ -113,6 +114,33 @@ def test_platform_routes_are_registered():
         "/api/billing/organizations/{organization_id}/channels/"
         "{channel_id}/removal/cancel"
     ) in paths
+
+
+def test_channel_primary_language_can_be_updated():
+    with TemporaryDirectory() as directory:
+        store = TenantStore(Path(directory) / "channel-language.db")
+        store.initialize()
+        organization = store.create_organization(
+            name="Global Network", slug=None, plan="professional"
+        )
+        workspace = store.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        channel = store.create_channel(
+            workspace_id=workspace["id"],
+            name="Global TV",
+            slug=None,
+            channel_code="global-tv",
+            timezone="UTC",
+            primary_language="und",
+        )
+
+        updated = store.update_channel_primary_language(channel["id"], "pt-BR")
+
+        assert updated["primary_language"] == "pt-BR"
 
 
 def test_channel_deactivation_can_be_scheduled_canceled_and_applied():

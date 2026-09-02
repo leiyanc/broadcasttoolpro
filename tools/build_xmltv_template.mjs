@@ -7,19 +7,24 @@ import {
 
 
 const outputPath = process.argv[2];
-if (!outputPath) {
-  throw new Error("Provide the output .xlsx path.");
+const brandMarkPath = process.argv[3];
+if (!outputPath || !brandMarkPath) {
+  throw new Error("Provide the output .xlsx path and brand mark PNG path.");
 }
+const brandMarkData = await fs.readFile(brandMarkPath);
+const brandMarkDataUrl = `data:image/png;base64,${brandMarkData.toString("base64")}`;
 
 const columns = [
-  ["Channel (Optional)", "Channel name or ID.", "Text", "Comercio TV", "Optional"],
+  ["Channel", "Exact registered channel name. Must match every row.", "Text", "Comercio TV", "Required"],
   ["Air Date", "Local broadcast date.", "Date: YYYY-MM-DD", "2026-07-18", "Required"],
   ["Start Time", "Local programme start time.", "Time", "8:00 AM", "Required"],
   ["Program Title", "Series or programme title.", "Text", "Morning News", "Required"],
   ["Duration (Conditional)", "Programme duration. Required on the final row.", "HH:MM:SS", "00:30:00", "Conditional"],
-  ["Parental Rating", "TV or movie content rating.", "Dropdown / Text", "TV-PG", "Required"],
+  ["Parental Rating (Optional)", "Content rating. Provide Rating System on the same row when used.", "Text", "TV-PG", "Optional"],
+  ["Rating System (Optional)", "Rating authority or scheme for this programme. No system is assumed.", "Text", "VCHIP", "Optional"],
   ["Program Description (Conditional)", "Programme-level synopsis; fallback when episode description is blank.", "Text", "Daily morning news.", "Conditional"],
   ["Original Title (Optional)", "Title in the original language.", "Text", "Noticias Matutinas", "Optional"],
+  ["Original Language (Optional)", "BCP 47 language code for original-language metadata on this programme.", "Language code", "es", "Optional"],
   ["Cast (Optional)", "Cast names separated by semicolons.", "Text", "Jane Doe; John Smith", "Optional"],
   ["Season Number (Optional)", "Season number for episodic content.", "Whole number", "1", "Optional"],
   ["Episode Number (Optional)", "Episode number for episodic content.", "Whole number", "1", "Optional"],
@@ -56,19 +61,25 @@ const white = "#FFFFFF";
 const required = "#DBEAFE";
 const optional = "#EEF2F7";
 
-function addBrandHeader(sheet, title, subtitle, endColumn = "Z") {
+function addBrandHeader(sheet, title, subtitle, endColumn = "AB") {
   if (endColumn !== "B") {
     sheet.mergeCells(`B1:${endColumn}1`);
     sheet.mergeCells(`B2:${endColumn}2`);
   }
   sheet.getRange("A1:A2").merge();
-  sheet.getRange("A1").values = [["B"]];
+  sheet.getRange("A1").values = [[""]];
   sheet.getRange("A1").format = {
-    fill: blue,
-    font: { bold: true, color: white, size: 22 },
+    fill: white,
     horizontalAlignment: "center",
     verticalAlignment: "center",
   };
+  sheet.images.add({
+    dataUrl: brandMarkDataUrl,
+    anchor: {
+      from: { row: 0, col: 0, rowOffsetPx: 3, colOffsetPx: 6 },
+      extent: { widthPx: 44, heightPx: 41 },
+    },
+  });
   sheet.getRange("B1").values = [[title]];
   sheet.getRange("B1").format = {
     fill: navy,
@@ -81,7 +92,7 @@ function addBrandHeader(sheet, title, subtitle, endColumn = "Z") {
     font: { color: navy, italic: true, size: 10 },
     verticalAlignment: "center",
   };
-  sheet.getRange("A1:Z2").format.rowHeight = 25;
+  sheet.getRange(`A1:${endColumn}2`).format.rowHeight = 25;
   sheet.getRange("A1").format.columnWidth = 7;
   sheet.showGridLines = false;
 }
@@ -91,16 +102,16 @@ addBrandHeader(
   "Broadcast Tool Pro - XMLTV Programming Template",
   "Enter one row per programme using the channel's local time zone.",
 );
-programming.getRange("A4:Z4").values = [headers];
-programming.getRange("A4:Z4").format = {
+programming.getRange("A4:AB4").values = [headers];
+programming.getRange("A4:AB4").format = {
   fill: navy,
   font: { bold: true, color: white, size: 9 },
   wrapText: true,
   verticalAlignment: "center",
   borders: { preset: "all", style: "thin", color: line },
 };
-programming.getRange("A4:Z4").format.rowHeight = 44;
-programming.getRange("A5:Z504").format = {
+programming.getRange("A4:AB4").format.rowHeight = 44;
+programming.getRange("A5:AB504").format = {
   borders: {
     insideHorizontal: { style: "thin", color: line },
   },
@@ -110,8 +121,8 @@ programming.getRange("A5:Z504").format = {
 programming.getRange("B5:B504").format.numberFormat = "yyyy-mm-dd";
 programming.getRange("C5:C504").format.numberFormat = "h:mm AM/PM";
 programming.getRange("E5:E504").format.numberFormat = "hh:mm:ss";
-programming.getRange("U5:U504").format.numberFormat = "yyyy-mm-dd";
-for (const range of ["B5:B504", "U5:U504"]) {
+programming.getRange("W5:W504").format.numberFormat = "yyyy-mm-dd";
+for (const range of ["B5:B504", "W5:W504"]) {
   programming.getRange(range).dataValidation = {
     rule: {
       type: "date",
@@ -121,23 +132,17 @@ for (const range of ["B5:B504", "U5:U504"]) {
     },
   };
 }
-for (const range of ["Q5:S504", "Z5:Z504"]) {
+for (const range of ["S5:U504", "AB5:AB504"]) {
   programming.getRange(range).dataValidation = {
     rule: { type: "list", values: ["Yes", "No"] },
   };
 }
-programming.getRange("F5:F504").dataValidation = {
-  rule: {
-    type: "list",
-    values: ["TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14", "TV-MA", "G", "PG", "PG-13", "R", "NR"],
-  },
-};
 programming.freezePanes.freezeRows(4);
-programming.getRange("A4:Z504").format.columnWidth = 18;
-for (const range of ["D:D", "G:I", "L:O", "T:T", "V:V", "Y:Y"]) {
+programming.getRange("A4:AB504").format.columnWidth = 18;
+for (const range of ["D:D", "H:K", "N:Q", "V:V", "X:X", "AA:AA"]) {
   programming.getRange(range).format.columnWidth = 24;
 }
-for (const range of ["B:C", "E:F", "J:K", "P:U", "W:X", "Z:Z"]) {
+for (const range of ["B:C", "E:G", "L:M", "R:W", "Y:Z", "AB:AB"]) {
   programming.getRange(range).format.columnWidth = 15;
 }
 
@@ -151,14 +156,15 @@ const steps = [
   ["Step", "Instruction"],
   [1, "Complete the Programming sheet using the channel's local schedule time."],
   [2, "Use one row for every programme or event."],
-  [3, "Complete all required fields: Air Date, Start Time, Program Title, Description, Genre, and Parental Rating."],
+  [3, "Complete all required fields: Channel, Air Date, Start Time, Program Title, Description, and Genre."],
   [4, "Enter either Episode Description or Program Description. Episode Description takes priority in XMLTV."],
   [5, "Asset ID is optional. Leave it blank to let Broadcast Tool Pro generate it automatically."],
   [6, "Use HH:MM:SS for Duration. The final programme must include a duration."],
   [7, "Use Yes or No for Premiere, Live, New, and Previously Shown."],
   [8, "Separate cast members and keywords with semicolons."],
-  [9, "Save the workbook as .xlsx, upload it, and select the channel's IANA time zone."],
+  [9, "Original Language and Rating System are optional per programme. If you enter a parental rating, enter its system on the same row."],
   [10, "Choose ISO 8601 for broad compatibility or XMLTV Compact when required by a platform."],
+  [11, "The channel's registered primary language is applied automatically to the XMLTV export."],
 ];
 instructions.getRange(`A4:B${steps.length + 3}`).values = steps;
 instructions.getRange("A4:B4").format = {
@@ -217,18 +223,18 @@ addBrandHeader(
   "Completed Example - Do Not Upload This Sheet",
   "Copy the field patterns, then enter your real schedule on Programming.",
 );
-example.getRange("A4:Z4").values = [headers];
-example.getRange("A4:Z4").format = {
+example.getRange("A4:AB4").values = [headers];
+example.getRange("A4:AB4").format = {
   fill: navy,
   font: { bold: true, color: white, size: 9 },
   wrapText: true,
   verticalAlignment: "center",
   borders: { preset: "all", style: "thin", color: line },
 };
-example.getRange("A5:Z6").values = [
+example.getRange("A5:AB6").values = [
   [
     "Comercio TV", new Date("2026-07-18T00:00:00"), 8 / 24,
-    "Morning News", 30 / 1440, "TV-PG", "Daily morning news.", "Noticias Matutinas",
+    "Morning News", 30 / 1440, "TV-PG", "VCHIP", "Daily morning news.", "Noticias Matutinas", "es",
     "Jane Doe; John Smith", 1, 1, "Opening Edition", "The day's top stories.",
     "News", "United States", 2026, "Yes", "Yes", "Yes", "morning-news-s01e01",
     new Date("2026-07-18T00:00:00"), "https://example.com/morning-news.jpg", 1920, 1080,
@@ -236,7 +242,7 @@ example.getRange("A5:Z6").values = [
   ],
   [
     "Comercio TV", new Date("2026-07-18T00:00:00"), 8.5 / 24,
-    "Market Update", 30 / 1440, "TV-G", "Financial markets and analysis.", "Actualizacion del Mercado",
+    "Market Update", 30 / 1440, "TV-G", "VCHIP", "Financial markets and analysis.", "Actualizacion del Mercado", "es",
     "John Smith", 2, 14, "Opening Bell", "Market opening coverage.",
     "Business", "United States", 2026, "No", "Yes", "Yes", "market-update-s02e14",
     new Date("2026-07-18T00:00:00"), "", null, null, "business; markets", "No",
@@ -245,16 +251,16 @@ example.getRange("A5:Z6").values = [
 example.getRange("B5:B6").format.numberFormat = "yyyy-mm-dd";
 example.getRange("C5:C6").format.numberFormat = "h:mm AM/PM";
 example.getRange("E5:E6").format.numberFormat = "hh:mm:ss";
-example.getRange("U5:U6").format.numberFormat = "yyyy-mm-dd";
-example.getRange("A5:Z6").format = {
+example.getRange("W5:W6").format.numberFormat = "yyyy-mm-dd";
+example.getRange("A5:AB6").format = {
   fill: pale,
   borders: { preset: "all", style: "thin", color: line },
   font: { size: 9 },
   wrapText: true,
   verticalAlignment: "top",
 };
-example.getRange("A4:Z6").format.columnWidth = 18;
-for (const range of ["D:D", "G:I", "L:O", "T:T", "V:V", "Y:Y"]) {
+example.getRange("A4:AB6").format.columnWidth = 18;
+for (const range of ["D:D", "H:K", "N:Q", "V:V", "X:X", "AA:AA"]) {
   example.getRange(range).format.columnWidth = 24;
 }
 example.freezePanes.freezeRows(4);
@@ -262,10 +268,10 @@ example.freezePanes.freezeRows(4);
 const outputDir = path.dirname(outputPath);
 await fs.mkdir(outputDir, { recursive: true });
 for (const [sheetName, range] of [
-  ["Programming", "A1:Z14"],
-  ["Instructions", "A1:C14"],
-  ["Field Reference", "A1:E30"],
-  ["Example", "A1:Z6"],
+  ["Programming", "A1:AB14"],
+  ["Instructions", "A1:C15"],
+  ["Field Reference", "A1:E32"],
+  ["Example", "A1:AB6"],
 ]) {
   const preview = await workbook.render({
     sheetName,

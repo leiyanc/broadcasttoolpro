@@ -41,7 +41,6 @@ function applyRegisteredChannel(channel) {
   form.elements.channel_id.value = channel.id;
   form.elements.channel_name.value = channel.name;
   form.elements.channel_timezone.value = channel.timezone;
-  form.elements.primary_language.value = channel.primary_language || "en";
 }
 
 window.addEventListener("btp:channel", (event) => {
@@ -90,7 +89,7 @@ function localizedIssueMessage(issue) {
     "generator.unknownIssue",
     "Unknown issue",
   );
-  return ["VAL-011", "VAL-012"].includes(issue.rule_id)
+  return ["VAL-011", "VAL-012", "VAL-013", "CHANNEL-LANGUAGE"].includes(issue.rule_id)
     ? uiText(`generator.rule.${issue.rule_id}`, fallback, {
       actual: issue.actual_channel || "",
       expected: issue.expected_channel || "",
@@ -369,6 +368,22 @@ function buildFormData(includeProfile = false) {
     return null;
   }
 
+  if (
+    includeProfile
+    && (!window.BTPActiveChannel?.primary_language
+      || window.BTPActiveChannel.primary_language === "und")
+  ) {
+    showResult({
+      success: false,
+      programmes_imported: 0,
+      validation: fallbackValidation(uiText(
+        "generator.channelLanguageRequired",
+        "Set the active channel's primary language in Channel Settings before generating XMLTV.",
+      ), "CHANNEL-LANGUAGE"),
+    });
+    return null;
+  }
+
   data.append("schedule_file", file);
   data.append(
     "channel_timezone",
@@ -379,9 +394,6 @@ function buildFormData(includeProfile = false) {
   if (includeProfile) {
     for (const field of [
       "channel_name",
-      "primary_language",
-      "original_language",
-      "rating_system",
       "timestamp_format",
     ]) {
       data.append(field, form.elements[field].value);

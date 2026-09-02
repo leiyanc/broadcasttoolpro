@@ -52,3 +52,11 @@ class ChannelCreate(BaseModel):
         max_length=12,
         pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
     )
+
+
+class ChannelProfileUpdate(BaseModel):
+    primary_language: str = Field(
+        min_length=2,
+        max_length=12,
+        pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$",
+    )

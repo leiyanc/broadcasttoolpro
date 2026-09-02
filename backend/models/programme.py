@@ -11,8 +11,10 @@ class Programme:
     program_title: str
     duration: str | None
     parental_rating: str | None
+    rating_system: str | None
     program_description: str | None
     original_title: str | None
+    original_language: str | None
     cast: list[str]
     season_number: int | None
     episode_number: int | None

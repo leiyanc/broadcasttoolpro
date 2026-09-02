@@ -287,6 +287,23 @@ class TenantStore:
             ).fetchall()
         return [self._channel(row) for row in rows]
 
+    def update_channel_primary_language(
+        self,
+        channel_id: str,
+        primary_language: str,
+    ) -> dict:
+        self.get_channel(channel_id)
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE channels
+                SET primary_language = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (primary_language, _utc_now(), channel_id),
+            )
+        return self.get_channel(channel_id)
+
     def list_organization_channels(self, organization_id: str) -> list[dict]:
         self.get_organization(organization_id)
         self.deactivate_due_channels(organization_id)

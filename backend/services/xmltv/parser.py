@@ -19,9 +19,11 @@ EXPECTED_COLUMNS = [
     "Start Time",
     "Program Title",
     "Duration (Conditional)",
-    "Parental Rating",
+    "Parental Rating (Optional)",
+    "Rating System (Optional)",
     "Program Description (Conditional)",
     "Original Title (Optional)",
+    "Original Language (Optional)",
     "Cast (Optional)",
     "Season Number (Optional)",
     "Episode Number (Optional)",
@@ -48,6 +50,7 @@ LEGACY_COLUMN_ALIASES = {
     if column.endswith((" (Optional)", " (Conditional)"))
 }
 LEGACY_COLUMN_ALIASES["Duration (Optional)"] = "Duration (Conditional)"
+LEGACY_COLUMN_ALIASES["Parental Rating"] = "Parental Rating (Optional)"
 
 
 def clean_text(value: Any) -> str | None:
@@ -465,14 +468,18 @@ def build_programme(
             auto_fixes,
         ),
         parental_rating=normalize_rating(
-            row.get("Parental Rating"),
+            row.get("Parental Rating (Optional)"),
             source_row,
             auto_fixes,
         ),
+        rating_system=clean_text(row.get("Rating System (Optional)")),
         program_description=clean_text(
             row.get("Program Description (Conditional)")
         ),
         original_title=clean_text(row.get("Original Title (Optional)")),
+        original_language=clean_text(
+            row.get("Original Language (Optional)")
+        ),
         cast=parse_cast(row.get("Cast (Optional)")),
         season_number=season_number,
         episode_number=episode_number,

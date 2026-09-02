@@ -60,6 +60,10 @@ let currentChannel = null;
 const activeChannelSelect = document.querySelector("#active-channel-select");
 const activeChannelName = document.querySelector("#active-channel-name");
 const activeChannelDetails = document.querySelector("#active-channel-details");
+const channelProfileSettings = document.querySelector("#channel-profile-settings");
+const activeChannelLanguage = document.querySelector("#active-channel-language");
+const saveChannelLanguage = document.querySelector("#save-channel-language");
+const channelLanguageStatus = document.querySelector("#channel-language-status");
 
 function publishActiveChannel(channel) {
   currentChannel = channel || null;
@@ -69,13 +73,55 @@ function publishActiveChannel(channel) {
   }
   if (activeChannelDetails) {
     activeChannelDetails.textContent = channel
-      ? `${channel.channel_code || channel.slug} · ${channel.timezone}`
+      ? `${channel.channel_code || channel.slug} · ${channel.timezone} · ${String(channel.primary_language || "und").toUpperCase()}`
       : "";
   }
+  if (activeChannelLanguage) {
+    activeChannelLanguage.value = channel?.primary_language === "und"
+      ? ""
+      : channel?.primary_language || "";
+  }
+  const role = currentIdentity?.organizations?.[0]?.role;
+  channelProfileSettings?.classList.toggle(
+    "is-hidden",
+    !channel || !["owner", "admin"].includes(role),
+  );
   window.dispatchEvent(new CustomEvent("btp:channel", {
     detail: currentChannel,
   }));
 }
+
+saveChannelLanguage?.addEventListener("click", async () => {
+  if (!currentChannel) return;
+  const value = activeChannelLanguage.value.trim();
+  if (!/^[a-z]{2}(?:-[A-Z]{2})?$/.test(value)) {
+    channelLanguageStatus.textContent = authText(
+      "channel.languageInvalid",
+      "Enter a language code such as en, es, or pt-BR.",
+    );
+    return;
+  }
+  saveChannelLanguage.disabled = true;
+  channelLanguageStatus.textContent = "";
+  try {
+    const updated = await authRequest(
+      `/api/platform/channels/${currentChannel.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ primary_language: value }),
+      },
+    );
+    publishActiveChannel(updated);
+    channelLanguageStatus.textContent = authText(
+      "channel.languageSaved",
+      "Channel language saved.",
+    );
+  } catch (error) {
+    channelLanguageStatus.textContent = error.message;
+  } finally {
+    saveChannelLanguage.disabled = false;
+  }
+});
 
 async function loadOrganizationChannels(organization) {
   if (!organization || !activeChannelSelect) return;

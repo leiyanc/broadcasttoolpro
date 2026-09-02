@@ -37,13 +37,16 @@ Confirmed recovery restores access automatically.
 ### Adding a channel
 
 1. Confirm the customer is an organization Owner or Admin.
-2. Confirm the channel name, stable Channel ID, time zone, primary language,
-   and whether Professional Stream Monitoring applies.
+2. Confirm the channel name and whether Professional Stream Monitoring
+   applies. BTP creates the stable Channel ID automatically.
 3. Require the customer to review Stripe's exact prorated amount before
    confirmation.
 4. Activate the channel only after Stripe accepts the subscription quantity
    change. The new channel joins the existing organization billing cycle.
 5. Confirm that Billing and the active-channel selector show the new channel.
+6. In Channel Settings, confirm the channel's primary language before its first
+   XMLTV export. Original-language and rating-system metadata belong to each
+   programme and are not channel billing attributes.
 
 If Stripe rejects the update, do not create or activate the channel.
 
