@@ -477,6 +477,9 @@ async def generate_schedule(
     if not isinstance(timestamp_format, str):
         timestamp_format = "xmltv"
 
+    primary_language = primary_language.strip().lower()
+    original_language = original_language.strip().lower()
+
     channel = (
         registered_channel_for_user(user, channel_id)
         if isinstance(user, dict)
@@ -525,8 +528,8 @@ async def generate_schedule(
         programmes=result["programmes"],
         channel_id=(channel.get("channel_code") or channel["slug"]),
         channel_name=channel["name"],
-        primary_language=channel["primary_language"],
-        original_language=original_language.strip(),
+        primary_language=primary_language,
+        original_language=original_language,
         rating_system=rating_system.strip(),
         timestamp_format=timestamp_format.strip(),
     )

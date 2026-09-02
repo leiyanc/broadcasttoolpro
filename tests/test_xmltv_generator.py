@@ -1,6 +1,7 @@
 import asyncio
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 from xml.etree import ElementTree
 
 from fastapi import HTTPException
@@ -129,3 +130,41 @@ def test_generate_applies_authorized_safe_corrections():
     root = ElementTree.fromstring(response.body)
 
     assert root.find("./programme").attrib["stop"] == "20260718130000 +0000"
+
+
+def test_generate_uses_export_language_not_legacy_channel_language():
+    legacy_channel = {
+        "name": "TARIMA TV",
+        "slug": "tarima-tv",
+        "channel_code": "tarima-tv",
+        "timezone": "UTC",
+        "primary_language": "und",
+    }
+    with patch(
+        "backend.api.xmltv.registered_channel_for_user",
+        return_value=legacy_channel,
+    ):
+        response = asyncio.run(generate_schedule(
+            UploadFile(
+                filename="sample_schedule.csv",
+                file=BytesIO(
+                    Path("tests/sample_schedule.csv").read_bytes().replace(
+                        b"Sample TV",
+                        b"TARIMA TV",
+                    )
+                ),
+            ),
+            "UTC",
+            "channel-record-id",
+            "TARIMA TV",
+            "es",
+            "es",
+            "VCHIP",
+            False,
+            user={"id": "user-id"},
+        ))
+
+    root = ElementTree.fromstring(response.body)
+    assert root.find("./channel/display-name").attrib["lang"] == "es"
+    assert root.find("./programme/title").attrib["lang"] == "es"
+    assert root.findtext("./programme/language") == "es"
