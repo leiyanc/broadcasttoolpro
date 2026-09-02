@@ -57,6 +57,14 @@ function uiText(key, fallback, values = {}) {
   );
 }
 
+function metricText(key, count, singular, plural) {
+  return uiText(
+    count === 1 ? `${key}.one` : key,
+    count === 1 ? singular : plural,
+    { count },
+  );
+}
+
 const FIX_MESSAGE_KEYS = {
   duration: "generator.fix.duration",
   boolean: "generator.fix.boolean",
@@ -446,18 +454,30 @@ function showResult(result) {
     uiText("generator.metricScore", "Score {score}/100", {
       score: validation.score ?? 0,
     }),
-    uiText("generator.metricCritical", "{count} Critical", {
-      count: validation.critical ?? 0,
-    }),
-    uiText("generator.metricErrors", "{count} Errors", {
-      count: validation.errors ?? 0,
-    }),
-    uiText("generator.metricWarnings", "{count} Warnings", {
-      count: validation.warnings ?? 0,
-    }),
-    uiText("generator.metricFixes", "{count} Suggested fixes", {
-      count: suggestedFixes,
-    }),
+    metricText(
+      "generator.metricCritical",
+      validation.critical ?? 0,
+      "{count} Critical",
+      "{count} Critical",
+    ),
+    metricText(
+      "generator.metricErrors",
+      validation.errors ?? 0,
+      "{count} Error",
+      "{count} Errors",
+    ),
+    metricText(
+      "generator.metricWarnings",
+      validation.warnings ?? 0,
+      "{count} Warning",
+      "{count} Warnings",
+    ),
+    metricText(
+      "generator.metricFixes",
+      suggestedFixes,
+      "{count} Suggested fix",
+      "{count} Suggested fixes",
+    ),
   ]) {
     const metric = document.createElement("span");
     metric.textContent = text;
