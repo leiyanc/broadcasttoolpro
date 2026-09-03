@@ -1,5 +1,6 @@
 from backend.services.xmltv.parser import (
     build_programme,
+    normalize_rating,
     normalize_rating_system,
 )
 
@@ -48,3 +49,13 @@ def test_unlisted_rating_authority_is_preserved_for_global_use():
 
     assert normalize_rating_system("My Authority", 5, fixes) == "My Authority"
     assert fixes == []
+
+
+def test_pg_is_normalized_to_tv_pg_only_for_vchip():
+    vchip_fixes = []
+    mpa_fixes = []
+
+    assert normalize_rating("PG", 5, vchip_fixes, "VCHIP") == "TV-PG"
+    assert normalize_rating("PG", 5, mpa_fixes, "MPA") == "PG"
+    assert len(vchip_fixes) == 1
+    assert mpa_fixes == []

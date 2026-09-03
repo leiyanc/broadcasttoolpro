@@ -296,6 +296,7 @@ def normalize_rating(
     value: Any,
     source_row: int,
     auto_fixes: list[dict[str, Any]] | None,
+    rating_system: str | None = None,
 ) -> str | None:
     text = clean_text(value)
 
@@ -303,7 +304,15 @@ def normalize_rating(
         return None
 
     compact = text.upper().replace("-", "").replace(" ", "")
-    normalized = RATING_ALIASES.get(compact, text)
+    normalized_system = normalize_rating_system(
+        rating_system,
+        source_row,
+        None,
+    )
+    if normalized_system == "VCHIP" and compact == "PG":
+        normalized = "TV-PG"
+    else:
+        normalized = RATING_ALIASES.get(compact, text)
 
     if normalized != text and auto_fixes is not None:
         auto_fixes.append({
@@ -525,6 +534,7 @@ def build_programme(
             row.get("Parental Rating (Optional)"),
             source_row,
             auto_fixes,
+            channel_rating_system,
         ),
         rating_system=(
             normalize_rating_system(channel_rating_system, source_row, None)

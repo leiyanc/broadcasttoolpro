@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from backend.models.programme import Programme
 from backend.services.xmltv.validator import ValidationEngine
 
@@ -57,8 +59,31 @@ def test_incomplete_rating_metadata_is_a_warning():
 
     issue = next(item for item in report.issues if item.rule_id == "VAL-013")
     assert report.warnings == 1
+    assert report.score == 98
     assert issue.severity == "warning"
+    assert issue.row is None
     assert issue.field == "Parental Rating / Rating System"
+
+
+def test_missing_channel_rating_system_is_reported_once_for_many_programmes():
+    programmes = [
+        make_programme(
+            source_row=row,
+            air_date=(date(2026, 1, 1) + timedelta(days=row - 5)).isoformat(),
+            rating_system=None,
+        )
+        for row in range(5, 252)
+    ]
+
+    report = ValidationEngine().validate(programmes)
+
+    rating_issues = [
+        issue for issue in report.issues if issue.rule_id == "VAL-013"
+    ]
+    assert report.warnings == 1
+    assert report.score == 98
+    assert len(rating_issues) == 1
+    assert rating_issues[0].row is None
 
 
 def test_duplicate_start_is_critical_without_repeated_overlap():

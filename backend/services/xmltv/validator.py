@@ -279,20 +279,25 @@ class RatingMetadataRule(ValidationRule):
         self,
         programmes: list[Programme],
     ) -> list[ValidationIssue]:
-        return [
-            ValidationIssue(
-                rule_id=self.rule_id,
-                severity="warning",
-                row=programme.source_row,
-                field="Parental Rating / Rating System",
-                message=(
-                    "Set the channel's Rating System in Channel Settings to "
-                    "export Parental Rating. The rating will otherwise be omitted."
-                ),
-            )
+        has_incomplete_rating = any(
+            bool(programme.parental_rating) != bool(programme.rating_system)
             for programme in programmes
-            if bool(programme.parental_rating) != bool(programme.rating_system)
-        ]
+        )
+        if not has_incomplete_rating:
+            return []
+
+        # Rating System is channel-level metadata. Report its absence once instead
+        # of penalizing every programme row that contains an optional rating.
+        return [ValidationIssue(
+            rule_id=self.rule_id,
+            severity="warning",
+            row=None,
+            field="Parental Rating / Rating System",
+            message=(
+                "Set the channel's Rating System in Channel Settings to "
+                "export Parental Rating. The rating will otherwise be omitted."
+            ),
+        )]
 
 
 DEFAULT_RULES: tuple[ValidationRule, ...] = (
