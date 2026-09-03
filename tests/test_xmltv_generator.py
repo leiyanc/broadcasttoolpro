@@ -155,6 +155,7 @@ def test_generate_uses_registered_channel_language():
         "channel_code": "tarima-tv",
         "timezone": "UTC",
         "primary_language": "es",
+        "rating_system": "VCHIP",
     }
     with patch(
         "backend.api.xmltv.registered_channel_for_user",
@@ -181,7 +182,7 @@ def test_generate_uses_registered_channel_language():
     assert root.find("./channel/display-name").attrib["lang"] == "es"
     assert root.find("./programme/title").attrib["lang"] == "es"
     assert root.findtext("./programme/language") == "es"
-    assert root.findtext("./programme/orig-language") == "en"
+    assert root.find("./programme/orig-language") is None
     assert root.find("./programme/rating").attrib["system"] == "VCHIP"
 
 

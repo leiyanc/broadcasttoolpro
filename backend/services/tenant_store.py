@@ -82,6 +82,7 @@ class TenantStore:
                     channel_code TEXT,
                     timezone TEXT NOT NULL,
                     primary_language TEXT NOT NULL,
+                    rating_system TEXT,
                     stream_monitoring INTEGER NOT NULL DEFAULT 0,
                     deactivation_scheduled_at TEXT,
                     active INTEGER NOT NULL DEFAULT 1,
@@ -111,6 +112,10 @@ class TenantStore:
                 connection.execute(
                     "ALTER TABLE channels ADD COLUMN "
                     "stream_monitoring INTEGER NOT NULL DEFAULT 0"
+                )
+            if "rating_system" not in channel_columns:
+                connection.execute(
+                    "ALTER TABLE channels ADD COLUMN rating_system TEXT"
                 )
             if "deactivation_scheduled_at" not in channel_columns:
                 connection.execute(
@@ -238,6 +243,7 @@ class TenantStore:
         channel_code: str | None,
         timezone: str,
         primary_language: str,
+        rating_system: str | None = None,
         stream_monitoring: bool = False,
     ) -> dict:
         self.get_workspace(workspace_id)
@@ -251,9 +257,9 @@ class TenantStore:
                     """
                     INSERT INTO channels (
                         id, workspace_id, name, slug, channel_code, timezone,
-                        primary_language, stream_monitoring, active,
+                        primary_language, rating_system, stream_monitoring, active,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         channel_id,
@@ -263,6 +269,7 @@ class TenantStore:
                         channel_code.strip() if channel_code else None,
                         timezone_name,
                         primary_language,
+                        rating_system,
                         int(stream_monitoring),
                         timestamp,
                         timestamp,
@@ -301,6 +308,29 @@ class TenantStore:
                 WHERE id = ?
                 """,
                 (primary_language, _utc_now(), channel_id),
+            )
+        return self.get_channel(channel_id)
+
+    def update_channel_profile(
+        self,
+        channel_id: str,
+        primary_language: str,
+        rating_system: str | None,
+    ) -> dict:
+        self.get_channel(channel_id)
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE channels
+                SET primary_language = ?, rating_system = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    primary_language,
+                    rating_system,
+                    _utc_now(),
+                    channel_id,
+                ),
             )
         return self.get_channel(channel_id)
 

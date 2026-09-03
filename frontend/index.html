@@ -27,7 +27,7 @@
     <script src="/static/auth.js?v=20260902-4" defer></script>
     <script src="/static/admin.js?v=20260811-1" defer></script>
     <script src="/static/billing.js?v=20260818-1" defer></script>
-    <script src="/static/help.js?v=20260902-2" defer></script>
+    <script src="/static/help.js?v=20260903-4" defer></script>
     <script src="/static/app.js?v=20260902-4" defer></script>
     <script src="/static/xmltv-validator.js?v=20260804-1" defer></script>
     <script src="/static/xmltv-repair.js?v=20260804-2" defer></script>
@@ -1039,12 +1039,34 @@
                   </optgroup>
                 </select>
               </label>
+              <label>
+                <span data-i18n="channel.ratingSystem">Channel rating system</span>
+                <select id="active-channel-rating-system">
+                  <option value="" data-i18n="channel.noRatingSystem">None — ratings are not used</option>
+                  <option value="VCHIP">VCHIP — TV Parental Guidelines</option>
+                  <option value="MPA">MPA — Motion Picture Association</option>
+                  <option value="BBFC">BBFC — British Board of Film Classification</option>
+                  <option value="FSK">FSK — Freiwillige Selbstkontrolle</option>
+                  <option value="DJCTQ">DJCTQ — Classificação Indicativa</option>
+                  <option value="ACB">ACB — Australian Classification Board</option>
+                  <option value="CBFC">CBFC — Central Board of Film Certification</option>
+                  <option value="CNC">CNC — Classification cinématographique</option>
+                  <option value="ICAA">ICAA — Calificación por edades</option>
+                  <option value="KMRB">KMRB — Korea Media Rating Board</option>
+                  <option value="EIRIN">EIRIN — Film Classification and Rating</option>
+                  <option value="MTRCB">MTRCB — Movie and Television Review</option>
+                  <option value="FPB">FPB — Film and Publication Board</option>
+                  <option value="CERO">CERO — Computer Entertainment Rating</option>
+                  <option value="OFLC-NZ">OFLC-NZ — Office of Film and Literature Classification</option>
+                  <option value="IMDA">IMDA — Infocomm Media Development Authority</option>
+                </select>
+              </label>
               <button
                 class="button button-secondary"
                 id="save-channel-language"
                 type="button"
-                data-i18n="channel.saveLanguage"
-              >Save language</button>
+                data-i18n="channel.saveSettings"
+              >Save channel settings</button>
               <small id="channel-language-status"></small>
             </div>
           </div>
@@ -1144,11 +1166,11 @@
           <details class="download-menu">
             <summary data-i18n="generator.template.download">Download Template</summary>
             <div class="download-menu-options">
-              <a href="/api/xmltv/template/excel?v=20260902-1">
+              <a href="/api/xmltv/template/excel?v=20260903-4">
                 <strong>Excel (.xlsx)</strong>
                 <small data-i18n="generator.template.excelCopy">Recommended · Includes instructions and examples</small>
               </a>
-              <a href="/api/xmltv/template/csv?v=20260902-1">
+              <a href="/api/xmltv/template/csv?v=20260903-4">
                 <strong>CSV (.csv)</strong>
                 <small data-i18n="generator.template.csvCopy">Headers only</small>
               </a>
@@ -1319,7 +1341,7 @@
           </div>
 
           <p class="section-copy" data-i18n="generator.metadataProfile">
-            Primary language comes from the active channel. Original Language and Rating System are optional per-programme fields in the template.
+            Primary language and the optional rating system come from the active channel. Parental Rating is optional free text in the template.
           </p>
 
           <label
@@ -1438,8 +1460,8 @@
                 Start with the official Broadcast Tool Pro template to avoid
                 column, sheet, date, and formatting errors.
               </span>
-              <a href="/api/xmltv/template/excel?v=20260902-1" data-i18n="generator.guidanceExcel">Download Excel Template</a>
-              <a href="/api/xmltv/template/csv?v=20260902-1" data-i18n="generator.guidanceCsv">Download CSV Template</a>
+              <a href="/api/xmltv/template/excel?v=20260903-4" data-i18n="generator.guidanceExcel">Download Excel Template</a>
+              <a href="/api/xmltv/template/csv?v=20260903-4" data-i18n="generator.guidanceCsv">Download CSV Template</a>
             </aside>
 
           </div>

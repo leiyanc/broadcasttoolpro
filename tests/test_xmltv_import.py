@@ -26,8 +26,9 @@ def test_sample_csv_import_is_valid():
     assert result["success"] is True
     assert result["rows_received"] == 2
     assert result["programmes_imported"] == 2
-    assert result["validation"]["score"] == 100
+    assert result["validation"]["score"] == 96
     assert result["validation"]["ready_to_generate"] is True
+    assert result["validation"]["warnings"] == 2
     assert result["suggested_fixes"] == 0
     assert result["programmes"][0]["xmltv_start"] == "20260718120000 +0000"
     assert result["programmes"][0]["xmltv_stop"] == "20260718123000 +0000"

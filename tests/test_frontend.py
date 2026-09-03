@@ -765,7 +765,17 @@ def test_self_service_signup_only_requests_initial_channel_name():
         FRONTEND_DIR / "app.js"
     ).read_text()
     assert 'id="active-channel-language"' in html
+    assert 'id="active-channel-rating-system"' in html
     assert 'id="save-channel-language"' in html
+    channel_settings = html.split(
+        'id="channel-profile-settings"', 1
+    )[1].split('</div>', 1)[0]
+    assert 'id="active-channel-language"' in channel_settings
+    assert 'id="active-channel-rating-system"' in channel_settings
+    admin_ticket_controls = html.split(
+        'class="ticket-resolution-controls"', 1
+    )[1].split('</div>', 1)[0]
+    assert 'id="active-channel-rating-system"' not in admin_ticket_controls
     assert 'method: "PATCH"' in javascript
     assert 'value="zh-Hans"' in html
     assert 'value="zh-Hant"' in html
@@ -800,8 +810,8 @@ def test_missing_template_channel_warning_is_localized():
 def test_template_download_links_are_cache_busted():
     html = (FRONTEND_DIR / "index.html").read_text()
 
-    assert html.count("/api/xmltv/template/excel?v=20260902-1") == 2
-    assert html.count("/api/xmltv/template/csv?v=20260902-1") == 2
+    assert html.count("/api/xmltv/template/excel?v=20260903-4") == 2
+    assert html.count("/api/xmltv/template/csv?v=20260903-4") == 2
     for script in (
         "i18n.js",
         "auth.js",
@@ -958,6 +968,9 @@ def test_help_explains_global_xmltv_metadata():
 
     assert "no US or regional rating system is assumed" in help_javascript
     assert "no se presume ningún sistema estadounidense" in help_javascript
+    assert "Parental Rating is optional free text" in help_javascript
+    assert "Parental Rating es texto libre opcional" in help_javascript
+    assert "copy, paste, or drag" in help_javascript
     assert "Channel Settings" in help_javascript
     assert "Configuración del canal" in help_javascript
 

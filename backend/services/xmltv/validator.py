@@ -286,8 +286,8 @@ class RatingMetadataRule(ValidationRule):
                 row=programme.source_row,
                 field="Parental Rating / Rating System",
                 message=(
-                    "Parental Rating and Rating System must both be provided "
-                    "to export a rating. The incomplete rating will be omitted."
+                    "Set the channel's Rating System in Channel Settings to "
+                    "export Parental Rating. The rating will otherwise be omitted."
                 ),
             )
             for programme in programmes

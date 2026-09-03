@@ -62,6 +62,9 @@ const activeChannelName = document.querySelector("#active-channel-name");
 const activeChannelDetails = document.querySelector("#active-channel-details");
 const channelProfileSettings = document.querySelector("#channel-profile-settings");
 const activeChannelLanguage = document.querySelector("#active-channel-language");
+const activeChannelRatingSystem = document.querySelector(
+  "#active-channel-rating-system",
+);
 const saveChannelLanguage = document.querySelector("#save-channel-language");
 const channelLanguageStatus = document.querySelector("#channel-language-status");
 
@@ -81,6 +84,9 @@ function publishActiveChannel(channel) {
       ? ""
       : channel?.primary_language || "";
   }
+  if (activeChannelRatingSystem) {
+    activeChannelRatingSystem.value = channel?.rating_system || "";
+  }
   const role = currentIdentity?.organizations?.[0]?.role;
   channelProfileSettings?.classList.toggle(
     "is-hidden",
@@ -94,6 +100,7 @@ function publishActiveChannel(channel) {
 saveChannelLanguage?.addEventListener("click", async () => {
   if (!currentChannel) return;
   const value = activeChannelLanguage.value.trim();
+  const ratingSystem = activeChannelRatingSystem?.value.trim() || null;
   if (!value) {
     channelLanguageStatus.textContent = authText(
       "channel.languageInvalid",
@@ -108,13 +115,16 @@ saveChannelLanguage?.addEventListener("click", async () => {
       `/api/platform/channels/${currentChannel.id}`,
       {
         method: "PATCH",
-        body: JSON.stringify({ primary_language: value }),
+        body: JSON.stringify({
+          primary_language: value,
+          rating_system: ratingSystem,
+        }),
       },
     );
     publishActiveChannel(updated);
     channelLanguageStatus.textContent = authText(
-      "channel.languageSaved",
-      "Channel language saved.",
+      "channel.profileSaved",
+      "Channel settings saved.",
     );
   } catch (error) {
     channelLanguageStatus.textContent = error.message;

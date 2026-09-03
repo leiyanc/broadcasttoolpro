@@ -141,7 +141,29 @@ def test_channel_primary_language_can_be_updated():
 
         updated = store.update_channel_primary_language(channel["id"], "pt-BR")
 
-        assert updated["primary_language"] == "pt-BR"
+    assert updated["primary_language"] == "pt-BR"
+
+
+def test_channel_profile_saves_optional_rating_system():
+    with TemporaryDirectory() as directory:
+        store = TenantStore(Path(directory) / "channel-profile.db")
+        store.initialize()
+        organization = store.create_organization(
+            name="Global Network", slug=None, plan="professional"
+        )
+        workspace = store.create_workspace(
+            organization_id=organization["id"],
+            name="Operations", slug=None, default_timezone="UTC"
+        )
+        channel = store.create_channel(
+            workspace_id=workspace["id"], name="Global TV", slug=None,
+            channel_code="global-tv", timezone="UTC", primary_language="und",
+        )
+
+        updated = store.update_channel_profile(channel["id"], "es-419", "VCHIP")
+
+        assert updated["primary_language"] == "es-419"
+        assert updated["rating_system"] == "VCHIP"
 
 
 def test_channel_profile_accepts_chinese_script_and_region_tags():

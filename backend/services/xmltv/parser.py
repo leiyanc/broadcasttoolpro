@@ -20,10 +20,8 @@ EXPECTED_COLUMNS = [
     "Program Title",
     "Duration (Conditional)",
     "Parental Rating (Optional)",
-    "Rating System (Optional)",
     "Program Description (Conditional)",
     "Original Title (Optional)",
-    "Original Language (Optional)",
     "Cast (Optional)",
     "Season Number (Optional)",
     "Episode Number (Optional)",
@@ -246,6 +244,53 @@ RATING_ALIASES = {
     "TVMA": "TV-MA",
 }
 
+RATING_SYSTEM_ALIASES = {
+    "VCHIP": "VCHIP",
+    "TVPARENTALGUIDELINES": "VCHIP",
+    "MPA": "MPA",
+    "MPAA": "MPA",
+    "BBFC": "BBFC",
+    "FSK": "FSK",
+    "DJCTQ": "DJCTQ",
+    "ACB": "ACB",
+    "CBFC": "CBFC",
+    "CNC": "CNC",
+    "ICAA": "ICAA",
+    "KMRB": "KMRB",
+    "EIRIN": "EIRIN",
+    "MTRCB": "MTRCB",
+    "FPB": "FPB",
+    "CERO": "CERO",
+    "OFLCNZ": "OFLC-NZ",
+    "IMDA": "IMDA",
+}
+
+
+def normalize_rating_system(
+    value: Any,
+    source_row: int,
+    auto_fixes: list[dict[str, Any]] | None,
+) -> str | None:
+    text = clean_text(value)
+
+    if not text:
+        return None
+
+    displayed_code = text.split(" — ", 1)[0].strip()
+    compact = re.sub(r"[^A-Z0-9]", "", displayed_code.upper())
+    normalized = RATING_SYSTEM_ALIASES.get(compact, text)
+
+    if normalized != text and auto_fixes is not None:
+        auto_fixes.append({
+            "row": source_row,
+            "field": "Rating System",
+            "original_value": text,
+            "normalized_value": normalized,
+            "message": "Rating System was normalized.",
+        })
+
+    return normalized
+
 
 def normalize_rating(
     value: Any,
@@ -336,7 +381,9 @@ def generate_asset_id(
     return f"{slug}-{reference_date.replace('-', '')}"
 
 
-def read_csv_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
+def read_csv_rows(
+    content: bytes,
+) -> tuple[list[str], list[dict[str, Any]]]:
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
@@ -363,7 +410,9 @@ def read_csv_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
     return headers, rows
 
 
-def read_excel_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
+def read_excel_rows(
+    content: bytes,
+) -> tuple[list[str], list[dict[str, Any]]]:
     try:
         workbook = load_workbook(
             filename=BytesIO(content),
@@ -391,7 +440,11 @@ def read_excel_rows(content: bytes) -> tuple[list[str], list[dict[str, Any]]]:
 
     rows: list[dict[str, Any]] = []
 
-    for values in worksheet.iter_rows(min_row=5, values_only=True):
+    for values in worksheet.iter_rows(
+        min_row=5,
+        max_col=len(headers),
+        values_only=True,
+    ):
         if not any(clean_text(value) for value in values):
             continue
 
@@ -434,6 +487,7 @@ def build_programme(
     row: dict[str, Any],
     source_row: int,
     auto_fixes: list[dict[str, Any]] | None = None,
+    channel_rating_system: str | None = None,
 ) -> Programme:
     title = clean_text(row.get("Program Title"))
 
@@ -472,14 +526,16 @@ def build_programme(
             source_row,
             auto_fixes,
         ),
-        rating_system=clean_text(row.get("Rating System (Optional)")),
+        rating_system=(
+            normalize_rating_system(channel_rating_system, source_row, None)
+            if clean_text(row.get("Parental Rating (Optional)"))
+            else None
+        ),
         program_description=clean_text(
             row.get("Program Description (Conditional)")
         ),
         original_title=clean_text(row.get("Original Title (Optional)")),
-        original_language=clean_text(
-            row.get("Original Language (Optional)")
-        ),
+        original_language=None,
         cast=parse_cast(row.get("Cast (Optional)")),
         season_number=season_number,
         episode_number=episode_number,

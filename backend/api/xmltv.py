@@ -123,6 +123,7 @@ async def process_schedule(
     channel_timezone: str,
     apply_fixes: bool = False,
     expected_channel_name: str | None = None,
+    channel_rating_system: str | None = None,
 ) -> dict:
     filename = schedule_file.filename or ""
     content = await schedule_file.read()
@@ -243,6 +244,7 @@ async def process_schedule(
                 row,
                 source_row,
                 auto_fixes=auto_fixes,
+                channel_rating_system=channel_rating_system,
             )
             programmes.append(programme)
         except (ValueError, TypeError) as exc:
@@ -349,6 +351,7 @@ async def import_schedule(
         channel["timezone"] if channel else channel_timezone,
         apply_fixes=False,
         expected_channel_name=channel["name"] if channel else None,
+        channel_rating_system=channel.get("rating_system") if channel else None,
     )
 
 
@@ -511,6 +514,7 @@ async def generate_schedule(
         channel["timezone"],
         apply_fixes=accept_auto_fixes,
         expected_channel_name=channel["name"],
+        channel_rating_system=channel.get("rating_system"),
     )
 
     if not result["success"]:
@@ -589,6 +593,7 @@ async def download_programming_grid(
         channel["timezone"],
         apply_fixes=accept_auto_fixes,
         expected_channel_name=channel["name"],
+        channel_rating_system=channel.get("rating_system"),
     )
 
     if not result["success"]:

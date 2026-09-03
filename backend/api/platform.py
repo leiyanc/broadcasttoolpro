@@ -213,9 +213,10 @@ def update_channel_profile(
             workspace["organization_id"],
             "admin",
         )
-        return tenant_store.update_channel_primary_language(
+        return tenant_store.update_channel_profile(
             channel_id,
             request.primary_language,
+            request.rating_system,
         )
     except KeyError as exc:
         raise _not_found(exc) from exc

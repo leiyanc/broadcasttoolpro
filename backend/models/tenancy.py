@@ -4,6 +4,24 @@ from pydantic import BaseModel, Field
 
 
 PlanCode = Literal["professional", "enterprise"]
+RatingSystemCode = Literal[
+    "VCHIP",
+    "MPA",
+    "BBFC",
+    "FSK",
+    "DJCTQ",
+    "ACB",
+    "CBFC",
+    "CNC",
+    "ICAA",
+    "KMRB",
+    "EIRIN",
+    "MTRCB",
+    "FPB",
+    "CERO",
+    "OFLC-NZ",
+    "IMDA",
+]
 
 
 class OrganizationCreate(BaseModel):
@@ -68,3 +86,4 @@ class ChannelProfileUpdate(BaseModel):
             r"(?:-[A-Za-z0-9]{5,8})*$"
         ),
     )
+    rating_system: RatingSystemCode | None = None
