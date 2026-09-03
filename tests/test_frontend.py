@@ -827,7 +827,7 @@ def test_channel_settings_layout_is_cache_busted():
     html = (FRONTEND_DIR / "index.html").read_text()
     styles = (FRONTEND_DIR / "styles.css").read_text()
 
-    assert "/static/styles.css?v=20260903-1" in html
+    assert "/static/styles.css?v=20260903-2" in html
     assert "grid-template-columns: 140px minmax(0, 1fr)" in styles
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
     assert "channel-save-button" in html
