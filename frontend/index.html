@@ -961,11 +961,11 @@
               <strong id="active-channel-name">Loading channel…</strong>
               <small id="active-channel-details"></small>
             </div>
-            <label>
-              <span class="sr-only" data-i18n="channel.select">Select channel</span>
-              <select id="active-channel-select" aria-label="Select active channel"></select>
-            </label>
             <div class="channel-profile-settings" id="channel-profile-settings">
+              <label>
+                <span data-i18n="channel.select">Select channel</span>
+                <select id="active-channel-select" aria-label="Select active channel"></select>
+              </label>
               <label>
                 <span data-i18n="channel.primaryLanguage">Channel primary language</span>
                 <select id="active-channel-language" required>
@@ -1062,7 +1062,7 @@
                 </select>
               </label>
               <button
-                class="button button-secondary"
+                class="button button-primary channel-save-button"
                 id="save-channel-language"
                 type="button"
                 data-i18n="channel.saveSettings"

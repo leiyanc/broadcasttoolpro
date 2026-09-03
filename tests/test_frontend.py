@@ -828,8 +828,9 @@ def test_channel_settings_layout_is_cache_busted():
     styles = (FRONTEND_DIR / "styles.css").read_text()
 
     assert "/static/styles.css?v=20260903-1" in html
-    assert "grid-template-columns: minmax(140px, 0.75fr)" in styles
-    assert "grid-template-columns: minmax(170px, 1fr) minmax(230px, 1.3fr) auto" in styles
+    assert "grid-template-columns: 140px minmax(0, 1fr)" in styles
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
+    assert "channel-save-button" in html
 
 
 def test_billing_supports_reviewed_additional_channel_purchase():
