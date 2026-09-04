@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from stripe import SignatureVerificationError, StripeError
 
@@ -18,6 +20,15 @@ router = APIRouter(
     prefix="/api/billing",
     tags=["Billing"],
 )
+
+
+def _is_master_billing_exempt(user: dict) -> bool:
+    master_email = os.getenv("BTP_INITIAL_ADMIN_EMAIL", "").strip().casefold()
+    return bool(
+        master_email
+        and user.get("is_superuser")
+        and str(user.get("email") or "").strip().casefold() == master_email
+    )
 
 
 def _requires_checkout_selection_sync(subscription: dict) -> bool:
@@ -148,6 +159,7 @@ def preview_channel_purchase(
             organization_id=organization_id,
             name=request.name,
             stream_monitoring=request.stream_monitoring,
+            billing_exempt=_is_master_billing_exempt(user),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -168,6 +180,7 @@ def purchase_channel(
     try:
         return stripe_billing.purchase_channel(
             organization_id=organization_id,
+            billing_exempt=_is_master_billing_exempt(user),
             **request.model_dump(),
         )
     except ValueError as exc:

@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 import pytest
 from types import SimpleNamespace
 
+from backend.api.billing import _is_master_billing_exempt
 from backend.services.billing_store import BillingStore
 from backend.services.entitlements import EntitlementStore
 from backend.services.stripe_billing import StripeBillingService
@@ -27,6 +28,23 @@ def _configure(monkeypatch):
     }
     for name, value in values.items():
         monkeypatch.setenv(name, value)
+
+
+def test_only_configured_master_superuser_is_billing_exempt(monkeypatch):
+    monkeypatch.setenv("BTP_INITIAL_ADMIN_EMAIL", "goldenmedia23@gmail.com")
+
+    assert _is_master_billing_exempt({
+        "email": "GoldenMedia23@gmail.com",
+        "is_superuser": True,
+    }) is True
+    assert _is_master_billing_exempt({
+        "email": "customer@example.com",
+        "is_superuser": True,
+    }) is False
+    assert _is_master_billing_exempt({
+        "email": "goldenmedia23@gmail.com",
+        "is_superuser": False,
+    }) is False
 
 
 def test_checkout_uses_server_side_prices_and_metadata(monkeypatch):
@@ -393,6 +411,66 @@ def test_legacy_organization_receives_first_channel_without_stripe_charge(
     assert channel["channel_code"] == "legacy-primary"
     assert channel["timezone"] == "UTC"
     assert channel["primary_language"] == "und"
+
+
+def test_master_account_adds_additional_channel_without_stripe(monkeypatch):
+    _configure(monkeypatch)
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "master-channel.db"
+        tenants = TenantStore(database_path)
+        tenants.initialize()
+        organization = tenants.create_organization(
+            name="Master Network", slug=None, plan="enterprise"
+        )
+        workspace = tenants.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        tenants.create_channel(
+            workspace_id=workspace["id"],
+            name="Primary Channel",
+            slug=None,
+            channel_code="primary-channel",
+            timezone="UTC",
+            primary_language="en",
+        )
+        billing = BillingStore(database_path)
+        billing.initialize()
+        billing.create_manual_paid_subscription(
+            organization["id"], amount_cents=0
+        )
+        monkeypatch.setattr(stripe_module, "billing_store", billing)
+        monkeypatch.setattr(
+            stripe_module.stripe.Subscription,
+            "retrieve",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("Master channel addition must not call Stripe")
+            ),
+        )
+        service = StripeBillingService()
+
+        preview = service.preview_channel_purchase(
+            organization_id=organization["id"],
+            name="Master Second",
+            stream_monitoring=False,
+            billing_exempt=True,
+        )
+        channel = service.purchase_channel(
+            organization_id=organization["id"],
+            name="Master Second",
+            stream_monitoring=False,
+            billing_exempt=True,
+        )
+
+        channels = tenants.list_organization_channels(organization["id"])
+
+    assert preview["billing_exempt"] is True
+    assert preview["amount_due_now_cents"] == 0
+    assert preview["monthly_increase_cents"] == 0
+    assert channel["name"] == "Master Second"
+    assert len(channels) == 2
 
 
 def test_channel_removal_is_scheduled_for_renewal_and_can_be_canceled(

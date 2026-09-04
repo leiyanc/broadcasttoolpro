@@ -512,7 +512,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260902-4' in html
-    assert '/static/i18n.js?v=20260902-4' in html
+    assert '/static/i18n.js?v=20260904-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -813,7 +813,6 @@ def test_template_download_links_are_cache_busted():
     assert html.count("/api/xmltv/template/excel?v=20260903-4") == 2
     assert html.count("/api/xmltv/template/csv?v=20260903-4") == 2
     for script in (
-        "i18n.js",
         "auth.js",
         "app.js",
         "prelog-filter.js",
@@ -821,6 +820,8 @@ def test_template_download_links_are_cache_busted():
         "hls-validator.js",
     ):
         assert f"/static/{script}?v=20260902-4" in html
+    assert "/static/i18n.js?v=20260904-1" in html
+    assert "/static/billing.js?v=20260904-1" in html
 
 
 def test_channel_settings_layout_is_cache_busted():
@@ -849,6 +850,8 @@ def test_billing_supports_reviewed_additional_channel_purchase():
     assert "/channels/preview`" in javascript
     assert "confirmChannelPurchase" in javascript
     assert "Stripe prorated amount" in javascript
+    assert "preview.billing_exempt" in javascript
+    assert "No Stripe charge" in javascript
     assert "channel.is_included" in javascript
     assert "activeChannels.length === 1" not in javascript
 

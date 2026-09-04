@@ -353,10 +353,14 @@ async function previewChannelPurchase(event) {
       billingCard(
         preview.first_channel_included
           ? billingText("billing.includedChannel", "Included channel")
+          : preview.billing_exempt
+            ? billingText("billing.masterChannel", "Master account channel")
           : billingText("billing.additionalChannel", "Additional channel"),
         billingMoney(preview.additional_channel_monthly_cents, preview.currency),
         preview.first_channel_included
           ? billingText("billing.includedWithPlan", "included with the plan")
+          : preview.billing_exempt
+            ? billingText("billing.noStripeCharge", "no Stripe charge")
           : billingText("billing.perMonth", "per month"),
       ),
       billingCard(
@@ -373,7 +377,9 @@ async function previewChannelPurchase(event) {
       billingCard(
         billingText("billing.dueNow", "Due now"),
         billingMoney(preview.amount_due_now_cents, preview.currency),
-        billingText("billing.stripeProration", "Stripe prorated amount"),
+        preview.billing_exempt
+          ? billingText("billing.noStripeCharge", "No Stripe charge")
+          : billingText("billing.stripeProration", "Stripe prorated amount"),
       ),
     );
     billingChannelForm.classList.add("is-hidden");

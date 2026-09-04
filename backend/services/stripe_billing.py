@@ -397,6 +397,7 @@ class StripeBillingService:
         timezone: str = "UTC",
         primary_language: str = "und",
         stream_monitoring: bool,
+        billing_exempt: bool = False,
     ) -> dict:
         channel_code = channel_code or _slugify(name)
         _validate_timezone(timezone)
@@ -419,6 +420,31 @@ class StripeBillingService:
                 "amount_due_now_cents": 0,
                 "currency": "usd",
                 "monitoring_channel_count": int(plan_code == "enterprise"),
+            }
+        if billing_exempt:
+            local, plan_code = self._local_plan_code(organization_id)
+            if local["status"] != "active":
+                raise ValueError("An active subscription is required.")
+            if stream_monitoring and plan_code == "programming_suite":
+                raise ValueError(
+                    "Stream Monitoring for an added channel requires "
+                    "Professional or Enterprise."
+                )
+            return {
+                "plan_code": plan_code,
+                "new_channel_count": len(channels) + 1,
+                "first_channel_included": False,
+                "billing_exempt": True,
+                "additional_channel_monthly_cents": 0,
+                "stream_monitoring_monthly_cents": 0,
+                "monthly_increase_cents": 0,
+                "amount_due_now_cents": 0,
+                "currency": "usd",
+                "monitoring_channel_count": sum(
+                    1 for channel in channels
+                    if channel.get("active")
+                    and channel.get("stream_monitoring")
+                ) + int(stream_monitoring or plan_code == "enterprise"),
             }
         (
             _local, subscription, plan_code, changes,
@@ -464,6 +490,7 @@ class StripeBillingService:
         timezone: str = "UTC",
         primary_language: str = "und",
         stream_monitoring: bool,
+        billing_exempt: bool = False,
     ) -> dict:
         channel_code = channel_code or _slugify(name)
         _validate_timezone(timezone)
@@ -476,6 +503,25 @@ class StripeBillingService:
             local, plan_code = self._local_plan_code(organization_id)
             if local["status"] != "active":
                 raise ValueError("An active subscription is required.")
+            return self._create_channel_record(
+                organization_id=organization_id,
+                name=name,
+                channel_code=channel_code,
+                timezone=timezone,
+                primary_language=primary_language,
+                stream_monitoring=(
+                    stream_monitoring or plan_code == "enterprise"
+                ),
+            )
+        if billing_exempt:
+            local, plan_code = self._local_plan_code(organization_id)
+            if local["status"] != "active":
+                raise ValueError("An active subscription is required.")
+            if stream_monitoring and plan_code == "programming_suite":
+                raise ValueError(
+                    "Stream Monitoring for an added channel requires "
+                    "Professional or Enterprise."
+                )
             return self._create_channel_record(
                 organization_id=organization_id,
                 name=name,
