@@ -1494,6 +1494,7 @@ main {
   white-space: nowrap;
 }
 .channel-profile-settings .channel-save-button {
+  grid-column: 2;
   color: var(--signal);
   background: var(--surface);
   border-color: color-mix(in srgb, var(--signal) 55%, var(--line));
@@ -3041,6 +3042,7 @@ footer {
   }
 
   .channel-profile-settings .button {
+    grid-column: 1;
     width: 100%;
   }
 

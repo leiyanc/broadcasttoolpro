@@ -314,18 +314,21 @@ class TenantStore:
     def update_channel_profile(
         self,
         channel_id: str,
+        timezone: str,
         primary_language: str,
         rating_system: str | None,
     ) -> dict:
         self.get_channel(channel_id)
+        timezone = _validate_timezone(timezone)
         with self._connection() as connection:
             connection.execute(
                 """
                 UPDATE channels
-                SET primary_language = ?, rating_system = ?, updated_at = ?
+                SET timezone = ?, primary_language = ?, rating_system = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
+                    timezone,
                     primary_language,
                     rating_system,
                     _utc_now(),

@@ -58,6 +58,7 @@ let currentIdentity = null;
 let currentEntitlements = null;
 let currentChannel = null;
 const activeChannelSelect = document.querySelector("#active-channel-select");
+const activeChannelTimezone = document.querySelector("#active-channel-timezone");
 const activeChannelName = document.querySelector("#active-channel-name");
 const activeChannelDetails = document.querySelector("#active-channel-details");
 const channelProfileSettings = document.querySelector("#channel-profile-settings");
@@ -67,6 +68,15 @@ const activeChannelRatingSystem = document.querySelector(
 );
 const saveChannelLanguage = document.querySelector("#save-channel-language");
 const channelLanguageStatus = document.querySelector("#channel-language-status");
+
+if (activeChannelTimezone) {
+  const generatorTimezone = document.querySelector(
+    "#xmltv-form [name='channel_timezone']",
+  );
+  for (const group of generatorTimezone?.children || []) {
+    activeChannelTimezone.append(group.cloneNode(true));
+  }
+}
 
 function publishActiveChannel(channel) {
   currentChannel = channel || null;
@@ -84,6 +94,9 @@ function publishActiveChannel(channel) {
       ? ""
       : channel?.primary_language || "";
   }
+  if (activeChannelTimezone) {
+    activeChannelTimezone.value = channel?.timezone || "UTC";
+  }
   if (activeChannelRatingSystem) {
     activeChannelRatingSystem.value = channel?.rating_system || "";
   }
@@ -100,11 +113,19 @@ function publishActiveChannel(channel) {
 saveChannelLanguage?.addEventListener("click", async () => {
   if (!currentChannel) return;
   const value = activeChannelLanguage.value.trim();
+  const timezone = activeChannelTimezone?.value.trim();
   const ratingSystem = activeChannelRatingSystem?.value.trim() || null;
   if (!value) {
     channelLanguageStatus.textContent = authText(
       "channel.languageInvalid",
       "Select the channel's primary language.",
+    );
+    return;
+  }
+  if (!timezone) {
+    channelLanguageStatus.textContent = authText(
+      "channel.timezoneInvalid",
+      "Select the channel's time zone.",
     );
     return;
   }
@@ -116,6 +137,7 @@ saveChannelLanguage?.addEventListener("click", async () => {
       {
         method: "PATCH",
         body: JSON.stringify({
+          timezone,
           primary_language: value,
           rating_system: ratingSystem,
         }),

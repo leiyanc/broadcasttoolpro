@@ -77,6 +77,7 @@ class ChannelCreate(BaseModel):
 
 
 class ChannelProfileUpdate(BaseModel):
+    timezone: str = Field(min_length=1, max_length=100)
     primary_language: str = Field(
         min_length=2,
         max_length=35,

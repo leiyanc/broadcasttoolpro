@@ -512,7 +512,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260902-4' in html
-    assert '/static/i18n.js?v=20260904-1' in html
+    assert '/static/i18n.js?v=20260904-2' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -765,13 +765,17 @@ def test_self_service_signup_only_requests_initial_channel_name():
         FRONTEND_DIR / "app.js"
     ).read_text()
     assert 'id="active-channel-language"' in html
+    assert 'id="active-channel-timezone"' in html
     assert 'id="active-channel-rating-system"' in html
     assert 'id="save-channel-language"' in html
     channel_settings = html.split(
         'id="channel-profile-settings"', 1
     )[1].split('</div>', 1)[0]
     assert 'id="active-channel-language"' in channel_settings
+    assert 'id="active-channel-timezone"' in channel_settings
     assert 'id="active-channel-rating-system"' in channel_settings
+    assert "activeChannelTimezone.value = channel?.timezone" in javascript
+    assert "timezone," in javascript
     admin_ticket_controls = html.split(
         'class="ticket-resolution-controls"', 1
     )[1].split('</div>', 1)[0]
@@ -813,14 +817,15 @@ def test_template_download_links_are_cache_busted():
     assert html.count("/api/xmltv/template/excel?v=20260903-4") == 2
     assert html.count("/api/xmltv/template/csv?v=20260903-4") == 2
     for script in (
-        "auth.js",
         "app.js",
         "prelog-filter.js",
         "postlog-certification.js",
         "hls-validator.js",
     ):
         assert f"/static/{script}?v=20260902-4" in html
-    assert "/static/i18n.js?v=20260904-1" in html
+    assert "/static/auth.js?v=20260904-1" in html
+    assert "/static/help.js?v=20260904-1" in html
+    assert "/static/i18n.js?v=20260904-2" in html
     assert "/static/billing.js?v=20260904-1" in html
 
 
@@ -828,7 +833,7 @@ def test_channel_settings_layout_is_cache_busted():
     html = (FRONTEND_DIR / "index.html").read_text()
     styles = (FRONTEND_DIR / "styles.css").read_text()
 
-    assert "/static/styles.css?v=20260903-2" in html
+    assert "/static/styles.css?v=20260904-1" in html
     assert "grid-template-columns: 140px minmax(0, 1fr)" in styles
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
     assert "channel-save-button" in html
@@ -986,6 +991,8 @@ def test_help_explains_global_xmltv_metadata():
     assert "copy, paste, or drag" in help_javascript
     assert "Channel Settings" in help_javascript
     assert "Configuración del canal" in help_javascript
+    assert "Enter schedule times in the channel's local time" in help_javascript
+    assert "Ingresa la programación en la hora local del canal" in help_javascript
 
 
 def test_xmltv_generator_offers_us_latam_and_fixed_timezones():

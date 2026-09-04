@@ -2,6 +2,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from backend.main import app
 from backend.services.tenant_store import TenantStore
 from backend.models.tenancy import ChannelProfileUpdate
@@ -160,18 +162,47 @@ def test_channel_profile_saves_optional_rating_system():
             channel_code="global-tv", timezone="UTC", primary_language="und",
         )
 
-        updated = store.update_channel_profile(channel["id"], "es-419", "VCHIP")
+        updated = store.update_channel_profile(
+            channel["id"], "America/New_York", "es-419", "VCHIP"
+        )
 
+        assert updated["timezone"] == "America/New_York"
         assert updated["primary_language"] == "es-419"
         assert updated["rating_system"] == "VCHIP"
 
 
 def test_channel_profile_accepts_chinese_script_and_region_tags():
-    simplified = ChannelProfileUpdate(primary_language="zh-Hans")
-    traditional_taiwan = ChannelProfileUpdate(primary_language="zh-Hant-TW")
+    simplified = ChannelProfileUpdate(timezone="Asia/Shanghai", primary_language="zh-Hans")
+    traditional_taiwan = ChannelProfileUpdate(
+        timezone="Asia/Taipei", primary_language="zh-Hant-TW"
+    )
 
     assert simplified.primary_language == "zh-Hans"
     assert traditional_taiwan.primary_language == "zh-Hant-TW"
+
+
+def test_channel_profile_rejects_unknown_timezone():
+    with TemporaryDirectory() as directory:
+        store = TenantStore(Path(directory) / "channel-profile-invalid-timezone.db")
+        store.initialize()
+        organization = store.create_organization(
+            name="Network", slug=None, plan="professional"
+        )
+        workspace = store.create_workspace(
+            organization_id=organization["id"],
+            name="Operations",
+            slug=None,
+            default_timezone="UTC",
+        )
+        channel = store.create_channel(
+            workspace_id=workspace["id"], name="TV", slug=None,
+            channel_code="tv", timezone="UTC", primary_language="en",
+        )
+
+        with pytest.raises(ValueError, match="Unknown time zone"):
+            store.update_channel_profile(
+                channel["id"], "Invalid/Zone", "en", None
+            )
 
 
 def test_channel_deactivation_can_be_scheduled_canceled_and_applied():

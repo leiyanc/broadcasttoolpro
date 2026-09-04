@@ -303,8 +303,10 @@ internal Channel ID from that name and does not ask the customer to choose a
 time zone or primary language during account creation. Time zone, primary
 language, and an optional Rating System are confirmed later in Channel
 Settings; the initial stored language is undefined rather than inferred from
-the interface language. XMLTV exports inherit the registered primary language
-and, when configured, the channel Rating System. The schedule contains only
+the interface language. Schedule times are entered in the channel's local time;
+XMLTV export uses the saved IANA time zone to convert them to UTC. XMLTV exports
+also inherit the registered primary language and, when configured, the channel
+Rating System. The schedule contains only
 the optional programme-level Parental Rating value. When that value is blank,
 or the channel has no Rating System configured, XMLTV is exported without a
 `<rating>` element. Excel and CSV use the same metadata rules.

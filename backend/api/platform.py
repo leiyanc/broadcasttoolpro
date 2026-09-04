@@ -215,8 +215,11 @@ def update_channel_profile(
         )
         return tenant_store.update_channel_profile(
             channel_id,
+            request.timezone,
             request.primary_language,
             request.rating_system,
         )
     except KeyError as exc:
         raise _not_found(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

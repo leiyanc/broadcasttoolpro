@@ -162,6 +162,7 @@ const helpGuides = {
       steps: [
         "Download and complete the official schedule template.",
         "Select the registered channel and enter its name in the required Channel column on every programme row.",
+        "Confirm the channel's time zone once in Channel Settings. Enter schedule times in the channel's local time; Broadcast Tool Pro uses the saved time zone automatically when exporting XMLTV.",
         "Confirm the channel's primary language in Channel Settings. Choose a major language or regional/script variant, such as Simplified or Traditional Chinese. Broadcast Tool Pro applies it automatically to the XMLTV.",
         "If the channel uses ratings, select its optional Rating System once in Channel Settings. Leave it as None when ratings are not used.",
         "Parental Rating is optional free text in the template. Enter the official value, such as TV-PG for VCHIP, then copy, paste, or drag repeated values across programme rows.",
@@ -169,7 +170,7 @@ const helpGuides = {
         "Authorize corrections when appropriate, then generate XMLTV.",
         "Optionally create a Programming Grid from the same validated EPG.",
       ],
-      tip: "Primary Language and the optional Rating System come from Channel Settings; no US or regional rating system is assumed. The template only asks for each programme's optional Parental Rating.",
+      tip: "Time Zone, Primary Language, and the optional Rating System come from Channel Settings. The schedule template does not need a time-zone column, and no US or regional rating system is assumed.",
     },
     es: {
       title: "Generador XMLTV",
@@ -177,6 +178,7 @@ const helpGuides = {
       steps: [
         "Descarga y completa la plantilla oficial.",
         "Selecciona el canal registrado e ingresa su nombre en la columna obligatoria Channel de cada fila de programación.",
+        "Confirma una sola vez la zona horaria del canal en Configuración del canal. Ingresa la programación en la hora local del canal; Broadcast Tool Pro utiliza automáticamente la zona guardada al exportar el XMLTV.",
         "Confirma el idioma principal del canal en Configuración del canal. Elige un idioma principal o una variante regional/de escritura, como chino simplificado o tradicional. Broadcast Tool Pro lo aplica automáticamente al XMLTV.",
         "Si el canal utiliza clasificaciones, selecciona una sola vez su Rating System opcional en Configuración del canal. Déjalo en Ninguno cuando no se utilicen clasificaciones.",
         "Parental Rating es texto libre opcional en la plantilla. Escribe el valor oficial, como TV-PG para VCHIP, y copia, pega o arrastra los valores repetidos entre las filas.",
@@ -184,7 +186,7 @@ const helpGuides = {
         "Autoriza las correcciones apropiadas y genera el XMLTV.",
         "Opcionalmente crea un Programming Grid desde el mismo EPG validado.",
       ],
-      tip: "Primary Language y el Rating System opcional provienen de Configuración del canal; no se presume ningún sistema estadounidense ni regional. La plantilla solo solicita el Parental Rating opcional de cada programa.",
+      tip: "Zona horaria, Primary Language y el Rating System opcional provienen de Configuración del canal. La plantilla no necesita una columna de zona horaria y no se presume ningún sistema estadounidense ni regional.",
     },
   },
   validator: {
