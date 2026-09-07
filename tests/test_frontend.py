@@ -512,7 +512,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260902-4' in html
-    assert '/static/i18n.js?v=20260904-2' in html
+    assert '/static/i18n.js?v=20260907-2' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -818,14 +818,14 @@ def test_template_download_links_are_cache_busted():
     assert html.count("/api/xmltv/template/csv?v=20260903-4") == 2
     for script in (
         "app.js",
-        "prelog-filter.js",
-        "postlog-certification.js",
         "hls-validator.js",
     ):
         assert f"/static/{script}?v=20260902-4" in html
+    assert "/static/prelog-filter.js?v=20260907-1" in html
+    assert "/static/postlog-certification.js?v=20260907-1" in html
     assert "/static/auth.js?v=20260904-1" in html
     assert "/static/help.js?v=20260904-1" in html
-    assert "/static/i18n.js?v=20260904-2" in html
+    assert "/static/i18n.js?v=20260907-2" in html
     assert "/static/billing.js?v=20260904-1" in html
 
 
@@ -957,6 +957,10 @@ def test_report_history_is_available():
     assert 'id="report-history"' in html
     assert 'id="prelog-client-name"' in html
     assert 'id="postlog-client-name"' in html
+    assert 'id="prelog-channel-name"' not in html
+    assert 'id="postlog-channel-name"' not in html
+    assert "prelogChannelName" not in (FRONTEND_DIR / "prelog-filter.js").read_text()
+    assert "postlogChannelName" not in (FRONTEND_DIR / "postlog-certification.js").read_text()
     assert "/api/history" in javascript
     assert "textContent" in javascript
     assert "innerHTML" not in javascript

@@ -28,7 +28,6 @@ const postlogResultMetrics = document.querySelector(
 const postlogPreview = document.querySelector("#postlog-preview-body");
 const postlogExportPanel = document.querySelector("#postlog-export-panel");
 const postlogClientName = document.querySelector("#postlog-client-name");
-const postlogChannelName = document.querySelector("#postlog-channel-name");
 const exportPostlogButton = document.querySelector("#export-postlog-button");
 const postlogExportStatus = document.querySelector("#postlog-export-status");
 const postlogProfileSelect = document.querySelector(
@@ -110,7 +109,6 @@ async function refreshProfileList(selectedName = "") {
 async function applyProfile(profile) {
   postlogProfileName.value = profile.name;
   postlogClientName.value = profile.clientName || "";
-  postlogChannelName.value = profile.channelName || "";
   document.querySelector("#postlog-report-language").value = (
     profile.reportLanguage || "en"
   );
@@ -150,7 +148,6 @@ async function saveCurrentProfile() {
   const profile = {
     name,
     clientName: postlogClientName.value.trim(),
-    channelName: postlogChannelName.value.trim(),
     reportLanguage: document.querySelector(
       "#postlog-report-language",
     ).value,
@@ -311,7 +308,6 @@ inspectPostlogsButton.addEventListener("click", async () => {
     );
     postlogForm.elements.start_date.value = result.start_date || "";
     postlogForm.elements.end_date.value = result.end_date || "";
-    postlogChannelName.value = result.channels[0] || "";
     postlogSuggestions.replaceChildren();
     const suggestions = postlogMode.value === "prefix"
       ? result.prefixes.map((item) => item.prefix)
@@ -389,7 +385,14 @@ postlogForm.addEventListener("submit", async (event) => {
 });
 
 exportPostlogButton.addEventListener("click", async () => {
-  if (!postlogChannelName.reportValidity()) return;
+  if (!window.BTPActiveChannel?.id) {
+    postlogExportStatus.classList.add("is-error");
+    postlogExportStatus.textContent = postlogText(
+      "traffic.activeChannelRequired",
+      "Select an active registered channel in Channel Settings before exporting.",
+    );
+    return;
+  }
   const data = new FormData();
   appendPostlogFiles(data);
   appendPostlogFilters(data);
@@ -513,11 +516,6 @@ window.addEventListener("btp:languagechange", () => {
   refreshProfileList(postlogProfileSelect.value).catch(() => {});
   if (postlogFiles.files.length) handlePostlogFilesChanged();
 });
-
-window.addEventListener("btp:channel", (event) => {
-  postlogChannelName.value = event.detail?.name || "";
-});
-postlogChannelName.value = window.BTPActiveChannel?.name || "";
 
 window.addEventListener("btp:identity", (event) => {
   postlogClientName.value = event.detail?.organizations?.[0]?.name || "";

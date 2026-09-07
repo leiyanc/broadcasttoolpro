@@ -30,7 +30,6 @@ const prelogResultMetrics = document.querySelector("#prelog-result-metrics");
 const prelogPreviewBody = document.querySelector("#prelog-preview-body");
 const prelogExportPanel = document.querySelector("#prelog-export-panel");
 const prelogClientName = document.querySelector("#prelog-client-name");
-const prelogChannelName = document.querySelector("#prelog-channel-name");
 const prelogReportLanguage = document.querySelector("#prelog-report-language");
 const prelogOutputFormat = document.querySelector("#prelog-output-format");
 const prelogProduct = document.querySelector("#prelog-product");
@@ -224,7 +223,6 @@ inspectPlaylistsButton.addEventListener("click", async () => {
 
     playlistsInspected = true;
     availableFilterOptions = result;
-    prelogChannelName.value = result.channels[0] || "";
     applyPrelogFiltersButton.disabled = false;
     playlistSummary.classList.remove("is-hidden");
     playlistSummaryMetrics.replaceChildren();
@@ -331,7 +329,14 @@ prelogForm.addEventListener("submit", async (event) => {
 });
 
 exportPrelogButton.addEventListener("click", async () => {
-  if (!prelogChannelName.reportValidity()) return;
+  if (!window.BTPActiveChannel?.id) {
+    prelogExportStatus.classList.add("is-error");
+    prelogExportStatus.textContent = prelogText(
+      "traffic.activeChannelRequired",
+      "Select an active registered channel in Channel Settings before exporting.",
+    );
+    return;
+  }
 
   const data = new FormData();
   appendFiles(data);
@@ -432,16 +437,10 @@ window.addEventListener("btp:identity", (event) => {
     prelogProduct.value = "";
     prelogAgency.value = "";
     prelogClientName.value = "";
-    prelogChannelName.value = "";
   } else {
     prelogClientName.value = identity.organizations?.[0]?.name || "";
   }
 });
-
-window.addEventListener("btp:channel", (event) => {
-  prelogChannelName.value = event.detail?.name || "";
-});
-prelogChannelName.value = window.BTPActiveChannel?.name || "";
 
 restoreAccountPreferences();
 
