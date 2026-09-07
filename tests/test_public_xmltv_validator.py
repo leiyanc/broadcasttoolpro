@@ -51,6 +51,8 @@ def test_public_basic_report_is_btp_branded():
     assert "XMLTV FORMAT" in text
     assert "OPERATIONAL READINESS" in text
     assert "BTP DELIVERY PROFILE" in text
+    assert "Recommendation" in text
+    assert "Layer" not in text
 
 
 def test_public_validator_localizes_issue_messages_in_spanish():

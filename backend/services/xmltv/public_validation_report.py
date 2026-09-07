@@ -67,11 +67,17 @@ def generate_public_xmltv_report(payload: dict, language: str = "en") -> bytes:
         textColor=colors.white,
         fontName="Helvetica-Bold",
     )
-    severity_short = {
-        "critical": "Crít." if spanish else "Crit.",
+    severity_labels = {
+        "critical": "Crítico" if spanish else "Critical",
         "error": "Error",
-        "warning": "Aviso" if spanish else "Warn.",
-        "recommendation": "Rec.",
+        "warning": "Advertencia" if spanish else "Warning",
+        "recommendation": "Recomendación" if spanish else "Recommendation",
+    }
+    severity_colors = {
+        "critical": (colors.HexColor("#FDECEC"), colors.HexColor("#B42318")),
+        "error": (colors.HexColor("#FFF1E8"), colors.HexColor("#C2410C")),
+        "warning": (colors.HexColor("#FFF8D6"), colors.HexColor("#8A6100")),
+        "recommendation": (colors.HexColor("#EAF2FF"), colors.HexColor("#2457A7")),
     }
     summary = [
         [Paragraph(copy["format"], summary_header), Paragraph(copy["operations"], summary_header), Paragraph(copy["profile"], summary_header)],
@@ -91,31 +97,39 @@ def generate_public_xmltv_report(payload: dict, language: str = "en") -> bytes:
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
-    rows = [[copy["layer"], copy["severity"], copy["rule"], copy["line"], copy["message"]]]
-    for label, section in ((copy["format_short"], xmltv), (copy["operations_short"], operations), (copy["profile_short"], profile)):
+    rows = [[copy["severity"], copy["rule"], copy["line"], copy["message"]]]
+    row_severities = []
+    for section in (xmltv, operations, profile):
         for issue in section.get("issues") or []:
             severity = str(issue.get("severity") or "")
             rows.append([
-                Paragraph(label, cell),
-                Paragraph(severity_short.get(severity, severity), cell),
+                Paragraph(severity_labels.get(severity, severity), cell),
                 Paragraph(str(issue.get("rule_id") or ""), cell),
                 Paragraph(str(issue.get("row") or "—"), cell_center),
                 Paragraph(escape(str(issue.get("message") or "")), cell),
             ])
+            row_severities.append(severity)
     if len(rows) == 1:
-        rows.append(["—", "—", "—", "—", copy["none"]])
-    issues_table = Table(rows, colWidths=[0.64 * inch, 0.55 * inch, 0.68 * inch, 0.38 * inch, 5.23 * inch], repeatRows=1)
-    issues_table.setStyle(TableStyle([
+        rows.append(["—", "—", "—", copy["none"]])
+    issue_table_style = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#102A43")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 6.6),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D7E1EC")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7FAFC")]),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    ]
+    for row_number, severity in enumerate(row_severities, 1):
+        background, foreground = severity_colors.get(severity, (colors.white, colors.HexColor("#243B53")))
+        issue_table_style.extend([
+            ("BACKGROUND", (0, row_number), (-1, row_number), background),
+            ("TEXTCOLOR", (0, row_number), (0, row_number), foreground),
+            ("FONTNAME", (0, row_number), (0, row_number), "Helvetica-Bold"),
+        ])
+    issues_table = Table(rows, colWidths=[1.08 * inch, 0.76 * inch, 0.44 * inch, 5.2 * inch], repeatRows=1)
+    issues_table.setStyle(TableStyle(issue_table_style))
     story = [
         Paragraph(copy["title"], title_style),
         Paragraph(f'{escape(str(payload.get("filename") or "XMLTV file"))} · {copy["channels"]}: {payload.get("channels", 0)} · {copy["programmes"]}: {payload.get("programmes", 0)}', body),
