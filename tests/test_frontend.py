@@ -440,7 +440,7 @@ def test_public_landing_page_has_complete_bilingual_copy():
     assert '"landing.clients.kicker": "NUESTROS CLIENTES"' in translations
     assert "landing.clients.title" not in translations
     assert "landing.clients.copy" not in translations
-    assert "/static/landing.css?v=20260827-3" in html
+    assert "/static/landing.css?v=20260907-1" in html
 
 
 def test_frontend_uses_xmltv_endpoints():
@@ -827,6 +827,18 @@ def test_template_download_links_are_cache_busted():
     assert "/static/help.js?v=20260904-1" in html
     assert "/static/i18n.js?v=20260907-2" in html
     assert "/static/billing.js?v=20260904-1" in html
+
+
+def test_public_pricing_discloses_plan_specific_channel_rates():
+    html = (FRONTEND_DIR / "landing.html").read_text()
+
+    assert html.count('class="pricing-channel-rate"') == 3
+    assert "Additional channel</b><em>+$25" in html
+    assert "Additional channel</b><em>+$49" in html
+    assert "Additional channel</b><em>+$79" in html
+    assert html.count('data-i18n="landing.pricing.oneChannel"') == 3
+    assert "/static/landing.css?v=20260907-1" in html
+    assert "/static/i18n.js?v=20260907-2" in html
 
 
 def test_channel_settings_layout_is_cache_busted():

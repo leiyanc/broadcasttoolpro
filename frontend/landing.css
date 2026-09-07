@@ -1152,6 +1152,51 @@ a {
   letter-spacing: 0;
 }
 
+.pricing-channel-rate {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 15px 16px;
+  background: rgba(23, 199, 210, 0.055);
+  border: 1px solid rgba(23, 199, 210, 0.2);
+  border-radius: 7px;
+}
+
+.pricing-channel-rate > span {
+  color: var(--landing-cyan);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pricing-channel-rate strong {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.pricing-channel-rate b {
+  color: #b6c2cf;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pricing-channel-rate em {
+  color: var(--landing-ink);
+  font-size: 19px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.pricing-channel-rate small {
+  margin-left: 3px;
+  color: var(--landing-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .landing-pricing-grid ul {
   flex: 1;
 }
