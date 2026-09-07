@@ -60,9 +60,9 @@ function renderLayerIssues(result) {
 function renderPublicXmltvResult(result) {
   document.querySelector("#public-validator-summary").textContent = `${result.filename} · ${result.channels} ${landingText("landing.validator.channels", "channels")} · ${result.programmes} ${landingText("landing.validator.programmes", "programmes")}`;
   document.querySelector("#validator-format-status").textContent = result.valid ? landingText("landing.validator.passed", "Passed") : landingText("landing.validator.attention", "Needs attention");
-  document.querySelector("#validator-format-counts").textContent = `${result.xmltv.critical} critical · ${result.xmltv.errors} errors`;
+  document.querySelector("#validator-format-counts").textContent = `${result.xmltv.critical} ${landingText("landing.validator.critical", "critical")} · ${result.xmltv.errors} ${landingText("landing.validator.errors", "errors")}`;
   document.querySelector("#validator-operations-status").textContent = result.operational_ready ? landingText("landing.validator.ready", "Ready") : landingText("landing.validator.review", "Review recommended");
-  document.querySelector("#validator-operations-counts").textContent = `${result.operational.errors} errors · ${result.operational.warnings} warnings`;
+  document.querySelector("#validator-operations-counts").textContent = `${result.operational.errors} ${landingText("landing.validator.errors", "errors")} · ${result.operational.warnings} ${landingText("landing.validator.warnings", "warnings")}`;
   document.querySelector("#validator-profile-score").textContent = `${result.btp_profile.score}/100`;
   document.querySelector("#validator-profile-counts").textContent = `${result.btp_profile.recommendations} ${landingText("landing.validator.recommendations", "recommendations")}`;
   renderLayerIssues(result);
@@ -88,6 +88,7 @@ publicXmltvForm?.addEventListener("submit", async (event) => {
   try {
     const body = new FormData();
     body.append("file", file);
+    body.append("language", document.documentElement.lang === "es" ? "es" : "en");
     const response = await fetch("/api/public/xmltv/validate", { method: "POST", body });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.detail || "The XMLTV file could not be validated.");

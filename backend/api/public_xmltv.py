@@ -22,9 +22,12 @@ async def _read_xml(file: UploadFile) -> bytes:
 
 
 @router.post("/validate")
-async def validate_public_file(file: UploadFile = File(...)):
+async def validate_public_file(
+    file: UploadFile = File(...),
+    language: str = Form("en"),
+):
     content = await _read_xml(file)
-    return {"filename": file.filename, **validate_public_xmltv(content)}
+    return {"filename": file.filename, **validate_public_xmltv(content, "es" if language == "es" else "en")}
 
 
 @router.post("/report/pdf")
@@ -33,7 +36,7 @@ async def download_public_report(
     language: str = Form("en"),
 ):
     content = await _read_xml(file)
-    payload = {"filename": file.filename, **validate_public_xmltv(content)}
+    payload = {"filename": file.filename, **validate_public_xmltv(content, "es" if language == "es" else "en")}
     report = generate_public_xmltv_report(payload, "es" if language == "es" else "en")
     return StreamingResponse(
         BytesIO(report),

@@ -51,3 +51,21 @@ def test_public_basic_report_is_btp_branded():
     assert "XMLTV FORMAT" in text
     assert "OPERATIONAL READINESS" in text
     assert "BTP DELIVERY PROFILE" in text
+
+
+def test_public_validator_localizes_issue_messages_in_spanish():
+    result = validate_public_xmltv(_xml(), "es")
+
+    messages = [issue["message"] for issue in result["btp_profile"]["issues"]]
+    assert "El programa #1 no tiene descripción; agrega una para el perfil de entrega BTP." in messages
+    assert "El programa #1 no tiene clasificación; agrega una para el perfil de entrega BTP." in messages
+    assert not any("Programme" in message for message in messages)
+
+
+def test_public_spanish_report_is_generated_from_localized_results():
+    payload = {"filename": "sample.xml", **validate_public_xmltv(_xml(), "es")}
+    report = generate_public_xmltv_report(payload, "es")
+    text = report.decode("latin-1")
+
+    assert "PERFIL DE ENTREGA BTP" in text
+    assert payload["btp_profile"]["issues"][0]["message"].startswith("El programa #1")
