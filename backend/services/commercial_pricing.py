@@ -77,7 +77,8 @@ COMMERCIAL_ADDONS = [
         "monthly_cents": 5900,
         "description": (
             "On-demand 5-, 10-, and 15-minute monitoring with SCTE-35, "
-            "bandwidth analysis, and branded PDF reports."
+            "bandwidth and Media Loudness Compliance analysis, and branded "
+            "PDF reports."
         ),
     },
 ]

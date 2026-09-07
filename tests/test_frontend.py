@@ -512,7 +512,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260902-4' in html
-    assert '/static/i18n.js?v=20260907-2' in html
+    assert '/static/i18n.js?v=20260907-3' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -825,7 +825,7 @@ def test_template_download_links_are_cache_busted():
     assert "/static/postlog-certification.js?v=20260907-1" in html
     assert "/static/auth.js?v=20260904-1" in html
     assert "/static/help.js?v=20260904-1" in html
-    assert "/static/i18n.js?v=20260907-2" in html
+    assert "/static/i18n.js?v=20260907-3" in html
     assert "/static/billing.js?v=20260904-1" in html
 
 
@@ -838,7 +838,11 @@ def test_public_pricing_discloses_plan_specific_channel_rates():
     assert "Additional channel</b><em>+$79" in html
     assert html.count('data-i18n="landing.pricing.oneChannel"') == 3
     assert "/static/landing.css?v=20260907-1" in html
-    assert "/static/i18n.js?v=20260907-2" in html
+    assert "/static/i18n.js?v=20260907-3" in html
+    assert "Media Loudness Compliance analysis" in html
+    assert "análisis de ancho de banda y Media Loudness Compliance" in (
+        FRONTEND_DIR / "i18n.js"
+    ).read_text()
 
 
 def test_channel_settings_layout_is_cache_busted():
