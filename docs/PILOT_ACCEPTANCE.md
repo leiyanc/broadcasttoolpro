@@ -126,6 +126,27 @@ data in this document.
 | PILOT-003 | Post Logs | Major | Amagi Tarima CSV full date-times were not recognized. | Tester 2 feedback and representative Tarima CSV | Implemented in `9d28a0d`; retest pending |
 | PILOT-004 | HLS Monitoring | Major | SCTE-35 break durations and continuation cues were not summarized clearly. | Tester 2 feedback | Implemented in `33f74da`; retest pending |
 
+### Internal Staging Retest — August 10, 2026
+
+- Staging URL: `https://broadcast-tool-pro-staging.onrender.com/app`
+- Deployed commit: `ee5cb03`
+- PILOT-001: **Passed.** A malformed XMLTV containing a bare ampersand was
+  rejected with an actionable syntax/escaping message and the correct source
+  line.
+- PILOT-002: **Passed.** Repair identified both bare ampersands, applied the
+  two authorized repairs, and produced well-formed XML containing `&amp;` in
+  both locations. The four remaining critical findings shown after repair are
+  valid, unrelated mandatory-metadata findings in the deliberately minimal
+  test fixture.
+- PILOT-003: **Passed.** A generic As-Run CSV containing full date-time values
+  was accepted without a manual date, and the operational date was derived as
+  `2026-07-27` for all three representative events.
+- PILOT-004: **Inconclusive.** Five-minute monitoring completed automatically
+  with 42 inspections and confirmed SCTE-35 PID 483, but no cue occurred in the
+  observation window; therefore break-duration aggregation could not be
+  exercised. Repeat during a known ad break or with a controlled SCTE-35 test
+  stream.
+
 The corrective release also includes bounded HLS monitoring resource use in
 `4d908be`, obsolete module badge removal in `f0e3169`, and the dependency
 security correction in `c05a86c`. Automated regression, dependency audit,

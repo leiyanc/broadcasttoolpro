@@ -1,12 +1,13 @@
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from backend.services.tenant_store import DATA_DIR, DATABASE_PATH
 
 REPORTS_DIR = DATA_DIR / "reports"
+REPORT_RETENTION_AFTER_CLOSURE_DAYS = 90
 
 
 def _connection() -> sqlite3.Connection:
@@ -144,3 +145,52 @@ def get_report(report_id: str, organization_id: str) -> dict | None:
     result = dict(row)
     result["asset_ids"] = json.loads(result["asset_ids"])
     return result
+
+
+def purge_reports_for_closed_organizations(
+    *,
+    now: datetime | None = None,
+    retention_days: int = REPORT_RETENTION_AFTER_CLOSURE_DAYS,
+) -> dict:
+    """Remove archived reports only after an explicit account closure."""
+    if retention_days < 1:
+        raise ValueError("Report retention must be at least one day.")
+    observed_at = now or datetime.now(timezone.utc)
+    cutoff = (observed_at - timedelta(days=retention_days)).isoformat()
+    reports_root = REPORTS_DIR.resolve()
+    removed = 0
+
+    with _connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT report_history.id, report_history.file_path
+            FROM report_history
+            JOIN organizations
+              ON organizations.id = report_history.organization_id
+            WHERE organizations.status = 'closed'
+              AND organizations.closed_at IS NOT NULL
+              AND organizations.closed_at <= ?
+            """,
+            (cutoff,),
+        ).fetchall()
+
+        for row in rows:
+            path = Path(row["file_path"])
+            try:
+                resolved = path.resolve()
+                if resolved.parent != reports_root:
+                    continue
+                resolved.unlink(missing_ok=True)
+            except OSError:
+                continue
+            connection.execute(
+                "DELETE FROM report_history WHERE id = ?",
+                (row["id"],),
+            )
+            removed += 1
+
+    return {
+        "removed": removed,
+        "retention_days": retention_days,
+        "checked_at": observed_at.isoformat(),
+    }

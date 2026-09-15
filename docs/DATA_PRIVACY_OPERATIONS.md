@@ -61,22 +61,35 @@ deletion. A requester must not receive another organization's information.
 
 No destructive privacy operation is automatic during the pilot.
 
-## Current Retention Baseline
+## Approved Retention Baseline
 
-| Data | Current baseline | Control |
+The product owner approved this operational baseline on September 8, 2026.
+It is suitable for implementation as the initial commercial schedule, subject
+to jurisdiction-specific legal review and any documented legal hold. The
+periods below are maximum operating targets, not permission to retain data
+that is no longer needed.
+
+| Data | Approved baseline | Control |
 |---|---|---|
-| Temporary uploads and generated working files | Rotated by configured temporary-storage retention | Automated cleanup and health reporting |
+| Temporary uploads and generated working files | 24 hours | Automated cleanup and health reporting |
 | Local database backups | 14 days by default | Backup manager |
 | Google Drive recovery copies | Seven daily and four weekly recovery points | Encrypted backup rotation |
-| Authentication and security audit records | Retained for active pilot operations | Restricted administrative access |
-| Support and privacy-request history | Retained with the account during the pilot | Customer and administrator case history |
-| Provider email delivery events | Retained for delivery diagnostics and suppression enforcement | Email Health |
-| Inactive-channel identity, reports, invoices, and audit references | Retained with the organization under the applicable record schedule; channel removal is not a deletion request | Organization-scoped access and controlled privacy-request review |
+| Active account and organization records | For the life of the account | Organization-scoped access |
+| Eligible account and organization records after closure | Delete or de-identify within 30 days | Verified, controlled privacy procedure |
+| Generated and archived operational reports after closure | 90 days | Organization-scoped report history and controlled cleanup |
+| Support, privacy-request, authentication, and security audit history | 24 months after closure or case resolution, whichever is later | Restricted case and audit access |
+| Provider email delivery events | Up to 24 months when required for delivery diagnostics, abuse prevention, or suppression enforcement | Email Health |
+| Billing, invoice, tax, dispute, and legally required records | Applicable statutory, contractual, or legal period | Restricted billing access and documented retention exception |
 
-The final post-account-closure retention schedule requires product-owner and
-legal approval before commercial launch. Until then, account deletion cannot
-be represented as immediate deletion of every audit, backup, billing, or legal
-record.
+Account closure does not mean immediate erasure from every backup. Eligible
+live records are removed or de-identified within the target above; residual
+encrypted backup copies expire through the normal 14-day local and seven-daily
+plus four-weekly remote rotation. Restoration from a backup must reapply any
+completed deletion request before normal service resumes.
+
+Channel deactivation is not account closure or a deletion request. Historical
+channel records remain organization-scoped until the applicable account or
+record retention period ends.
 
 ## Evidence
 

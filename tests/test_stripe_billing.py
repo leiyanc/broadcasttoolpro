@@ -76,6 +76,7 @@ def test_checkout_uses_server_side_prices_and_metadata(monkeypatch):
 
     assert url == "https://checkout.stripe.test/session"
     assert captured["mode"] == "subscription"
+    assert captured["payment_method_collection"] == "if_required"
     assert captured["line_items"] == [
         {"price": "price_professional", "quantity": 1},
         {"price": "price_monitoring", "quantity": 1},

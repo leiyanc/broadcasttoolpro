@@ -284,6 +284,7 @@ class StripeBillingService:
             customer_email=email,
             line_items=line_items,
             allow_promotion_codes=True,
+            payment_method_collection="if_required",
             success_url=f"{application_url}?billing=success&session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{application_url}?billing=cancelled",
             metadata=metadata,

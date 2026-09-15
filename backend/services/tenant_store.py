@@ -57,6 +57,7 @@ class TenantStore:
                         plan IN ('starter', 'professional', 'enterprise')
                     ),
                     status TEXT NOT NULL DEFAULT 'active',
+                    closed_at TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -122,6 +123,16 @@ class TenantStore:
                     "ALTER TABLE channels ADD COLUMN "
                     "deactivation_scheduled_at TEXT"
                 )
+            organization_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(organizations)"
+                ).fetchall()
+            }
+            if "closed_at" not in organization_columns:
+                connection.execute(
+                    "ALTER TABLE organizations ADD COLUMN closed_at TEXT"
+                )
 
     def create_organization(
         self,
@@ -172,6 +183,26 @@ class TenantStore:
         if row is None:
             raise KeyError("Organization not found.")
         return dict(row)
+
+    def close_organization(
+        self,
+        organization_id: str,
+        *,
+        closed_at: str | None = None,
+    ) -> dict:
+        """Record account closure separately from billing cancellation."""
+        self.get_organization(organization_id)
+        timestamp = closed_at or _utc_now()
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE organizations
+                SET status = 'closed', closed_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (timestamp, _utc_now(), organization_id),
+            )
+        return self.get_organization(organization_id)
 
     def create_workspace(
         self,

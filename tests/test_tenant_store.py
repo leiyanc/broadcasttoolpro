@@ -242,3 +242,22 @@ def test_channel_deactivation_can_be_scheduled_canceled_and_applied():
         channels = store.list_organization_channels(organization["id"])
         assert channels[0]["active"] is False
         assert channels[0]["deactivation_scheduled_at"] is None
+
+
+def test_account_closure_is_distinct_from_suspension_and_billing():
+    with TemporaryDirectory() as directory:
+        store = TenantStore(Path(directory) / "account-closure.db")
+        store.initialize()
+        organization = store.create_organization(
+            name="Closure Test",
+            slug="closure-test",
+            plan="professional",
+        )
+
+        closed = store.close_organization(
+            organization["id"],
+            closed_at="2026-01-01T00:00:00+00:00",
+        )
+
+        assert closed["status"] == "closed"
+        assert closed["closed_at"] == "2026-01-01T00:00:00+00:00"
