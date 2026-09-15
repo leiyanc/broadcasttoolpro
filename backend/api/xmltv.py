@@ -83,6 +83,9 @@ def fix_category(fix: dict) -> tuple[str, str]:
     if message.startswith("Exact duplicate"):
         return "duplicate", "Remove exact duplicate rows."
 
+    if fix["field"] == "Channel (Optional)":
+        return "channel", "Use the selected registered channel name."
+
     return "other", message
 
 
@@ -173,7 +176,6 @@ async def process_schedule(
     programmes = []
     parsing_issues = []
     auto_fixes = []
-    missing_channel_rows = []
     mismatched_channel_rows = []
     mismatched_channel_values = {}
 
@@ -205,23 +207,10 @@ async def process_schedule(
     for position, row in enumerate(rows):
         source_row = first_data_row + position
 
-        row_channel = str(row.get("Channel") or "").strip()
-        if not row_channel:
-            missing_channel_rows.append(source_row)
-            parsing_issues.append(
-                ValidationIssue(
-                    rule_id="VAL-011",
-                    row=source_row,
-                    field="Channel",
-                    severity="warning",
-                    message=(
-                        "Channel is required. Select the registered channel "
-                        "and enter its name on every programme row."
-                    ),
-                )
-            )
-        elif (
-            expected_channel_name
+        row_channel = str(row.get("Channel (Optional)") or "").strip()
+        if (
+            row_channel
+            and expected_channel_name
             and row_channel.casefold() != expected_channel_name.strip().casefold()
         ):
             mismatched_channel_rows.append(source_row)
@@ -230,7 +219,7 @@ async def process_schedule(
                 ValidationIssue(
                     rule_id="VAL-012",
                     row=source_row,
-                    field="Channel",
+                    field="Channel (Optional)",
                     severity="warning",
                     message=(
                         f'Channel must match the selected registered channel '
@@ -238,6 +227,14 @@ async def process_schedule(
                     ),
                 )
             )
+            auto_fixes.append({
+                "row": source_row,
+                "field": "Channel (Optional)",
+                "original_value": row_channel,
+                "normalized_value": expected_channel_name,
+                "message": "Use the selected registered channel name.",
+            })
+            row = {**row, "Channel (Optional)": expected_channel_name}
 
         try:
             programme = build_programme(
@@ -245,6 +242,7 @@ async def process_schedule(
                 source_row,
                 auto_fixes=auto_fixes,
                 channel_rating_system=channel_rating_system,
+                default_channel_name=expected_channel_name,
             )
             programmes.append(programme)
         except (ValueError, TypeError) as exc:
@@ -270,11 +268,7 @@ async def process_schedule(
     )
     utc_schedule = []
 
-    channel_identity_blocked = bool(
-        missing_channel_rows or mismatched_channel_rows
-    )
-
-    if report.critical == 0 and not channel_identity_blocked:
+    if report.critical == 0:
         try:
             utc_schedule = build_utc_schedule(
                 programmes,
@@ -304,19 +298,14 @@ async def process_schedule(
 
     validation = report.to_dict()
     for issue in validation["issues"]:
-        if issue["rule_id"] in {"VAL-011", "VAL-012"}:
-            issue["expected_channel"] = expected_channel_name
         if issue["rule_id"] == "VAL-012":
+            issue["expected_channel"] = expected_channel_name
             issue["actual_channel"] = mismatched_channel_values.get(
                 issue["row"],
                 "",
             )
-    if channel_identity_blocked:
-        validation["ready_to_generate"] = False
-        validation["processing_blocked"] = True
-
     return {
-        "success": report.critical == 0 and not channel_identity_blocked,
+        "success": report.critical == 0,
         "filename": filename,
         "file_type": extension,
         "rows_received": len(rows),
@@ -330,7 +319,7 @@ async def process_schedule(
         "fixes_applied": apply_fixes,
         "fix_summary": fix_summary,
         "auto_fixes": auto_fixes,
-        "programmes": utc_schedule if not channel_identity_blocked else [],
+        "programmes": utc_schedule,
     }
 
 

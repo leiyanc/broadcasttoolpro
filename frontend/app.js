@@ -69,10 +69,12 @@ const FIX_MESSAGE_KEYS = {
   boolean: "generator.fix.boolean",
   continuation: "generator.fix.continuation",
   duplicate: "generator.fix.duplicate",
+  channel: "generator.fix.channel",
   "Convert numeric durations to HH:MM:SS.": "generator.fix.duration",
   "Normalize localized Yes/No values.": "generator.fix.boolean",
   "Merge continuation rows into one programme.": "generator.fix.continuation",
   "Remove exact duplicate rows.": "generator.fix.duplicate",
+  "Use the selected registered channel name.": "generator.fix.channel",
 };
 
 function localizedFixMessage(fix) {
@@ -89,7 +91,7 @@ function localizedIssueMessage(issue) {
     "generator.unknownIssue",
     "Unknown issue",
   );
-  return ["VAL-011", "VAL-012", "VAL-013", "CHANNEL-LANGUAGE"].includes(issue.rule_id)
+  return ["VAL-012", "VAL-013", "CHANNEL-LANGUAGE"].includes(issue.rule_id)
     ? uiText(`generator.rule.${issue.rule_id}`, fallback, {
       actual: issue.actual_channel || "",
       expected: issue.expected_channel || "",
@@ -362,7 +364,7 @@ function buildFormData(includeProfile = false) {
       programmes_imported: 0,
       validation: fallbackValidation(uiText(
         "generator.channelSelectionRequired",
-        "This account has no active registered channel. Register or activate a channel before validating. The Channel value in the Excel file must exactly match the registered channel name.",
+        "This account has no active registered channel. Register or activate a channel before validating.",
       ), "CHANNEL"),
     });
     return null;

@@ -37,7 +37,8 @@ def test_excel_template_has_expected_structure():
         for cell in row
     )
     assert "VCHIP" in instruction_text
-    assert "coincidir exactamente" in instruction_text
+    assert "Channel es opcional" in instruction_text
+    assert "Autorizar correcciones sugeridas" in instruction_text
     assert "Enter TV-PG, not PG" in instruction_text
     assert "Escribe TV-PG, no PG" in instruction_text
     assert "copy, paste, or drag" in instruction_text

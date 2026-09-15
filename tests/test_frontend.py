@@ -512,7 +512,7 @@ def test_hls_stream_monitor_has_bounded_periods():
     javascript = (FRONTEND_DIR / "hls-validator.js").read_text()
 
     assert '/static/hls-validator.js?v=20260902-4' in html
-    assert '/static/i18n.js?v=20260907-3' in html
+    assert '/static/i18n.js?v=20260915-1' in html
 
     assert 'href="#hls-validator"' in html
     assert 'id="monitor-hls-button"' in html
@@ -788,21 +788,22 @@ def test_self_service_signup_only_requests_initial_channel_name():
     assert 'data-i18n-label="channel.languages.oceania"' in html
 
 
-def test_missing_template_channel_warning_is_localized():
+def test_optional_template_channel_correction_is_localized():
     javascript = (FRONTEND_DIR / "app.js").read_text()
     translations = (FRONTEND_DIR / "i18n.js").read_text()
+    help_javascript = (FRONTEND_DIR / "help.js").read_text()
 
     assert (
-        '["VAL-011", "VAL-012", "VAL-013", "CHANNEL-LANGUAGE"]'
+        '["VAL-012", "VAL-013", "CHANNEL-LANGUAGE"]'
         ".includes(issue.rule_id)"
     ) in javascript
-    assert '"generator.rule.VAL-011"' in translations
-    assert "El canal es obligatorio." in translations
+    assert '"generator.fix.channel"' in translations
+    assert "Channel es opcional" in help_javascript
     assert "Array.isArray(detail)" in javascript
     assert 'rule_id: "REQUEST"' in javascript
     assert '"generator.channelSelectionRequired"' in translations
-    assert "must exactly match the registered channel name" in translations
-    assert "debe coincidir exactamente con el nombre del canal registrado" in translations
+    assert "Authorize the suggested correction" in translations
+    assert "Autoriza la correcci\\u00f3n sugerida" in translations
     assert 'actual: issue.actual_channel || ""' in javascript
     assert 'expected: issue.expected_channel || ""' in javascript
     assert "no coincide con el canal registrado" in translations
@@ -814,18 +815,15 @@ def test_missing_template_channel_warning_is_localized():
 def test_template_download_links_are_cache_busted():
     html = (FRONTEND_DIR / "index.html").read_text()
 
-    assert html.count("/api/xmltv/template/excel?v=20260903-4") == 2
-    assert html.count("/api/xmltv/template/csv?v=20260903-4") == 2
-    for script in (
-        "app.js",
-        "hls-validator.js",
-    ):
-        assert f"/static/{script}?v=20260902-4" in html
+    assert html.count("/api/xmltv/template/excel?v=20260915-1") == 2
+    assert html.count("/api/xmltv/template/csv?v=20260915-1") == 2
+    assert "/static/app.js?v=20260915-1" in html
+    assert "/static/hls-validator.js?v=20260902-4" in html
     assert "/static/prelog-filter.js?v=20260907-1" in html
     assert "/static/postlog-certification.js?v=20260907-1" in html
     assert "/static/auth.js?v=20260904-1" in html
-    assert "/static/help.js?v=20260904-1" in html
-    assert "/static/i18n.js?v=20260907-3" in html
+    assert "/static/help.js?v=20260915-1" in html
+    assert "/static/i18n.js?v=20260915-1" in html
     assert "/static/billing.js?v=20260904-1" in html
 
 

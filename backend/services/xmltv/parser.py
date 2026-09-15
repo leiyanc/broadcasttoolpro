@@ -14,7 +14,7 @@ from backend.models.programme import Programme
 
 
 EXPECTED_COLUMNS = [
-    "Channel",
+    "Channel (Optional)",
     "Air Date",
     "Start Time",
     "Program Title",
@@ -49,6 +49,7 @@ LEGACY_COLUMN_ALIASES = {
 }
 LEGACY_COLUMN_ALIASES["Duration (Optional)"] = "Duration (Conditional)"
 LEGACY_COLUMN_ALIASES["Parental Rating"] = "Parental Rating (Optional)"
+LEGACY_COLUMN_ALIASES["Channel"] = "Channel (Optional)"
 
 
 def clean_text(value: Any) -> str | None:
@@ -497,6 +498,7 @@ def build_programme(
     source_row: int,
     auto_fixes: list[dict[str, Any]] | None = None,
     channel_rating_system: str | None = None,
+    default_channel_name: str | None = None,
 ) -> Programme:
     title = clean_text(row.get("Program Title"))
 
@@ -521,7 +523,10 @@ def build_programme(
 
     return Programme(
         source_row=source_row,
-        channel=clean_text(row.get("Channel")),
+        channel=(
+            clean_text(row.get("Channel (Optional)"))
+            or clean_text(default_channel_name)
+        ),
         air_date=air_date,
         start_time=parse_time(row.get("Start Time")),
         program_title=title,

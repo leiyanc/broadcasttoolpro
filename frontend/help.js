@@ -161,7 +161,7 @@ const helpGuides = {
       summary: "Create a compliant XMLTV file from the Broadcast Tool Pro Excel or CSV schedule template.",
       steps: [
         "Download and complete the official schedule template.",
-        "Select the registered channel and enter its name in the required Channel column on every programme row.",
+        "Select the registered channel. Channel is optional in the template: leave it blank to use the selected channel automatically, or enter its exact registered name.",
         "Confirm the channel's time zone once in Channel Settings. Enter schedule times in the channel's local time; Broadcast Tool Pro uses the saved time zone automatically when exporting XMLTV.",
         "Confirm the channel's primary language in Channel Settings. Choose a major language or regional/script variant, such as Simplified or Traditional Chinese. Broadcast Tool Pro applies it automatically to the XMLTV.",
         "If the channel uses ratings, select its optional Rating System once in Channel Settings. Leave it as None when ratings are not used.",
@@ -177,7 +177,7 @@ const helpGuides = {
       summary: "Crea un XMLTV compatible usando la plantilla Excel o CSV de Broadcast Tool Pro.",
       steps: [
         "Descarga y completa la plantilla oficial.",
-        "Selecciona el canal registrado e ingresa su nombre en la columna obligatoria Channel de cada fila de programación.",
+        "Selecciona el canal registrado. Channel es opcional en la plantilla: déjalo vacío para usar automáticamente el canal seleccionado o ingresa su nombre registrado exacto.",
         "Confirma una sola vez la zona horaria del canal en Configuración del canal. Ingresa la programación en la hora local del canal; Broadcast Tool Pro utiliza automáticamente la zona guardada al exportar el XMLTV.",
         "Confirma el idioma principal del canal en Configuración del canal. Elige un idioma principal o una variante regional/de escritura, como chino simplificado o tradicional. Broadcast Tool Pro lo aplica automáticamente al XMLTV.",
         "Si el canal utiliza clasificaciones, selecciona una sola vez su Rating System opcional en Configuración del canal. Déjalo en Ninguno cuando no se utilicen clasificaciones.",

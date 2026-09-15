@@ -15,7 +15,7 @@ const brandMarkData = await fs.readFile(brandMarkPath);
 const brandMarkDataUrl = `data:image/png;base64,${brandMarkData.toString("base64")}`;
 
 const columns = [
-  ["Channel", "EN: Exact registered channel name; it must match every row. ES: Nombre exacto del canal registrado; debe coincidir en cada fila.", "Exact text / Texto exacto", "Comercio TV", "Required / Obligatorio"],
+  ["Channel (Optional)", "EN: Leave blank to use the selected channel automatically, or enter its exact registered name. A different name is offered as a suggested correction. ES: Déjalo vacío para usar automáticamente el canal seleccionado o ingresa su nombre registrado exacto. Un nombre diferente se ofrece como corrección sugerida.", "Exact text / Texto exacto", "Comercio TV", "Optional / Opcional"],
   ["Air Date", "Local broadcast date.", "Date: YYYY-MM-DD", "2026-07-18", "Required"],
   ["Start Time", "Local programme start time.", "Time", "8:00 AM", "Required"],
   ["Program Title", "Series or programme title.", "Text", "Morning News", "Required"],
@@ -185,7 +185,7 @@ programming.getRange("A4:Z4").format = {
 programming.getRange("A4:Z4").format.rowHeight = 44;
 programming.mergeCells("A3:Z3");
 programming.getRange("A3").values = [[
-  "Channel must match exactly / Channel debe coincidir exactamente · Parental Rating is optional free text / Parental Rating es texto libre opcional.",
+  "Channel is optional; blank uses the selected channel / Channel es opcional; vacío usa el canal seleccionado · Parental Rating is optional free text / Parental Rating es texto libre opcional.",
 ]];
 programming.getRange("A3").format = {
   fill: lightBlue,
@@ -238,7 +238,7 @@ const steps = [
   ["Step", "English", "Español"],
   [1, "Complete Programming using the channel's local schedule time.", "Completa Programming usando la hora local del canal."],
   [2, "Use one row for every programme or event.", "Usa una fila por cada programa o evento."],
-  [3, "Channel is required and must exactly match the selected registered channel on every row.", "Channel es obligatorio y debe coincidir exactamente con el canal registrado seleccionado en cada fila."],
+  [3, "Channel is optional. Leave it blank to use the selected channel, or enter the exact registered name. A mismatch can be replaced through Authorize Suggested Corrections.", "Channel es opcional. Déjalo vacío para usar el canal seleccionado o ingresa el nombre registrado exacto. Una discrepancia puede reemplazarse mediante Autorizar correcciones sugeridas."],
   [4, "Complete Air Date, Start Time, Program Title, a description, and Genre.", "Completa Air Date, Start Time, Program Title, una descripción y Genre."],
   [5, "Enter either Episode Description or Program Description. Episode Description takes priority.", "Ingresa Episode Description o Program Description. Episode Description tiene prioridad."],
   [6, "Use HH:MM:SS for Duration. The final programme must include a duration.", "Usa HH:MM:SS para Duration. El último programa debe incluir duración."],
@@ -375,6 +375,7 @@ example.freezePanes.freezeRows(4);
 
 const outputDir = path.dirname(outputPath);
 await fs.mkdir(outputDir, { recursive: true });
+workbook.recalculate();
 for (const [sheetName, range] of [
   ["Programming", "A1:Z14"],
   ["Instructions", `A1:C${ratingGuideEnd}`],

@@ -66,7 +66,7 @@ def test_empty_schedule_is_not_ready_to_generate():
     assert result["validation"]["ready_to_generate"] is False
 
 
-def test_missing_channel_is_a_blocking_warning():
+def test_missing_channel_uses_selected_registered_channel():
     lines = Path("tests/sample_schedule.csv").read_text().splitlines()
     row = lines[1].replace("Sample TV,", ",", 1)
 
@@ -75,21 +75,21 @@ def test_missing_channel_is_a_blocking_warning():
         path.write_text("\n".join([lines[0], row]))
         result = import_file(path)
 
-    issue = next(
-        item for item in result["validation"]["issues"]
-        if item["rule_id"] == "VAL-011"
-    )
-    assert result["success"] is False
-    assert result["programmes"] == []
-    assert result["validation"]["ready_to_generate"] is False
-    assert result["validation"]["processing_blocked"] is True
-    assert issue["severity"] == "warning"
-    assert issue["field"] == "Channel"
-    assert issue["row"] == 2
-    assert issue["expected_channel"] is None
+        upload = UploadFile(filename=path.name, file=BytesIO(path.read_bytes()))
+        registered_result = asyncio.run(process_schedule(
+            upload,
+            "America/New_York",
+            expected_channel_name="Registered Channel",
+        ))
+
+    assert result["success"] is True
+    assert result["programmes"][0]["channel"] is None
+    assert registered_result["success"] is True
+    assert registered_result["suggested_fixes"] == 0
+    assert registered_result["programmes"][0]["channel"] == "Registered Channel"
 
 
-def test_channel_mismatch_is_a_blocking_warning():
+def test_channel_mismatch_is_a_suggested_correction():
     path = Path("tests/sample_schedule.csv")
     upload = UploadFile(
         filename=path.name,
@@ -105,9 +105,17 @@ def test_channel_mismatch_is_a_blocking_warning():
         item for item in result["validation"]["issues"]
         if item["rule_id"] == "VAL-012"
     ]
-    assert result["success"] is False
-    assert result["programmes"] == []
-    assert result["validation"]["processing_blocked"] is True
+    assert result["success"] is True
+    assert result["suggested_fixes"] == 2
+    assert result["requires_authorization"] is True
+    assert {item["channel"] for item in result["programmes"]} == {
+        "Different Registered Channel"
+    }
+    assert {
+        (item["original_value"], item["normalized_value"])
+        for item in result["auto_fixes"]
+        if item["field"] == "Channel (Optional)"
+    } == {("Sample TV", "Different Registered Channel")}
     assert [item["row"] for item in issues] == [2, 3]
     assert {item["actual_channel"] for item in issues} == {"Sample TV"}
     assert {item["expected_channel"] for item in issues} == {
