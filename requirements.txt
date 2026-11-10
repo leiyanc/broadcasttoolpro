@@ -1,13 +1,13 @@
 fastapi==0.139.2
 boto3==1.40.45
-certifi==2026.7.22
+certifi==2026.10.18
 cryptography==50.0.0
 google-api-python-client==2.198.0
 google-auth-oauthlib==1.4.0
 imageio-ffmpeg==0.6.0
 lxml==6.1.1
 openpyxl==3.1.5
-pillow==12.3.0
+pillow==13.0.0
 python-multipart==0.0.32
 python-dotenv==1.2.2
 reportlab==5.0.0
