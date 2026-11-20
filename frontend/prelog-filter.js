@@ -40,6 +40,7 @@ const prelogExportStatus = document.querySelector("#prelog-export-status");
 
 let playlistsInspected = false;
 let availableFilterOptions = null;
+let playlistInspectionVersion = 0;
 const PRELOG_FILTER_STORAGE_KEY = "broadcastToolPro.prelogFilters";
 const PRELOG_FILTER_MODE_STORAGE_KEY = "broadcastToolPro.prelogFilterMode";
 let prelogStorageScope = "anonymous";
@@ -103,6 +104,8 @@ function updatePrelogFiles() {
   const files = [...prelogFiles.files];
   if (!files.length) return;
 
+  playlistInspectionVersion += 1;
+
   const invalid = files.some(
     (file) => ![".csv", ".xml", ".txt"].some(
       (extension) => file.name.toLowerCase().endsWith(extension),
@@ -121,6 +124,13 @@ function updatePrelogFiles() {
   prelogFileSubtitle.textContent = prelogText("traffic.kbTotal", `${totalKilobytes.toFixed(1)} KB total`, { size: totalKilobytes.toFixed(1) });
   playlistsInspected = false;
   availableFilterOptions = null;
+  prelogStartDate.value = "";
+  prelogEndDate.value = "";
+  inspectPlaylistsButton.disabled = false;
+  inspectPlaylistsButton.textContent = prelogText(
+    "prelog.inspect",
+    "Inspect Playlists",
+  );
   applyPrelogFiltersButton.disabled = true;
   playlistSummary.classList.add("is-hidden");
   prelogResultPanel.classList.add("is-hidden");
@@ -197,6 +207,14 @@ prelogDropZone.addEventListener("drop", (event) => {
 inspectPlaylistsButton.addEventListener("click", async () => {
   if (!prelogFiles.reportValidity()) return;
 
+  const inspectionVersion = ++playlistInspectionVersion;
+  playlistsInspected = false;
+  availableFilterOptions = null;
+  applyPrelogFiltersButton.disabled = true;
+  playlistSummary.classList.add("is-hidden");
+  prelogResultPanel.classList.add("is-hidden");
+  prelogExportPanel.classList.add("is-hidden");
+
   const data = new FormData();
   appendFiles(data);
   data.append(
@@ -215,6 +233,8 @@ inspectPlaylistsButton.addEventListener("click", async () => {
       body: data,
     });
     const result = await response.json();
+
+    if (inspectionVersion !== playlistInspectionVersion) return;
 
     if (!response.ok) {
       showPrelogError(result.detail || prelogText("prelog.inspectError", "The playlists could not be inspected."));
@@ -242,10 +262,16 @@ inspectPlaylistsButton.addEventListener("click", async () => {
     prelogEndDate.value = result.end_date || "";
     updateFilterControls(result);
   } catch {
+    if (inspectionVersion !== playlistInspectionVersion) return;
     showPrelogError(prelogText("prelog.serverInspectError", "The server could not inspect the playlists."));
   } finally {
-    inspectPlaylistsButton.disabled = false;
-    inspectPlaylistsButton.textContent = prelogText("prelog.inspect", "Inspect Playlists");
+    if (inspectionVersion === playlistInspectionVersion) {
+      inspectPlaylistsButton.disabled = false;
+      inspectPlaylistsButton.textContent = prelogText(
+        "prelog.inspect",
+        "Inspect Playlists",
+      );
+    }
   }
 });
 
